@@ -10,6 +10,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import android.content.Intent
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -105,7 +107,10 @@ import java.time.format.DateTimeFormatter
  */
 @Composable
 internal fun simpleHomeShown(state: LauncherState, model: LauncherModel, homeRequests: Int, onLaunch: (AppEntry) -> Unit): Boolean {
-    SimpleQuiet.active = state.simple != null
+    // Safe Mode draws Folio's own Home, so a fault in Simple Home can never loop: the way out is always there. Simple's
+    // settings are untouched and it comes back as soon as Safe Mode is off.
+    SimpleQuiet.active = state.simple != null && !SafeMode.active
+    if (SafeMode.active) return false
     val setup = state.simple ?: return false
     if (SimpleQuiet.allSettings.value) { SimpleAllSettingsWatch(homeRequests); return false }
     SimpleWindow { SimpleHome(state, setup, model, homeRequests, onLaunch) }
@@ -138,7 +143,7 @@ private const val SIMPLE_SETTINGS_WAIT_MS = 5_000L
 
 /** The Simple screens. Home and More Apps are the person's; the rest are the helper's, behind the screen lock. */
 internal enum class SimpleScreen(val parent: SimpleScreen?) {
-    HOME(null), MORE(HOME), SETTINGS(HOME), TEXT_SIZE(SETTINGS), EDIT(SETTINGS), ADD(EDIT), REORDER(EDIT), REMOVE(EDIT);
+    HOME(null), MORE(HOME), SETTINGS(HOME), TEXT_SIZE(SETTINGS), PEOPLE(SETTINGS), EDIT(SETTINGS), ADD(EDIT), REORDER(EDIT), REMOVE(EDIT);
 
     /** A helper page, open only after the screen lock (or the hold). */
     val unlocked: Boolean get() = this != HOME && this != MORE
@@ -271,8 +276,8 @@ private fun SimpleHome(state: LauncherState, setup: SimpleSetup, model: Launcher
     // button is, so nothing on Home moves for it.
     var firstOpen by remember { mutableStateOf(SimpleFirstOpen.pending(context)) }
     var helperButton by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
-    // How many apps Home had room for, so More Apps lists the rest. Written while Home lays out, read only by More Apps.
-    val shownOnHome = remember { mutableIntStateOf(SIMPLE_MAX_APPS) }
+    // How many items Home had room for, so More Apps lists the rest. Written while Home lays out, read only by More Apps.
+    val shownOnHome = remember { mutableIntStateOf(SIMPLE_MAX_APPS + SIMPLE_MAX_FAVORITES) }
     // Helper Settings locks again when Folio leaves the screen, the Home button is pressed, or after 5 idle minutes,
     // but not for a fold, a turn, a font size or dark mode: those recreate Folio and must not throw a helper out mid-edit.
     val activity = androidx.activity.compose.LocalActivity.current
@@ -291,7 +296,14 @@ private fun SimpleHome(state: LauncherState, setup: SimpleSetup, model: Launcher
     // Back, like Home, just returns to Simple Home. On Home it does nothing, as on any Home.
     BackHandler { hint = false; screen = SimpleScreen.HOME }
     val byId = remember(state.apps) { state.apps.associateBy { it.id } }
-    val apps = setup.apps.mapNotNull { byId[it] }
+    // The people to call come first, then the apps. Both are Home items, so one fit decides what is shown and what is More.
+    val items: List<SimpleItem> = setup.people.map { SimpleItem.Person(it) } + setup.apps.mapNotNull { byId[it] }.map { SimpleItem.App(it) }
+    val onCall: (SimpleFavorite) -> Unit = { person ->
+        hint = false
+        // ACTION_DIAL only opens the dialer with the number filled in; the person presses call themselves.
+        if (runCatching { context.startActivity(dialIntent(person.phone).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.isFailure)
+            IslandEvents.notice(context, context.getString(R.string.app_is_unavailable, person.name.ifBlank { person.phone }))
+    }
     val callId by produceState<String?>(null, state.apps) {
         value = withContext(Dispatchers.IO) { runCatching { simpleRoleApps(context, state.apps).call }.getOrNull() }
     }
@@ -310,11 +322,11 @@ private fun SimpleHome(state: LauncherState, setup: SimpleSetup, model: Launcher
                 val fade by rememberSimpleFade()
                 Box(Modifier.fillMaxSize().graphicsLayer { alpha = fade }) {
                     when (screen) {
-                        SimpleScreen.HOME -> SimpleHomeScreen(apps, setup.style, label, shownOnHome, onFootPlaced = { helperButton = it },
-                            onLaunch = { hint = false; onLaunch(it) }, onHold = { hint = true },
+                        SimpleScreen.HOME -> SimpleHomeScreen(items, setup.style, label, shownOnHome, onFootPlaced = { helperButton = it },
+                            onLaunch = { hint = false; onLaunch(it) }, onCall = onCall, onHold = { hint = true },
                             onMore = { hint = false; screen = SimpleScreen.MORE }, onHelper = { hint = false; openHelper() })
-                        SimpleScreen.MORE -> SimpleMoreApps(apps.drop(shownOnHome.intValue), label, onLaunch = { hint = false; onLaunch(it) },
-                            onHold = { hint = true }, onBack = { hint = false; screen = SimpleScreen.HOME })
+                        SimpleScreen.MORE -> SimpleMoreApps(items.drop(shownOnHome.intValue), label, onLaunch = { hint = false; onLaunch(it) },
+                            onCall = onCall, onHold = { hint = true }, onBack = { hint = false; screen = SimpleScreen.HOME })
                         else -> SimpleHelperPages(screen, state, setup, model, label, go = { screen = it })
                     }
                 }
@@ -336,8 +348,9 @@ private fun SimpleHome(state: LauncherState, setup: SimpleSetup, model: Launcher
  * and the apps on the right, either side of the fold.
  */
 @Composable
-private fun SimpleHomeScreen(apps: List<AppEntry>, style: SimpleStyle, label: (AppEntry) -> String, shownOnHome: androidx.compose.runtime.MutableIntState,
-    onFootPlaced: (androidx.compose.ui.geometry.Rect) -> Unit, onLaunch: (AppEntry) -> Unit, onHold: () -> Unit, onMore: () -> Unit, onHelper: () -> Unit) {
+private fun SimpleHomeScreen(entries: List<SimpleItem>, style: SimpleStyle, label: (AppEntry) -> String, shownOnHome: androidx.compose.runtime.MutableIntState,
+    onFootPlaced: (androidx.compose.ui.geometry.Rect) -> Unit, onLaunch: (AppEntry) -> Unit, onCall: (SimpleFavorite) -> Unit,
+    onHold: () -> Unit, onMore: () -> Unit, onHelper: () -> Unit) {
     val hinge = LocalHinge.current
     val density = LocalDensity.current
     val context = LocalContext.current
@@ -366,11 +379,11 @@ private fun SimpleHomeScreen(apps: List<AppEntry>, style: SimpleStyle, label: (A
             val heads = HashMap<Boolean, androidx.compose.ui.layout.Placeable>()
             val feet = HashMap<Boolean, androidx.compose.ui.layout.Placeable>()
             fun measureAll(style: SimpleStyle, compact: Boolean, shown: Int): List<androidx.compose.ui.layout.Placeable> {
-                val items: List<AppEntry?> = apps.take(shown) + if (shown < apps.size) listOf(null) else emptyList()
+                val items: List<SimpleItem?> = entries.take(shown) + if (shown < entries.size) listOf(null) else emptyList()
                 val loose = Constraints(maxWidth = columnWidth)
                 val head = heads.getOrPut(compact) { subcompose("head-$compact") { SimpleHeader(compact) }.single().measure(loose) }
                 val block = subcompose("apps-$style-$compact-$shown") {
-                    SimpleAppsBlock(items, style, compact, label, onLaunch, onHold, onMore)
+                    SimpleAppsBlock(items, style, compact, label, onLaunch, onCall, onHold, onMore)
                 }.map { it.measure(Constraints(minWidth = columnWidth, maxWidth = columnWidth)) }
                 val foot = feet.getOrPut(compact) {
                     subcompose("foot-$compact") { SimpleFoot(compact, onHelper, onFootPlaced) }.single().measure(Constraints(minWidth = columnWidth, maxWidth = columnWidth))
@@ -383,7 +396,7 @@ private fun SimpleHomeScreen(apps: List<AppEntry>, style: SimpleStyle, label: (A
                 return if (wide) maxOf(head.height + gap(compact) + foot.height, block.height)
                 else head.height + gap(compact) + block.height + gap(compact) + foot.height
             }
-            val n = apps.size
+            val n = entries.size
             val tries = buildList {
                 add(false to n); add(true to n)
                 // One row becomes More Apps, so each step down shows one app fewer and More Apps in its place.
@@ -565,16 +578,32 @@ internal fun SimplePreviewLabel(modifier: Modifier = Modifier) {
         fontSize = simpleText(13f, SimpleGrowth.SMALL), textAlign = TextAlign.Center)
 }
 
-/** The apps, as one list or two-column tiles, with More Apps in place of those Home has no room for (null). */
+/** One thing on Simple Home: a person to call or an app. People come first. */
+internal sealed interface SimpleItem {
+    data class Person(val person: SimpleFavorite) : SimpleItem
+    data class App(val app: AppEntry) : SimpleItem
+}
+
+/** One item as a row or tile; the same for Home and for More Apps. */
 @Composable
-private fun SimpleAppsBlock(items: List<AppEntry?>, style: SimpleStyle, compact: Boolean, label: (AppEntry) -> String,
-    onLaunch: (AppEntry) -> Unit, onHold: () -> Unit, onMore: () -> Unit) {
+private fun SimpleItemView(item: SimpleItem, label: (AppEntry) -> String, tile: Boolean, compact: Boolean,
+    onLaunch: (AppEntry) -> Unit, onCall: (SimpleFavorite) -> Unit, onHold: () -> Unit, modifier: Modifier) {
+    when (item) {
+        is SimpleItem.App -> SimpleAppItem(item.app, label(item.app), tile, compact, { onLaunch(item.app) }, onHold, modifier)
+        is SimpleItem.Person -> SimplePersonItem(item.person, tile, compact, { onCall(item.person) }, onHold, modifier)
+    }
+}
+
+/** The people and apps, as one list or two-column tiles, with More Apps in place of those Home has no room for (null). */
+@Composable
+private fun SimpleAppsBlock(items: List<SimpleItem?>, style: SimpleStyle, compact: Boolean, label: (AppEntry) -> String,
+    onLaunch: (AppEntry) -> Unit, onCall: (SimpleFavorite) -> Unit, onHold: () -> Unit, onMore: () -> Unit) {
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         // Two tiles under 88 dp each won't do: a column too narrow for them gets one per row.
         val tiles = style == SimpleStyle.GRID && maxWidth >= 188.dp
         val gap = FolioSpace.MEDIUM.dp
-        val item: @Composable (AppEntry?, Modifier) -> Unit = { app, modifier ->
-            if (app != null) SimpleAppItem(app, label(app), tiles, compact, { onLaunch(app) }, onHold, modifier)
+        val item: @Composable (SimpleItem?, Modifier) -> Unit = { entry, modifier ->
+            if (entry != null) SimpleItemView(entry, label, tiles, compact, onLaunch, onCall, onHold, modifier)
             else SimpleMoreItem(tiles, compact, onMore, onHold, modifier)
         }
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(gap)) {
@@ -615,6 +644,22 @@ private fun SimpleAppItem(app: AppEntry, label: String, tile: Boolean, compact: 
     }
 }
 
+/**
+ * A person to call: their initial in a circle and their name in large type. The whole row or tile is the target and
+ * TalkBack reads "Call <name>" once (the initial is drawn for the eye only). Tapping opens the dialer with their number.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun SimplePersonItem(person: SimpleFavorite, tile: Boolean, compact: Boolean, onClick: () -> Unit, onHold: () -> Unit, modifier: Modifier) {
+    val name = person.name.ifBlank { person.phone }
+    SimpleItemFrame(name, tile, compact, onClick, onHold, modifier, clickLabel = stringResource(R.string.simple_call_person, name)) { size ->
+        Box(Modifier.size(size).clip(CircleShape).background(simpleTheme.accent).clearAndSetSemantics {}, contentAlignment = Alignment.Center) {
+            Text(name.substring(0, name.offsetByCodePoints(0, 1)).uppercase(), color = simpleTheme.onAccent,
+                fontSize = simpleText(24f, SimpleGrowth.TITLE), fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SimpleMoreItem(tile: Boolean, compact: Boolean, onClick: () -> Unit, onHold: () -> Unit, modifier: Modifier) {
@@ -626,11 +671,11 @@ private fun SimpleMoreItem(tile: Boolean, compact: Boolean, onClick: () -> Unit,
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SimpleItemFrame(label: String, tile: Boolean, compact: Boolean, onClick: () -> Unit, onHold: () -> Unit, modifier: Modifier,
-    icon: @Composable (Dp) -> Unit) {
+    clickLabel: String = stringResource(R.string.open_named, label), icon: @Composable (Dp) -> Unit) {
     val colors = simpleTheme
     val shape = RoundedCornerShape(FolioRadius.GROUPED_CARD.dp)
     val clickable = modifier.clip(shape).background(colors.tile)
-        .combinedClickable(onClickLabel = stringResource(R.string.open_named, label), onLongClick = onHold, onClick = onClick)
+        .combinedClickable(onClickLabel = clickLabel, onLongClick = onHold, onClick = onClick)
         .semantics(mergeDescendants = true) {}
     if (tile) Column(clickable.heightIn(min = if (compact) 120.dp else 140.dp).padding(horizontal = FolioSpace.COMPACT.dp, vertical = FolioSpace.COMFY.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp, Alignment.CenterVertically)) {
@@ -652,12 +697,13 @@ internal fun SimpleGlyph(icon: ImageVector, background: Color, size: Dp) {
     }
 }
 
-/** The apps Home had no room for, as a list, with the way back first. */
+/** What Home had no room for, as a list, with the way back first. */
 @Composable
-private fun SimpleMoreApps(apps: List<AppEntry>, label: (AppEntry) -> String, onLaunch: (AppEntry) -> Unit, onHold: () -> Unit, onBack: () -> Unit) {
+private fun SimpleMoreApps(items: List<SimpleItem>, label: (AppEntry) -> String, onLaunch: (AppEntry) -> Unit, onCall: (SimpleFavorite) -> Unit,
+    onHold: () -> Unit, onBack: () -> Unit) {
     SimplePage(primary = { SimpleButton(stringResource(R.string.simple_back_to_home), SimpleButtonKind.PRIMARY, onClick = onBack) },
         title = stringResource(R.string.simple_more_apps)) {
-        apps.forEach { app -> SimpleAppItem(app, label(app), tile = false, compact = false, onClick = { onLaunch(app) }, onHold = onHold, modifier = Modifier.fillMaxWidth()) }
+        items.forEach { SimpleItemView(it, label, tile = false, compact = false, onLaunch = onLaunch, onCall = onCall, onHold = onHold, modifier = Modifier.fillMaxWidth()) }
     }
 }
 

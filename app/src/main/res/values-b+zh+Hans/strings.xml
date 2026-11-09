@@ -2532,4 +2532,11 @@
     <string name="phone_settings">手机设置</string>
     <string name="phone_settings_unavailable">无法打开手机设置。</string>
     <string name="search_phone_settings">搜索手机设置</string>
+    <string name="simple_call_person">拨打给 %1$s</string>
+    <string name="simple_add_people">添加联系人</string>
+    <string name="simple_add_people_detail">选择你最常联系的人</string>
+    <string name="simple_edit_people">编辑联系人</string>
+    <string name="simple_people_full">最多四位联系人。请先移除一位，再添加其他人。</string>
+    <string name="simple_remove_person_title">移除 %1$s？</string>
+    <string name="simple_remove_person_body">%1$s 将不再显示在主屏幕上，但仍保留在你的通讯录中。</string>
 </resources>

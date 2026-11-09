@@ -28,22 +28,33 @@ enum class SimpleTextSize(val scale: Float, @androidx.annotation.StringRes val l
     STANDARD(1f, R.string.standard), LARGER(1.15f, R.string.simple_text_larger), LARGEST(1.3f, R.string.simple_text_largest),
 }
 
-/** What Simple Home shows: the helper's apps in order (app ids, at most [SIMPLE_MAX_APPS]), the style and the text size. */
+/**
+ * What Simple Home shows: the people to call (at most [SIMPLE_MAX_FAVORITES]), then the helper's apps in order (app ids,
+ * at most [SIMPLE_MAX_APPS]), in the style and text size chosen. People come first, so the person using the phone finds
+ * who to call before anything else.
+ */
 data class SimpleSetup(
     val apps: List<String> = emptyList(),
     val style: SimpleStyle = SimpleStyle.LIST,
     val textSize: SimpleTextSize = SimpleTextSize.STANDARD,
+    val people: List<SimpleFavorite> = emptyList(),
 ) {
-    /** Each app once, and no more than Home holds. */
-    fun sanitized() = copy(apps = apps.filter { it.isNotBlank() }.distinct().take(SIMPLE_MAX_APPS))
+    /** Each app once, each number once, and no more than Home holds. */
+    fun sanitized() = copy(
+        apps = apps.filter { it.isNotBlank() }.distinct().take(SIMPLE_MAX_APPS),
+        people = people.filter { it.phone.isNotBlank() }.distinctBy { it.phone }.take(SIMPLE_MAX_FAVORITES),
+    )
 
     fun toJson(): JSONObject = JSONObject().put("apps", JSONArray(apps)).put("style", style.name).put("textSize", textSize.name)
+        .put("people", simpleFavoritesToJson(people))
 
     companion object {
+        /** A setup saved before people existed has no "people" and reads as nobody, so nothing already saved changes. */
         fun fromJson(o: JSONObject) = SimpleSetup(
             apps = o.optJSONArray("apps")?.let { a -> List(a.length()) { a.optString(it) } }.orEmpty(),
             style = SimpleStyle.entries.firstOrNull { it.name == o.optString("style") } ?: SimpleStyle.LIST,
             textSize = SimpleTextSize.entries.firstOrNull { it.name == o.optString("textSize") } ?: SimpleTextSize.STANDARD,
+            people = simpleFavoritesFromJson(o.optJSONArray("people")),
         ).sanitized()
     }
 }

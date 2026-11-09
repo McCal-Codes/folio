@@ -2607,4 +2607,11 @@
     <string name="phone_settings">Phone settings</string>
     <string name="phone_settings_unavailable">Could not open phone settings.</string>
     <string name="search_phone_settings">Search phone settings</string>
+    <string name="simple_call_person">Call %1$s</string>
+    <string name="simple_add_people">Add people</string>
+    <string name="simple_add_people_detail">Choose who you call most</string>
+    <string name="simple_edit_people">Edit people</string>
+    <string name="simple_people_full">Four people is the most. Remove one to add another.</string>
+    <string name="simple_remove_person_title">Remove %1$s?</string>
+    <string name="simple_remove_person_body">%1$s will no longer be on Home. They stay in your contacts.</string>
 </resources>

@@ -2554,4 +2554,11 @@
     <string name="phone_settings">휴대전화 설정</string>
     <string name="phone_settings_unavailable">휴대전화 설정을 열 수 없습니다.</string>
     <string name="search_phone_settings">휴대전화 설정 검색</string>
+    <string name="simple_call_person">%1$s에게 전화</string>
+    <string name="simple_add_people">사람 추가</string>
+    <string name="simple_add_people_detail">가장 자주 전화하는 사람을 고르세요</string>
+    <string name="simple_edit_people">사람 편집</string>
+    <string name="simple_people_full">최대 4명까지 추가할 수 있습니다. 다른 사람을 추가하려면 먼저 한 명을 삭제하세요.</string>
+    <string name="simple_remove_person_title">%1$s을(를) 삭제할까요?</string>
+    <string name="simple_remove_person_body">%1$s 님이 더 이상 홈에 표시되지 않습니다. 연락처에는 그대로 남아 있습니다.</string>
 </resources>

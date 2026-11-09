@@ -7,6 +7,9 @@ import android.content.pm.PackageManager
 import android.hardware.biometrics.BiometricManager
 import android.hardware.biometrics.BiometricPrompt
 import android.os.CancellationSignal
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
@@ -250,6 +253,7 @@ internal fun SimpleHelperPages(screen: SimpleScreen, state: LauncherState, setup
                 }
             }
         }
+        SimpleScreen.PEOPLE -> SimplePeople(setup, model, go)
         SimpleScreen.EDIT -> SimpleEditHome(onHome.size, go)
         SimpleScreen.ADD -> SimpleAddApps(state, setup, onHome, label, model, go)
         SimpleScreen.REORDER -> SimpleReorder(onHome.mapNotNull { byId[it] }, setup, label, model, go)
@@ -265,6 +269,11 @@ private fun SimpleHelperSettings(setup: SimpleSetup, appCount: Int, model: Launc
         title = stringResource(R.string.simple_helper_settings)) {
         SimpleRow(stringResource(R.string.simple_edit_home), pluralStringResource(R.plurals.simple_apps_on_home, appCount, appCount),
             icon = Icons.AutoMirrored.Rounded.ViewList, iconColor = simpleTheme.accent, minHeight = 88.dp) { go(SimpleScreen.EDIT) }
+        val separator = stringResource(R.string.simple_list_separator)
+        SimpleRow(stringResource(R.string.simple_edit_people),
+            if (setup.people.isEmpty()) stringResource(R.string.simple_add_people_detail)
+            else setup.people.joinToString(separator) { it.name.ifBlank { it.phone } },
+            icon = Icons.Rounded.Person, iconColor = FolioColors.GreenLight, minHeight = 88.dp) { go(SimpleScreen.PEOPLE) }
         SimpleChoiceGroup(stringResource(R.string.simple_home_style)) {
             SimpleRow(stringResource(R.string.simple_style_list), mark = setup.style == SimpleStyle.LIST, role = Role.RadioButton) {
                 model.setSimpleSetup(setup.copy(style = SimpleStyle.LIST))
@@ -292,6 +301,62 @@ private fun SimpleHelperSettings(setup: SimpleSetup, appCount: Int, model: Launc
     }
     if (leaving) SimpleDialog(stringResource(R.string.simple_leave_title), stringResource(R.string.simple_leave_body), onCancel = { leaving = false }) {
         SimpleButton(stringResource(R.string.simple_leave), SimpleButtonKind.DANGER) { leaving = false; model.leaveSimple() }
+    }
+}
+
+/**
+ * People to call: Add from the system contact picker, then pick one to move up, move down or remove. Up to
+ * [SIMPLE_MAX_FAVORITES]; when full, Add is off and says why, so nobody is dropped by accident. Each change is saved as it
+ * is made. Only the one contact picked is read (no Contacts permission), and Home only ever opens the dialer.
+ */
+@Composable
+private fun SimplePeople(setup: SimpleSetup, model: LauncherModel, go: (SimpleScreen) -> Unit) {
+    val context = LocalContext.current
+    val people = setup.people
+    val full = people.size >= SIMPLE_MAX_FAVORITES
+    var chosen by remember { mutableStateOf<String?>(null) }
+    var removing by remember { mutableStateOf(false) }
+    val index = people.indexOfFirst { it.phone == chosen }
+    val addPeople = stringResource(R.string.simple_add_people)
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val uri = result.data?.data ?: return@rememberLauncherForActivityResult
+        readPickedContact(context, uri)?.let { picked ->
+            model.setSimpleSetup(setup.copy(people = people.withFavorite(picked)))
+            chosen = picked.phone
+        }
+    }
+    SimplePage(primary = { SimpleButton(stringResource(R.string.done), SimpleButtonKind.PRIMARY) { go(SimpleScreen.SETTINGS) } },
+        title = stringResource(R.string.simple_edit_people)) {
+        SimpleLead(stringResource(R.string.simple_add_people_detail))
+        SimpleRow(addPeople, if (full) stringResource(R.string.simple_people_full) else null,
+            icon = Icons.Rounded.Add, iconColor = FolioColors.GreenLight, enabled = !full) {
+            if (!full) runCatching { picker.launch(pickContactIntent()) }
+                .onFailure { IslandEvents.notice(context, context.getString(R.string.app_is_unavailable, addPeople)) }
+        }
+        if (people.isNotEmpty()) {
+            SimpleButtonPair(stringResource(R.string.move_up), Icons.Rounded.ArrowUpward, { if (index >= 0) model.setSimpleSetup(setup.copy(people = people.movedUp(index))) },
+                stringResource(R.string.move_down), Icons.Rounded.ArrowDownward, { if (index >= 0) model.setSimpleSetup(setup.copy(people = people.movedDown(index))) })
+            SimpleChoiceGroup(stringResource(R.string.simple_call)) {
+                people.forEach { person ->
+                    val hasName = person.name.isNotBlank()
+                    SimpleRow(if (hasName) person.name else person.phone, person.phone.takeIf { hasName },
+                        mark = chosen == person.phone, role = Role.RadioButton) { chosen = person.phone }
+                }
+            }
+            SimpleButton(stringResource(R.string.remove), SimpleButtonKind.DANGER) { if (index >= 0) removing = true }
+        }
+    }
+    val target = people.getOrNull(index)
+    if (removing && target != null) {
+        val name = target.name.ifBlank { target.phone }
+        SimpleDialog(stringResource(R.string.simple_remove_person_title, name), stringResource(R.string.simple_remove_person_body, name),
+            onCancel = { removing = false }) {
+            SimpleButton(stringResource(R.string.remove), SimpleButtonKind.DANGER) {
+                removing = false
+                model.setSimpleSetup(setup.copy(people = people.removedAt(index)))
+                chosen = null
+            }
+        }
     }
 }
 
