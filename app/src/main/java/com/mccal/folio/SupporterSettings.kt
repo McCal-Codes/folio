@@ -49,6 +49,43 @@ import java.time.format.DateTimeFormatter
  * come with it. Everything happens on the phone — the code is checked against a key inside Folio, and nothing about
  * it is ever sent anywhere.
  */
+internal const val KOFI_URL = "https://ko-fi.com/mccal"
+
+internal fun openKofi(context: android.content.Context) {
+    runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(KOFI_URL)).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
+}
+
+@Composable
+internal fun supporterDate(date: java.time.LocalDate): String =
+    date.format(DateTimeFormatter.ofPattern(stringResource(R.string.d_mmm_yyyy)))
+
+/** What to tell someone whose code ran out, and the way to a new one: on the Supporter page and under Beta updates. */
+@Composable
+internal fun SupporterExpiredNote(state: SupporterState.Expired, onBetaPage: Boolean = false) {
+    val context = LocalContext.current
+    CardNote(when {
+        state.ended != null && onBetaPage -> stringResource(R.string.supporter_expired_beta_note, supporterDate(state.ended))
+        onBetaPage -> stringResource(R.string.supporter_expired_beta_note_undated)
+        state.ended != null -> stringResource(R.string.supporter_expired_note, supporterDate(state.ended))
+        else -> stringResource(R.string.supporter_expired_note_undated)
+    })
+    CardAction(stringResource(R.string.supporter_renew), onClick = { openKofi(context) })
+}
+
+/** What the newest beta adds, for someone without a code, and the way to get one. Nothing shows until it is read, or if there is no newer beta. */
+@Composable
+internal fun BetaTeaserCard() {
+    val context = LocalContext.current
+    var teaser by remember { mutableStateOf<SoftwareUpdate.BetaTeaser?>(null) }
+    LaunchedEffect(Unit) { teaser = SoftwareUpdate.betaTeaser(context) }
+    val shown = teaser ?: return
+    CardNote(stringResource(R.string.beta_teaser_title, shown.version))
+    shown.highlights.forEach { CardNote("• $it") }
+    if (shown.more > 0) CardNote(stringResource(R.string.beta_teaser_more, shown.more))
+    CardAction(stringResource(R.string.beta_teaser_get_access), onClick = { openKofi(context) })
+    CardNote(stringResource(R.string.beta_teaser_note))
+}
+
 @Composable
 internal fun SupporterPage() {
     val context = LocalContext.current
@@ -78,7 +115,10 @@ internal fun SupporterPage() {
 
     SettingsCard("CODE") {
         val current = code
+        val standing = remember(code, stored) { Supporter.state(context) }
         if (current == null) {
+            // A code that ran out reads as "no code" to the rest of the app, so say what happened and how to get another.
+            (standing as? SupporterState.Expired)?.let { SupporterExpiredNote(it) }
             CardAction(stringResource(R.string.redeem_a_code), onClick = { problem = null; redeeming = true })
             CardNote(stringResource(R.string.codes_come_with_a_ko_fi_thank_you_folio))
             // What a code opens today, on the page where someone would go looking for it.
@@ -88,6 +128,10 @@ internal fun SupporterPage() {
             InfoRow(stringResource(R.string.unlocks), unlocksText(context, current.scopes))
             Supporter.ends(context, current)?.let {
                 InfoRow(stringResource(R.string.until), it.format(DateTimeFormatter.ofPattern(stringResource(R.string.d_mmm_yyyy))))
+            }
+            if (supporterReminderStage(standing) == SupporterReminderStage.SOON) {
+                (standing as SupporterState.Active).ends?.let { CardNote(stringResource(R.string.supporter_ends_soon_note, supporterDate(it))) }
+                CardAction(stringResource(R.string.supporter_renew), onClick = { openKofi(context) })
             }
             CardAction(stringResource(R.string.remove_code), destructive = true, onClick = {
                 Supporter.remove(context); code = null; stored = null; beta = false

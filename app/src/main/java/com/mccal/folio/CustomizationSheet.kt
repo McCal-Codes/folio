@@ -3626,7 +3626,14 @@ internal fun layoutSnapshotsShown(layoutHistory: Boolean, layoutDamaged: Boolean
         if (beta && Supporter.has(context, BetaCodes.SCOPE_BETA)) CardNote(stringResource(R.string.a_supporter_code_turned_this_on_you_can))
         // Betas come through the supporter worker. Without a code Folio only sees public releases, and "up to date" would
         // read as if no beta existed (#239).
-        if (!SoftwareUpdate.betaSourceReady(context)) CardNote(stringResource(R.string.betas_are_for_supporters))
+        // A code that ran out leaves the same silence as no code, so say it ran out and how to renew.
+        if (!SoftwareUpdate.betaSourceReady(context)) {
+            val standing = remember { Supporter.state(context) }
+            if (standing is SupporterState.Expired) SupporterExpiredNote(standing, onBetaPage = true)
+            else CardNote(stringResource(R.string.betas_are_for_supporters))
+            // The beta shows even without a code: what it adds, and a coffee on Ko-fi to get it.
+            BetaTeaserCard()
+        }
     }
     CardNote(stringResource(R.string.every_update_is_checked_against_its_publ), Modifier.padding(horizontal = FolioSpace.LARGE.dp))
 }
