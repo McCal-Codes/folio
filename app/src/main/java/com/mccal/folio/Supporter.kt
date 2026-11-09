@@ -101,7 +101,9 @@ internal object Supporter {
         val valid = code(context, today, keys)
         // An expired code still carries a good signature, which is what tells "ran out" from "never was a code".
         val signed = valid ?: ((BetaCodes.verify(text, keys, LocalDate.of(1970, 1, 2), BetaKeys.WITHDRAWN) as? BetaCodes.Result.Valid)?.code)
-        return supporterStateFor(valid != null, signed?.let { ends(context, it, today) }, signed != null, today, signed?.serial ?: 0L)
+        // Days are counted on the same guarded day the code was judged by: a clock that leapt too far is not believed.
+        val judged = readClock(context, today) ?: today
+        return supporterStateFor(valid != null, signed?.let { ends(context, it, today) }, signed != null, judged, signed?.serial ?: 0L)
     }
 
     /**

@@ -9,8 +9,8 @@ import android.content.Intent
 import java.time.format.DateTimeFormatter
 
 /**
- * The heads-up that a supporter code is about to end, and the note that it has. Run from the daily update check, so
- * it needs nothing of its own to stay alive. Each code gets each reminder once, remembered by its serial, so the
+ * The heads-up that a supporter code is about to end, and the note that it has. Run from the daily update check and
+ * whenever Folio opens, so Manual update mode doesn't silence it. Each code gets each reminder once, remembered by its serial, so the
  * daily check never repeats itself; redeeming a new code starts fresh. It says nothing about a code that does not
  * end, a phone with no code, or one that has turned notifications off.
  */

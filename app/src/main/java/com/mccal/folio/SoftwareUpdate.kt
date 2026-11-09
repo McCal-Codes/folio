@@ -91,7 +91,12 @@ internal object SoftwareUpdate {
 
     fun startCheck(context: Context) = launchExclusive { check(context.applicationContext) }
     fun startInstall(context: Context, release: Release) = launchExclusive { downloadAndInstall(context.applicationContext, release) }
-    fun startCheckIfDue(context: Context) = launchExclusive { checkIfDue(context.applicationContext) }
+    fun startCheckIfDue(context: Context) {
+        // The supporter reminder is local and cheap, and Manual mode has no daily job, so it also runs when Folio opens.
+        val app = context.applicationContext
+        scope.launch { runCatching { SupporterReminder.check(app) } }
+        launchExclusive { checkIfDue(app) }
+    }
 
     private fun launchExclusive(block: suspend () -> Unit) {
         if (!busy.compareAndSet(false, true)) return
