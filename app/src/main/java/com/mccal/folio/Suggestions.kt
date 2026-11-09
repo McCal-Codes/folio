@@ -131,7 +131,8 @@ internal object Suggestions {
 
     // The time-of-day scores use the zone's offset, so a new time zone (or a daylight saving change) ranks again.
     private fun rankingKey(context: Context, apps: List<AppEntry>, now: Long) = RankingCache.Key(apps.map { it.id },
-        launchLog(context).hashCode(), hasUsageAccess(context), java.util.TimeZone.getDefault().getOffset(now))
+        launchLog(context).hashCode(), hasUsageAccess(context), java.util.TimeZone.getDefault().getOffset(now),
+        SuggestionsHistory.cutoff(context))
 
     private fun rank(context: Context, apps: List<AppEntry>, byId: Map<String, AppEntry>, now: Long): List<String> {
         val byPackage = apps.filter { !it.isWork }.groupBy { it.packageName }
@@ -150,8 +151,8 @@ internal object Suggestions {
  * replacing each other's ranking.
  */
 internal class RankingCache(private val size: Int = 4) {
-    /** What a ranking depends on besides the time: the apps, Folio's launch log, Usage Access and the zone's offset. */
-    data class Key(val appIds: List<String>, val launchStamp: Int, val usageAccess: Boolean, val zoneOffset: Int = 0)
+    /** What a ranking depends on besides the time: the apps, Folio's launch log, Usage Access, the zone's offset and the history cutoff (clearing history moves it). */
+    data class Key(val appIds: List<String>, val launchStamp: Int, val usageAccess: Boolean, val zoneOffset: Int = 0, val historyCutoff: Long = 0L)
 
     private class Entry(val key: Key, val at: Long, val ids: List<String>)
 

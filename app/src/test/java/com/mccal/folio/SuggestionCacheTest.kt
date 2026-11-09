@@ -31,6 +31,12 @@ class SuggestionCacheTest {
         assertEquals(listOf("3"), cache.get(key.copy(usageAccess = false), now = 3L) { listOf("3") })
     }
 
+    @Test fun `clearing suggestions history ranks again even when the launch log was already empty`() {
+        val cache = RankingCache()
+        cache.get(key, now = 0L) { listOf("b", "a") }
+        assertEquals(listOf("4"), cache.get(key.copy(historyCutoff = 5_000L), now = 1L) { listOf("4") })
+    }
+
     @Test fun `Spotlight's first frame gets the fresh ranking for the same key, and nothing otherwise`() {
         val cache = RankingCache()
         assertNull("nothing ranked yet", cache.peek(key, now = 0L))
