@@ -31,6 +31,17 @@ class ExperienceProfileTest {
         assertEquals(mixed, mixed.withProfile(ExperienceProfile.CUSTOM))
     }
 
+    @Test fun `Simple is reported only while its Home is on, so Android style stays Android style`() {
+        val android = LauncherState().withProfile(ExperienceProfile.ANDROID_STYLE)
+        assertEquals(ExperienceProfile.ANDROID_STYLE, android.profile())
+        val simple = android.withProfile(ExperienceProfile.SIMPLE)
+        assertEquals(ExperienceProfile.SIMPLE, simple.profile())
+        assertEquals(SimpleStyle.LIST, simple.simple?.style)
+        val back = simple.withProfile(ExperienceProfile.FOLIO)
+        assertEquals(null, back.simple)
+        assertEquals(ExperienceProfile.FOLIO, back.profile())
+    }
+
     @Test fun `switching there and back is lossless`() {
         val there = LauncherState().withProfile(ExperienceProfile.ANDROID_STYLE)
         assertNotEquals(LauncherState(), there)
