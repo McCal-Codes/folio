@@ -51,6 +51,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Page effects with more curves:** a page effect package can set curves for more channels (the 0.7.0 format), listed as tweaks.pageEffects.channels.
 
 ### Changed
+- Widgets are managed from Edit on Home only. The Widgets list in Home Screen & Dock settings is gone.
 - **Swiping a panel away follows your finger:** Notification Center and Control Center move up with your finger when you swipe up and close when you let go, if you went far enough or flicked. A short pull springs back. They used to close in one jump partway through the swipe.
 - **Control Center controls settle in:** when Control Center opens, the controls on its first page fade in and rise a few points one after another, 20 ms apart, instead of arriving all at once. It does not run while you are editing controls or with Reduce Motion on.
 - **What to Test for the 0.7.0 betas:** the list in Folio Dev and the betas now puts the new StandBy, panel, pull tab, Market and Spotlight checks first, and the StandBy styles steps match the twelve clock looks.
