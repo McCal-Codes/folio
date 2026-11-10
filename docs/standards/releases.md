@@ -112,11 +112,11 @@ what they were testing. Every rule below is aimed at that shape of mistake.
 
 ### Updating
 
-- **REL-30 MUST** make an update or supporter check say why when it leaves something out. "Folio is up to date" is
+- **REL-33 MUST** make an update or supporter check say why when it leaves something out. "Folio is up to date" is
   only true when nothing was left out: an ended or unrecognized code, Early access or Beta Updates off, and a beta
   server that refused or could not be reached each get their own line, and a test covers every outcome (0.6.9.1, where
   all of them read as "up to date").
-- **REL-31** Going back to an older version is a roll-forward. Android refuses a lower `versionCode`, so the older
+- **REL-34** Going back to an older version is a roll-forward. Android refuses a lower `versionCode`, so the older
   build is republished under a higher version (REL-16 still holds: the number means that one build), and the app
   offers it as an ordinary update, after saying what a backup keeps.
 
