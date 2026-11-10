@@ -541,6 +541,8 @@
     <string name="the_dock_stays_on_the_side_bar_even_when">程序坞保持在侧边栏上，即使屏幕竖直也是如此。</string>
     <string name="the_dock_sits_along_the_bottom_under_you">程序坞沿底部排列，位于页面下方。</string>
     <string name="the_dock_sits_along_the_bottom_in_landsc">程序坞沿底部排列。在横屏和小窗口中会移到侧边栏，好让每一行 App 都能放下。</string>
+    <string name="center_dock_on_the_side">在侧边居中</string>
+    <string name="dock_size">程序坞大小</string>
     <string name="space_between_dock_apps">程序坞 App 间距</string>
     <string name="dock_height">程序坞高度</string>
     <string name="move_dock">移动程序坞。上下拖动。</string>

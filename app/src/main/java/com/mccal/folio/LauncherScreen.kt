@@ -507,7 +507,7 @@ fun LauncherScreen(
     } else rawTarget
     val blockedDock = drag.moved && target is DropTarget.Dock &&
         if (drag.source?.folderId != null) state.dock.none { it == null }
-        else drag.source?.appId?.let { !canPlaceInDock(state.layout, it) } == true
+        else drag.source?.appId?.let { !canPlaceInDock(state.layout, it, model.dockCapacity) } == true
     val insertionTarget = target.takeIf { drag.moved && !blockedDock }
     LaunchedEffect(drag.active, drag.moved) {
         val source = drag.source
@@ -606,15 +606,15 @@ fun LauncherScreen(
             folderOrRoom && id != null && drag.moved -> when {
                 armedMerge != null -> state.layout
                 insertionTarget is DropTarget.Home && folderDropTarget(id, insertionTarget.index) != null -> state.layout
-                roomTarget is DropTarget.Home || roomTarget is DropTarget.Dock -> dropApp(state.layout, id, roomTarget!!, homeAppRows)
+                roomTarget is DropTarget.Home || roomTarget is DropTarget.Dock -> dropApp(state.layout, id, roomTarget!!, homeAppRows, model.dockCapacity)
                 else -> state.layout
             }
             // The live preview should not ghost-shift neighbors out of the way for a move that will not happen -
             // the target cell's own hover highlight is the only feedback until release, same as a real platform.
             id != null && insertionTarget is DropTarget.Home &&
                 (folderMergeTarget(id, insertionTarget.index) != null || folderDropTarget(id, insertionTarget.index) != null) -> state.layout
-            id != null && insertionTarget is DropTarget.Home -> dropApp(state.layout, id, insertionTarget, homeAppRows)
-            id != null && insertionTarget is DropTarget.Dock -> dropApp(state.layout, id, insertionTarget, homeAppRows)
+            id != null && insertionTarget is DropTarget.Home -> dropApp(state.layout, id, insertionTarget, homeAppRows, model.dockCapacity)
+            id != null && insertionTarget is DropTarget.Dock -> dropApp(state.layout, id, insertionTarget, homeAppRows, model.dockCapacity)
             drag.source?.target is DropTarget.Widget && insertionTarget is DropTarget.Home ->
                 moveWidgetMakingRoom(state.layout, (drag.source!!.target as DropTarget.Widget).index, insertionTarget.index, homeAppRows)
             // Resizing a widget: the apps in the way slide along as the handle moves, like they do while one is dragged.
@@ -822,8 +822,11 @@ fun LauncherScreen(
             var statusHeight by remember { mutableFloatStateOf(0f) }
             // While an app is dragged toward a full dock that can still grow, it shows one open place at the end: drop there
             // and the dock becomes a place bigger. Gone again as soon as the drag ends.
+            // A tall window has room for more dock places than a short one (see dockCapacity).
+            val dockPlaces = dockCapacity(maxHeight.value, preset.iconSize, preset.dockSize)
+            SideEffect { model.dockCapacity = dockPlaces }
             val dockOpenPlace = drag.active && drag.source?.appId != null && drag.source?.target !is DropTarget.Dock &&
-                state.dock.size < MAX_DOCK_SLOTS && state.dock.none { it == null }
+                state.dock.size < dockPlaces && state.dock.none { it == null }
             val shownDock = if (dockOpenPlace) state.dock + null else state.dock
             val fillRows = rememberGateOpen(FeatureGate.WIDGETS_FILL_ROWS)
             val duoSpacing = rememberGateOpen(FeatureGate.DUO_SPACING)
@@ -1207,7 +1210,7 @@ fun LauncherScreen(
                 }.background(Glass.copy(alpha = state.statusStyle.railGlass), RoundedCornerShape(FolioRadius.RAIL.dp))
                 .border(1.dp, LocalGlassLook.current.outlineColor, RoundedCornerShape(FolioRadius.RAIL.dp)).testTag("dock")) {
                 Column(if (geometry.horizontalDock) (if (dockBarScrolls) Modifier.fillMaxHeight().horizontalEdgeFade(dockBarScroll).horizontalScroll(dockBarScroll) else Modifier.fillMaxSize()).padding(horizontal = FolioSpace.SMALL.dp) else Modifier.padding(vertical = FolioSpace.SMALL.dp).verticalScroll(dockScroll)) {
-                    DockAppColumn(shownDock, previewLayout.dock, appsById, dockPitchShown,
+                    DockAppColumn(if (geometry.horizontalDock) shownDock else shownDock.take(geometry.dockShownSlots), if (geometry.horizontalDock) previewLayout.dock else previewLayout.dock.take(geometry.dockShownSlots), appsById, dockPitchShown,
                         geometry.dockIcon, drag, insertionTarget,
                         onLaunch = onLaunchFrom, onChoose = { dockSlot = it; sheet = "dock" },
                         magnify = FeatureScopes.on(state.featureScopes, "dockMagnify", state.dockMagnify, screenFor(wide)) &&
@@ -1421,13 +1424,13 @@ fun LauncherScreen(
                     when (sheet) {
                         "dock" -> AppPicker(pickerApps(state), dockSlot,
                             onSelect = {
-                                if (canPlaceInDock(state.layout, it.id)) {
+                                if (canPlaceInDock(state.layout, it.id, model.dockCapacity)) {
                                     model.applyDrop(it.id, DropTarget.Dock(dockSlot)); sheet = ""
                                 }
                             },
                             onClear = { model.removePlacement(DropTarget.Dock(dockSlot)) },
                             onLongClick = { overlays.menu = it.id; sheet = "" },
-                            canSelect = { canPlaceInDock(state.layout, it.id) }, refusal = { dockRefusal(state.layout, it.id) },
+                            canSelect = { canPlaceInDock(state.layout, it.id, model.dockCapacity) }, refusal = { dockRefusal(state.layout, it.id, model.dockCapacity) },
                             blockedHint = if (state.dock.none { it == null }) stringResource(R.string.dock_full_move_an_app_out_first) else null)
                         "pins" -> Column(Modifier.fillMaxHeight(.9f).imePadding()) {
                             Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.XL.dp), horizontalArrangement = Arrangement.End) {

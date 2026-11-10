@@ -535,6 +535,8 @@
     <string name="the_dock_stays_on_the_side_bar_even_when">The dock stays on the Side Bar, even when the screen is upright.</string>
     <string name="the_dock_sits_along_the_bottom_under_you">The dock sits along the bottom, under your pages.</string>
     <string name="the_dock_sits_along_the_bottom_in_landsc">The dock sits along the bottom. In landscape and small windows it moves to the Side Bar, so every row of apps fits.</string>
+    <string name="center_dock_on_the_side">Center on the side</string>
+    <string name="dock_size">Dock size</string>
     <string name="space_between_dock_apps">Space between dock apps</string>
     <string name="dock_height">Dock height</string>
     <string name="move_dock">Move dock. Drag up or down.</string>
