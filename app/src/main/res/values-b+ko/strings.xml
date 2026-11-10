@@ -590,6 +590,12 @@
     <string name="show_details">세부사항 표시</string>
     <string name="folio_dev_a_test_build_it_updates_from_n">테스트 빌드인 Folio Dev입니다. GitHub가 아닌 새 빌드를 통해 업데이트됩니다.</string>
     <string name="checking_for_updates">업데이트 확인 중…</string>
+    <string name="beta_note_code_invalid">베타가 포함되지 않았습니다. Folio가 서포터 코드를 인식하지 못합니다. 설정 › 서포터에서 다시 붙여넣으세요.</string>
+    <string name="beta_note_code_ended">베타가 포함되지 않았습니다. 서포터 코드가 만료되었습니다. Ko-fi에서 새 코드로 갱신하세요.</string>
+    <string name="beta_note_early_access_off">베타가 포함되지 않았습니다. 설정 › 서포터에서 미리 사용하기가 꺼져 있습니다.</string>
+    <string name="beta_note_updates_off">베타가 포함되지 않았습니다. 베타 업데이트가 꺼져 있습니다.</string>
+    <string name="beta_note_refused">베타 서버가 서포터 코드를 받아들이지 않았습니다. 설정 › 서포터에서 확인하거나 Ko-fi에서 갱신하세요.</string>
+    <string name="beta_note_unreachable">베타 서버에 연결할 수 없어 정식 릴리스만 확인했습니다. 나중에 다시 시도하세요.</string>
     <string name="folio_is_up_to_date">Folio가 최신 버전입니다</string>
     <string name="last_checked">마지막 확인: %1$s</string>
     <string name="updates_come_from_folio_s_github_release">Folio의 GitHub 릴리스에서 업데이트를 받습니다</string>

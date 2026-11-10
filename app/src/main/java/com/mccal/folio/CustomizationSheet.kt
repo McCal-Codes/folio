@@ -1125,7 +1125,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     }
                 }
                 CustomizationPage.TWEAK_LIBRARY -> TweakLibraryPage(state, model) { tweakId = it.id; onPage(CustomizationPage.LIBRARY_TWEAK) }
-                CustomizationPage.SOFTWARE_UPDATE -> SoftwareUpdatePage()
+                CustomizationPage.SOFTWARE_UPDATE -> SoftwareUpdatePage { onPage(CustomizationPage.SUPPORTER) }
                 CustomizationPage.SUPPORTER -> SupporterPage()
                 CustomizationPage.SYSTEM_BRIDGE -> SystemBridgePage()
                 // The model's apps, not the sheet's state: Home's state is disguised while Screenshot Mode is on.
@@ -3561,9 +3561,10 @@ internal fun layoutSnapshotsShown(layoutHistory: Boolean, layoutDamaged: Boolean
 }
 
 /** Settings › Software Update, laid out like iOS: the version, one clear action, and automatic updates. */
-@Composable private fun SoftwareUpdatePage() {
+@Composable private fun SoftwareUpdatePage(onSupporter: () -> Unit = {}) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val status by SoftwareUpdate.status.collectAsState()
+    val betaNote by SoftwareUpdate.betaNote.collectAsState()
     val installed = remember { SoftwareUpdate.installedVersion(context) }
     val supported = SoftwareUpdate.supported(context)
     // Like iOS: the page checks when you open it, unless a check already ran this session.
@@ -3578,7 +3579,8 @@ internal fun layoutSnapshotsShown(layoutHistory: Boolean, layoutDamaged: Boolean
                 Text(when {
                     !supported -> stringResource(R.string.folio_dev_a_test_build_it_updates_from_n)
                     status == SoftwareUpdate.Status.Checking -> stringResource(R.string.checking_for_updates)
-                    status == SoftwareUpdate.Status.UpToDate -> stringResource(R.string.folio_is_up_to_date)
+                    status == SoftwareUpdate.Status.UpToDate -> stringResource(R.string.folio_is_up_to_date) +
+                        (betaNote?.let { "\n" + stringResource(it) } ?: "")
                     status is SoftwareUpdate.Status.Failed -> (status as SoftwareUpdate.Status.Failed).message
                     else -> SoftwareUpdate.lastChecked(context).takeIf { it > 0 }?.let {
                         val ago = if (System.currentTimeMillis() - it < 60_000) stringResource(R.string.just_now)
@@ -3591,6 +3593,9 @@ internal fun layoutSnapshotsShown(layoutHistory: Boolean, layoutDamaged: Boolean
             }
         }
     }
+    // When a note explains why betas aren't arriving, the fix is on the Supporter page, so put the way there beside it.
+    if (supported && SoftwareUpdate.noteNeedsSupporter(betaNote) && status == SoftwareUpdate.Status.UpToDate)
+        SheetGroup { IosActionRow(stringResource(R.string.supporter), "update-open-supporter") { onSupporter() } }
     if (!supported) return
     val release = when (val s = status) {
         is SoftwareUpdate.Status.Available -> s.release
