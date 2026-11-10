@@ -5,6 +5,13 @@ Folio is in development), and this file follows [Keep a Changelog](https://keepa
 `versionCode` is derived from the version name ((MAJOR × 10000 + MINOR × 100 + PATCH) × 10 + HOTFIX), so every release sorts correctly and a fix on top of one has nine numbers of its own.
 Folio shows the newest section on the phone after an update, and every version under Settings › What's New › Version History.
 
+## [0.6.9.1] - 2026-11-10
+
+### Fixed
+- **Supporters are told why betas are missing:** Settings › Software Update used to say "Folio is up to date" when a supporter's check left betas out, whether the code had ended, Early access or Beta Updates was off, or the beta server could not be reached. It now says which, under the usual line, with a Supporter button beside it.
+- **Spotlight with Reduce Motion:** Spotlight now only fades in and out when Reduce Motion is on. It used to slide down and grow into place anyway.
+- **App Library while folding:** resetting a search waits for the next layout pass, avoiding a crash when the window changes size.
+
 ## [0.6.9] - 2026-10-31
 
 ### Added

@@ -589,6 +589,12 @@
     <string name="show_details">显示详细信息</string>
     <string name="folio_dev_a_test_build_it_updates_from_n">Folio Dev，一个测试版本。它从新的构建版本更新，而不是从 GitHub。</string>
     <string name="checking_for_updates">正在检查更新…</string>
+    <string name="beta_note_code_invalid">未包含测试版：Folio 无法识别你的支持者代码。请在设置 › 支持者中重新粘贴。</string>
+    <string name="beta_note_code_ended">未包含测试版：你的支持者代码已过期。请在 Ko-fi 续期获取新代码。</string>
+    <string name="beta_note_early_access_off">未包含测试版：设置 › 支持者中的抢先体验已关闭。</string>
+    <string name="beta_note_updates_off">未包含测试版：测试版更新已关闭。</string>
+    <string name="beta_note_refused">测试版服务器未接受你的支持者代码。请在设置 › 支持者中检查，或在 Ko-fi 续期。</string>
+    <string name="beta_note_unreachable">无法连接测试版服务器，因此只检查了公开版本。请稍后再试。</string>
     <string name="folio_is_up_to_date">Folio 已是最新版本</string>
     <string name="last_checked">上次检查：%1$s</string>
     <string name="updates_come_from_folio_s_github_release">更新来自 Folio 的 GitHub 发布版本</string>

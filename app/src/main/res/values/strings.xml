@@ -583,6 +583,12 @@
     <string name="show_details">Show details</string>
     <string name="folio_dev_a_test_build_it_updates_from_n">Folio Dev, a test build. It updates from new builds, not GitHub.</string>
     <string name="checking_for_updates">Checking for updates…</string>
+    <string name="beta_note_code_invalid">Betas are not included: Folio does not recognize your supporter code. Paste it again in Settings › Supporter.</string>
+    <string name="beta_note_code_ended">Betas are not included: your supporter code has ended. Renew on Ko-fi for a new one.</string>
+    <string name="beta_note_early_access_off">Betas are not included: Early access is off in Settings › Supporter.</string>
+    <string name="beta_note_updates_off">Betas are not included: Beta Updates is off.</string>
+    <string name="beta_note_refused">The beta server did not accept your supporter code. Check it in Settings › Supporter, or renew on Ko-fi.</string>
+    <string name="beta_note_unreachable">Could not reach the beta server, so only public releases were checked. Try again later.</string>
     <string name="folio_is_up_to_date">Folio is up to date</string>
     <string name="last_checked">Last checked %1$s</string>
     <string name="updates_come_from_folio_s_github_release">Updates come from Folio\'s GitHub releases</string>
