@@ -119,7 +119,9 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     private data class Settings(val dockEverywhere: Boolean, val islandEverywhere: Boolean, val leftHanded: Boolean, val dock: List<String>, val eventsOff: Set<String> = emptySet(),
         val buttons: ButtonBarSettings = ButtonBarSettings(), val islandHideFullScreen: Boolean = true, val islandHideLandscape: Boolean = false, val islandHideLandscapeInner: Boolean = false,
         val reduceMotion: Boolean = false, val shadePull: Boolean = false, val shadeOverApps: Boolean = false, val folioPanels: Boolean = true,
-        val pullTarget: PullTarget = PullTarget.BOTH, val crackgate: Boolean = false, val shadePullTab: Boolean = true)
+        val pullTarget: PullTarget = PullTarget.BOTH, val crackgate: Boolean = false, val shadePullTab: Boolean = true,
+        /** Home's Dock › Size for the phone-sized and the large-screen layouts; the one for the screen it is drawn on is used. */
+        val dockSizeCompact: Float = 1f, val dockSizeExpanded: Float = 1f)
     /** Buttons in Every App (Settings › Dynamic Island › In Every App). */
     internal data class ButtonBarSettings(val on: Boolean = false, val height: Float = 52f, val width: Float = .5f,
         val androidOrder: Boolean = false, val light: Boolean = false, val fade: Boolean = true)
@@ -259,6 +261,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     private fun readSettings(): Settings = runCatching {
         val j = JSONObject(prefs.getString(SettingKeys.STATE, "{}") ?: "{}")
         val dockIds = j.optJSONArray(SettingKeys.DOCK)?.let { a -> (0 until a.length()).mapNotNull { a.optString(it).takeIf { s -> s.isNotBlank() && s != "null" } } }.orEmpty()
+        val sizeCompact = j.optJSONObject("compact")?.optDouble("dockSize", 1.0)?.toFloat() ?: 1f
+        val sizeExpanded = j.optJSONObject("expanded")?.optDouble("dockSize", 1.0)?.toFloat() ?: 1f
         val off = j.optJSONArray(SettingKeys.ISLAND_EVENTS_OFF)?.let { a -> (0 until a.length()).map(a::getString).toSet() }.orEmpty()
         Settings(j.optBoolean(SettingKeys.DOCK_EVERYWHERE, false), j.optBoolean(SettingKeys.ISLAND_EVERYWHERE, false), j.optBoolean(SettingKeys.LEFT_HANDED, false), dockIds, off,
             ButtonBarSettings(j.optBoolean(SettingKeys.BUTTON_BAR, false),
@@ -270,7 +274,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
             j.optBoolean(SettingKeys.ISLAND_HIDE_LANDSCAPE_INNER, false), j.optBoolean("reduceMotion", false),
             j.optBoolean("shadePull", false), j.optBoolean("shadeOverApps", false), j.optBoolean("folioPanels", true),
             pullTargetFrom(j.optString("pullTarget").ifEmpty { null }),
-            crackgate = j.optJSONObject("duet")?.optBoolean("crackgate", false) == true, shadePullTab = j.optBoolean("shadePullTab", true))
+            crackgate = j.optJSONObject("duet")?.optBoolean("crackgate", false) == true, shadePullTab = j.optBoolean("shadePullTab", true),
+            dockSizeCompact = sizeCompact, dockSizeExpanded = sizeExpanded)
     }.getOrDefault(Settings(false, false, false, emptyList()))
 
     private fun sync() {
@@ -586,7 +591,9 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     private fun openDock() {
         if (dock != null) return
         val s = settings.value
-        val apps = s.dock.mapNotNull { id -> resolveApp(id) }
+        val config = service.resources.configuration
+        val plan = overlayDockPlan(config.screenHeightDp.toFloat(), s.dock.size, if (config.screenWidthDp >= EXPANDED_HOME_MIN_WIDTH_DP) s.dockSizeExpanded else s.dockSizeCompact, FolioSpace.MEDIUM.toFloat())
+        val apps = s.dock.mapNotNull { id -> resolveApp(id) }.take(plan.shown)
         val view = ComposeView(service).apply {
             setViewTreeLifecycleOwner(owner); setViewTreeSavedStateRegistryOwner(owner)
             setContent {
@@ -596,19 +603,19 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                     contentAlignment = if (s.leftHanded) Alignment.CenterStart else Alignment.CenterEnd) {
                     AnimatedVisibility(open, enter = fadeIn() + slideInHorizontally(FolioMotion.spring(FolioMotion.Appear)) { if (s.leftHanded) -it else it },
                         exit = fadeOut() + slideOutHorizontally { if (s.leftHanded) -it else it }) {
-                        Column(Modifier.padding(horizontal = FolioSpace.MEDIUM.dp).width(72.dp).clip(RoundedCornerShape(FolioRadius.RAIL.dp))
+                        Column(Modifier.padding(horizontal = FolioSpace.MEDIUM.dp).width(plan.width.dp).clip(RoundedCornerShape(FolioRadius.RAIL.dp))
                             .background(FolioColors.SecondaryBackground.copy(alpha = .72f)).border(1.dp, Color.White.copy(alpha = .16f), RoundedCornerShape(FolioRadius.RAIL.dp))
                             .padding(vertical = FolioSpace.MEDIUM.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
                             apps.forEach { app ->
                                 val hostView = androidx.compose.ui.platform.LocalView.current
-                                Image(app.icon.asImageBitmap(), null, Modifier.size(50.dp).clip(RoundedCornerShape(13.dp))
+                                Image(app.icon.asImageBitmap(), null, Modifier.size(plan.icon.dp).clip(RoundedCornerShape(13.dp * plan.icon / 50f))
                                     .combinedClickable(onClick = { closeDock(); launch(app) }, onLongClick = {
                                         // Drag beside the current app for split screen.
                                         if (startSplitDrag(hostView, service, app.component, app.user, "", app.icon)) closeDock()
                                     }))
                             }
                             if (apps.isNotEmpty()) HorizontalDivider(Modifier.width(40.dp), color = Color.White.copy(alpha = .2f))
-                            Box(Modifier.size(50.dp).clip(RoundedCornerShape(13.dp)).background(Color.White.copy(alpha = .16f)).clickable {
+                            Box(Modifier.size(plan.icon.dp).clip(RoundedCornerShape(13.dp * plan.icon / 50f)).background(Color.White.copy(alpha = .16f)).clickable {
                                 closeDock(); service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME)
                             }, contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Home, stringResource(R.string.home_label), tint = Color.White) }
                         }
