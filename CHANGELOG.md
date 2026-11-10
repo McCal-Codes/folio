@@ -55,6 +55,9 @@ Folio shows the newest section on the phone after an update, and every version u
 - **What's New stays short:** each new feature shows its first sentence, at most two lines, so more than two fit above Continue. The island entry has its own icon.
 
 ### Fixed
+- **Supporters are told why betas are missing:** Settings › Software Update used to say "Folio is up to date" when a supporter's check left betas out, whether the code had ended, Early access or Beta Updates was off, or the beta server could not be reached. It now says which, under the usual line, with a Supporter button beside it.
+- **Spotlight with Reduce Motion:** Spotlight now only fades in and out when Reduce Motion is on. It used to slide down and grow into place anyway.
+- **App Library while folding:** resetting a search waits for the next layout pass, avoiding a crash when the window changes size.
 - **Notification and Quick Settings tiles on Home:** the "Folio Notification Shade" and "Folio Quick Settings" tiles and shortcuts did nothing when Folio's Home was open, because Home coming back took the panel down at once. Home now shows its own panel. Over other apps they worked already.
 - **Island over apps opens its card:** tapping the island on top of another app now opens the same card as on Home (call buttons, media controls, timer), closes on swipe up or after 12 seconds, and Open takes you to the app.
 - **Crash with the StandBy glow on the cover screen:** folding a Fold with Dual-Screen Ambient Light on could close Folio with "ViewTreeLifecycleOwner not found". The glow on the outer screen now has its own lifecycle.
@@ -65,6 +68,13 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Blur behind the panels over an app:** where the phone does not let a window blur (One UI turns it off), Folio takes a screenshot of the app to blur. If the phone was slow to hand it over, the picture was thrown away and the panel stayed on plain frosted glass; it now fades in when it arrives.
 - **App Library while folding:** resetting a search or switching profiles waits for the next layout pass, avoiding a crash when the window changes size.
 - **Dual-Screen Ambient Light switch:** StandBy 2's options now show the switch for the outer-screen glow. It was in the code but missing from the page, so the glow could not be turned off.
+
+## [0.6.9.1] - 2026-11-10
+
+### Fixed
+- **Supporters are told why betas are missing:** Settings › Software Update used to say "Folio is up to date" when a supporter's check left betas out, whether the code had ended, Early access or Beta Updates was off, or the beta server could not be reached. It now says which, under the usual line, with a Supporter button beside it.
+- **Spotlight with Reduce Motion:** Spotlight now only fades in and out when Reduce Motion is on. It used to slide down and grow into place anyway.
+- **App Library while folding:** resetting a search waits for the next layout pass, avoiding a crash when the window changes size.
 
 ## [0.6.9] - 2026-10-31
 

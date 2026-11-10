@@ -85,6 +85,45 @@ internal object SoftwareUpdate {
 
     val status = MutableStateFlow<Status>(Status.Idle)
 
+    /**
+     * Why a supporter's last check could not look for betas, as a string resource, or null when it did (or the phone
+     * has no supporter code). Without it a lapsed code, the Early access switch or an unreachable beta server all
+     * looked like "Folio is up to date".
+     */
+    val betaNote = MutableStateFlow<Int?>(null)
+
+    /** A stored supporter code is [NONE] (nothing stored), [INVALID] (not signed by Folio or withdrawn), [ENDED] or [WORKING]. */
+    internal enum class CodeStanding { NONE, INVALID, ENDED, WORKING }
+
+    internal fun codeStanding(context: Context): CodeStanding {
+        val text = Supporter.storedText(context) ?: return CodeStanding.NONE
+        if (Supporter.code(context) != null) return CodeStanding.WORKING
+        // An ended code still carries a good signature, which is what tells "ran out" from "not a Folio code".
+        val signed = BetaCodes.verify(text, Supporter.keys(context), java.time.LocalDate.of(1970, 1, 2), BetaKeys.WITHDRAWN) is BetaCodes.Result.Valid
+        return if (signed) CodeStanding.ENDED else CodeStanding.INVALID
+    }
+
+    /**
+     * What to tell a supporter whose check did not include betas. [code]: where the stored code stands, see
+     * [CodeStanding]. [earlyAccess]: the Early access switch is on. [betaUpdates]: Beta Updates is on. [lookupFailed]:
+     * the beta server was asked and did not answer. [refused]: it answered, and would not take the code.
+     */
+    internal fun betaNoteFor(code: CodeStanding, earlyAccess: Boolean, betaUpdates: Boolean, lookupFailed: Boolean,
+        refused: Boolean = false): Int? = when {
+        code == CodeStanding.NONE -> null
+        code == CodeStanding.INVALID -> R.string.beta_note_code_invalid
+        code == CodeStanding.ENDED -> R.string.beta_note_code_ended
+        !earlyAccess -> R.string.beta_note_early_access_off
+        !betaUpdates -> R.string.beta_note_updates_off
+        refused -> R.string.beta_note_refused
+        lookupFailed -> R.string.beta_note_unreachable
+        else -> null
+    }
+
+    /** Whether the Supporter page is where a note's fix lives: not for Beta Updates (a switch on the update page) or a server that is down. */
+    internal fun noteNeedsSupporter(note: Int?): Boolean = note != null &&
+        note != R.string.beta_note_updates_off && note != R.string.beta_note_unreachable
+
     /** Update work outlives the Settings page and the activity, and only one check or install runs at a time. */
     private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.IO)
     private val busy = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -276,6 +315,11 @@ internal object SoftwareUpdate {
         return code?.trim().takeIf { url.startsWith("$address/") }
     }
 
+    /** The newest release with an APK among [candidates], drafts left out, or null when none has one. */
+    internal fun newestOf(candidates: List<JSONObject>): Release? =
+        candidates.filter { !it.optBoolean("draft") }.mapNotNull(::releaseOf)
+            .reduceOrNull { a, b -> if (isNewer(b.version, a.version)) b else a }
+
     /** A published release with an APK, or null. */
     private fun releaseOf(json: JSONObject): Release? {
         val assets = json.optJSONArray("assets") ?: return null
@@ -327,8 +371,11 @@ internal object SoftwareUpdate {
     private suspend fun check(context: Context) {
         if (!supported(context)) return
         status.value = Status.Checking
+        betaNote.value = null
         status.value = withContext(Dispatchers.IO) {
             runCatching {
+                var lookupFailed = false
+                var refused = false
                 val list = { text: String -> org.json.JSONArray(text).let { a -> (0 until a.length()).map(a::getJSONObject) } }
                 // On the beta channel, betas and the public releases together: a supporter shouldn't be stranded on
                 // an old beta when a newer stable release goes out, and shouldn't miss a beta either. Betas come
@@ -336,7 +383,10 @@ internal object SoftwareUpdate {
                 // read, and the public releases carry on alone.
                 val candidates = if (betaChannel(context)) {
                     val brokered = betaSource(BETA_BROKER, brokerCode(context))
-                    val betas = brokered?.let { runCatching { list(get(it.first, it.second)) }.getOrNull() }
+                    val betas = brokered?.let {
+                        runCatching { list(get(it.first, it.second)) }.getOrElse { e -> if (e is BrokerRefused) refused = true; null }
+                    }
+                    lookupFailed = brokered != null && betas == null
                     val public = runCatching { list(get(RECENT)) }.getOrNull()
                     // Either may fail on its own; both failing is a failed check.
                     if (betas == null && public == null) error(context.getString(R.string.no_release_has_an_apk))
@@ -344,8 +394,9 @@ internal object SoftwareUpdate {
                 } else {
                     listOf(JSONObject(get(LATEST)))
                 }
-                val newest = candidates.filter { !it.optBoolean("draft") }.mapNotNull(::releaseOf)
-                    .reduceOrNull { a, b -> if (isNewer(b.version, a.version)) b else a } ?: error(context.getString(R.string.no_release_has_an_apk))
+                val newest = newestOf(candidates) ?: error(context.getString(R.string.no_release_has_an_apk))
+                betaNote.value = betaNoteFor(codeStanding(context),
+                    Supporter.betaOn(context), betaChannel(context), lookupFailed, refused)
                 if (!isNewer(newest.version, installedVersion(context))) Status.UpToDate
                 else readyApk(context)?.takeIf { it.first.version == newest.version }?.let { Status.Ready(newest, tonight = false) }
                     ?: Status.Available(newest)
@@ -455,8 +506,13 @@ internal object SoftwareUpdate {
         // The supporter code is the only credential the broker wants, and it goes in a header rather than the address.
         if (code != null) c.setRequestProperty("Authorization", "Bearer $code") // english-only
         c.connectTimeout = 10_000; c.readTimeout = 15_000
+        // The broker answering "no" to a code is a different thing from not answering, and the person is told which.
+        if (code != null && c.responseCode in 400..499) { val status = c.responseCode; c.disconnect(); throw BrokerRefused(status) }
         return c.inputStream.bufferedReader().use { it.readText() }.also { c.disconnect() }
     }
+
+    /** The beta server understood the request and refused the supporter code (its [status] is a 4xx). */
+    private class BrokerRefused(val status: Int) : java.io.IOException("the beta server refused the code ($status)")
 
     /**
      * Opens [url] for reading. With a [code], it goes to the broker alone: the broker answers with a redirect to
