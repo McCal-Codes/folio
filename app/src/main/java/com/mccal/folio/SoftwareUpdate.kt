@@ -58,8 +58,6 @@ internal object SoftwareUpdate {
     private const val AUTO_UPDATED_FROM = "autoUpdatedFrom"
     /** Set only when the idle job installed it: the "Folio was updated" note is for updates you did not start yourself. */
     private const val NOTIFY_UPDATED = "notifyUpdated"
-    /** The version you went back from: checks offer nothing at or below it, so Automatic does not undo a rollback. */
-    private const val HELD_VERSION = "heldVersion"
     private const val CHANNEL = "software_update"
     private const val DAY_MS = 24L * 60 * 60 * 1000
 
@@ -336,9 +334,23 @@ internal object SoftwareUpdate {
             .sortedWith { a, b -> if (isNewer(rollbackBase(a.version), rollbackBase(b.version))) -1 else 1 }
     }
 
-    /** Whether a check should offer [newest]: it is newer than what is installed and than any version you went back from. */
-    internal fun offerable(newest: String, installed: String, held: String?): Boolean =
-        isNewer(newest, installed) && (held == null || isNewer(newest, held))
+    /** The versionCode the build gives a version name (see app/build.gradle.kts), or null when the name is not MAJOR.MINOR.PATCH[.HOTFIX]. */
+    internal fun versionCodeOf(version: String): Int? {
+        val parts = rollbackBase(version).substringBefore('-').split('.').map { it.toIntOrNull() ?: return null }
+        if (parts.size !in 3..4) return null
+        return (parts[0] * 10000 + parts[1] * 100 + parts[2]) * 10 + parts.getOrElse(3) { 0 }
+    }
+
+    /**
+     * Whether a check should offer [newest]. It must be newer than what is installed. After a rollback it must also carry
+     * a higher versionCode than the rollback build, which sits at the top of its release family (REL-34): a hotfix or the
+     * final release of that family would be refused by Android, so Folio waits for the next family instead.
+     */
+    internal fun offerable(newest: String, installed: String, installedCode: Long): Boolean {
+        if (!isNewer(newest, rollbackBase(installed))) return false
+        if (!isRollbackVersion(installed)) return true
+        return (versionCodeOf(newest) ?: return false) > installedCode
+    }
 
     /** The older versions found by the last look, empty until [startRollbackList] has run. */
     val rollbacks = MutableStateFlow<List<Release>?>(null)
@@ -355,12 +367,11 @@ internal object SoftwareUpdate {
         }
     }
 
-    /** Goes back to [release]: remembers what you left so the next check does not offer it again, then installs. */
-    fun startRollback(context: Context, release: Release) {
-        val app = context.applicationContext
-        app.getSharedPreferences(PREFS, 0).edit().putString(HELD_VERSION, rollbackBase(installedVersion(app))).apply()
-        startInstall(app, release)
-    }
+    /** Goes back to [release]. The build's versionCode keeps the version you left from being offered until the next family. */
+    fun startRollback(context: Context, release: Release) = startInstall(context, release)
+
+    private fun installedCode(context: Context): Long =
+        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode }.getOrDefault(0L)
 
     /** A published release with an APK, or null. */
     private fun releaseOf(json: JSONObject): Release? {
@@ -440,7 +451,7 @@ internal object SoftwareUpdate {
                 val newest = newestOf(candidates) ?: error(context.getString(R.string.no_release_has_an_apk))
                 betaNote.value = betaNoteFor(codeStanding(context),
                     Supporter.betaOn(context), betaChannel(context), lookupFailed, refused)
-                if (!offerable(newest.version, installedVersion(context), context.getSharedPreferences(PREFS, 0).getString(HELD_VERSION, null))) Status.UpToDate
+                if (!offerable(newest.version, installedVersion(context), installedCode(context))) Status.UpToDate
                 else readyApk(context)?.takeIf { it.first.version == newest.version }?.let { Status.Ready(newest, tonight = false) }
                     ?: Status.Available(newest)
             }.getOrElse { Status.Failed(context.getString(R.string.couldn_t_check_for_updates_check_your_co)) }

@@ -38,10 +38,24 @@ class RollbackTest {
         assertEquals(listOf("0.6.8-rollback.2"), SoftwareUpdate.rollbackOptions(feed, "0.6.9-rollback.1").map { it.version })
     }
 
-    @Test fun `a check does not offer the version you went back from, only something newer`() {
-        assertFalse(SoftwareUpdate.offerable("0.7.0-beta.2", "0.6.9-rollback.1", held = "0.7.0-beta.2"))
-        assertTrue(SoftwareUpdate.offerable("0.7.0-beta.3", "0.6.9-rollback.1", held = "0.7.0-beta.2"))
-        assertTrue(SoftwareUpdate.offerable("0.7.0-beta.2", "0.6.9", held = null))
-        assertFalse(SoftwareUpdate.offerable("0.6.9", "0.6.9", held = null))
+    @Test fun `the build's versionCode is worked out from the name`() {
+        assertEquals(7000, SoftwareUpdate.versionCodeOf("0.7.0-beta.2"))
+        assertEquals(6091, SoftwareUpdate.versionCodeOf("0.6.9.1"))
+        assertEquals(7010, SoftwareUpdate.versionCodeOf("0.7.1"))
+        assertEquals(6091, SoftwareUpdate.versionCodeOf("0.6.9.1-rollback.1"))
+        assertNull(SoftwareUpdate.versionCodeOf("nightly"))
+    }
+
+    @Test fun `after a rollback only the next release family is offered`() {
+        val code = 7009L  // the rollback build sits at the top of the 0.7.x family
+        for (v in listOf("0.7.0-beta.2", "0.7.0", "0.7.0.1", "0.7.0.8", "0.6.9.1")) assertFalse(v, SoftwareUpdate.offerable(v, "0.6.9.1-rollback.1", code))
+        assertTrue(SoftwareUpdate.offerable("0.7.1", "0.6.9.1-rollback.1", code))
+        assertTrue(SoftwareUpdate.offerable("0.7.1-beta.1", "0.6.9.1-rollback.1", code))
+    }
+
+    @Test fun `without a rollback the rule is only newer`() {
+        assertTrue(SoftwareUpdate.offerable("0.7.0", "0.7.0-beta.2", 7000))
+        assertTrue(SoftwareUpdate.offerable("0.7.0-beta.2", "0.6.9", 6090))
+        assertFalse(SoftwareUpdate.offerable("0.6.9", "0.6.9", 6090))
     }
 }

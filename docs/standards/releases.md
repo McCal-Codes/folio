@@ -118,7 +118,10 @@ what they were testing. Every rule below is aimed at that shape of mistake.
   all of them read as "up to date").
 - **REL-34** Going back to an older version is a roll-forward. Android refuses a lower `versionCode`, so the older
   build is republished under a higher version (REL-16 still holds: the number means that one build), and the app
-  offers it as an ordinary update, after saying what a backup keeps.
+  offers it as an ordinary update, after saying what a backup keeps. A rollback build takes the top `versionCode` of the
+  release family it is installed into (7009 in 0.7.x), so the hotfix digit runs 1 to 8 and 9 is reserved for it. It also
+  means a hotfix or the final release of that family cannot install over a rollback: Folio offers only a release with a
+  higher `versionCode`, which is the next family (`SoftwareUpdate.offerable`).
 
 ### What goes out beside a build
 
