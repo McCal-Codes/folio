@@ -45,8 +45,14 @@ what they were testing. Every rule below is aimed at that shape of mistake.
   (REL-13). Nothing is ported, cherry-picked or rebuilt between the two. Docs, tools and tests may change in between,
   since nobody installs them. (Until 2 Oct 2026 this said "the same tree", which held a fix to a tool or a note back a
   whole release.)
-- **REL-4c** A `hotfix/x.y.z.n` branch from a tag is the last resort, only when a breaking migration is mid-flight on
-  `main`. It ships and merges back the same day.
+- **REL-4c** A `hotfix/x.y.z.n` branch from a tag is the last resort. It is allowed in two cases: a breaking migration
+  is mid-flight on `main`, or the bug is in the stable build's own update or supporter path, so only a new stable can
+  show the person what is wrong (0.6.9.1, 10 Nov 2026). The pull request says which, carries the `release-exception`
+  label, and the same fix goes on `main` for the next beta. It ships and merges back the same day.
+- **REL-4d MUST** merge a hotfix back through its own branch off `main` (`merge-back-x.y.z.n`), not by merging `main`
+  into the hotfix. The hotfix branch stays at the commit the tag names, and the merge-back gets CI, which GitHub does
+  not run on a pull request that conflicts. Keep `main`'s version. `CHANGELOG.md` has different line endings on `main`
+  and on a tag, so a hand merge conflicts on every line: take `main`'s file and insert the hotfix's section.
 - **REL-5 MUST** name branches after the change, never after the agent, the session or the tool. No AI attribution
   in branch names, commit messages, pull request text or code comments.
 - **REL-6 MUST** check [docs/in-flight.md](../in-flight.md), the other worktrees and the open pull requests before
@@ -98,8 +104,21 @@ what they were testing. Every rule below is aimed at that shape of mistake.
   version name, so `beta.1 < beta.2 < x.y.z`.
 - **REL-20 MUST** ship a beta first for anything that changes how Folio updates, installs or checks a supporter
   code, and let it sit with supporters for at least a day. Those paths cannot be tested any other way.
+- **REL-20a** A hotfix cannot wait a day in a beta, so for one that touches an update or supporter path REL-20 is met
+  by the same fix riding the next beta from `main`. Keep such a hotfix to what the person is told where it can be,
+  and name any change to what is checked or sent in the pull request.
 - **REL-21 SHOULD** say in the beta's notes what is worth trying, most-likely-broken first, and ask for the device,
   the screen and the version from Settings › What's New.
+
+### Updating
+
+- **REL-33 MUST** make an update or supporter check say why when it leaves something out. "Folio is up to date" is
+  only true when nothing was left out: an ended or unrecognized code, Early access or Beta Updates off, and a beta
+  server that refused or could not be reached each get their own line, and a test covers every outcome (0.6.9.1, where
+  all of them read as "up to date").
+- **REL-34** Going back to an older version is a roll-forward. Android refuses a lower `versionCode`, so the older
+  build is republished under a higher version (REL-16 still holds: the number means that one build), and the app
+  offers it as an ordinary update, after saying what a backup keeps.
 
 ### What goes out beside a build
 
