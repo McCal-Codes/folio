@@ -2498,4 +2498,20 @@
     <string name="phone_settings">手机设置</string>
     <string name="phone_settings_unavailable">无法打开手机设置。</string>
     <string name="search_phone_settings">搜索手机设置</string>
+    <string name="beta_access_card">测试版权限</string>
+    <string name="beta_access_turn_on_updates">开启测试版更新</string>
+    <string name="beta_access_no_code">获取测试版权限</string>
+    <string name="beta_access_no_code_long">尚未添加支持者代码。测试版随 Ko-fi 代码提供，在此之前 Folio 只检查公开版本。</string>
+    <string name="beta_access_invalid">无法识别的代码</string>
+    <string name="beta_access_invalid_long">Folio 无法识别你的支持者代码，因此不包含测试版。请重新粘贴。</string>
+    <string name="beta_access_ended">代码已过期</string>
+    <string name="beta_access_ended_long">你的支持者代码已过期，因此不包含测试版。请在 Ko-fi 续订以获得新代码。</string>
+    <string name="beta_access_no_scope">无测试版权限</string>
+    <string name="beta_access_no_scope_long">你的代码不包含测试版权限，因此不包含测试版。</string>
+    <string name="beta_access_early_off">抢先体验已关闭</string>
+    <string name="beta_access_early_off_long">抢先体验已关闭，因此不包含测试版。请开启上方的测试版功能。</string>
+    <string name="beta_access_updates_off">测试版更新已关闭</string>
+    <string name="beta_access_updates_off_long">软件更新中的测试版更新已关闭，因此不包含测试版。</string>
+    <string name="beta_access_ready">测试版权限已开启</string>
+    <string name="beta_access_ready_long">测试版权限已开启。Folio 每次检查更新时都会查找测试版。</string>
 </resources>

@@ -1126,7 +1126,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 }
                 CustomizationPage.TWEAK_LIBRARY -> TweakLibraryPage(state, model) { tweakId = it.id; onPage(CustomizationPage.LIBRARY_TWEAK) }
                 CustomizationPage.SOFTWARE_UPDATE -> SoftwareUpdatePage { onPage(CustomizationPage.SUPPORTER) }
-                CustomizationPage.SUPPORTER -> SupporterPage()
+                CustomizationPage.SUPPORTER -> SupporterPage(onSoftwareUpdate = { onPage(CustomizationPage.SOFTWARE_UPDATE) })
                 CustomizationPage.SYSTEM_BRIDGE -> SystemBridgePage()
                 // The model's apps, not the sheet's state: Home's state is disguised while Screenshot Mode is on.
                 CustomizationPage.SCREENSHOT_SWAP -> ScreenshotSwapPage(model.state.collectAsState().value.apps)
@@ -3600,9 +3600,13 @@ internal fun layoutSnapshotsShown(layoutHistory: Boolean, layoutDamaged: Boolean
             }
         }
     }
-    // When a note explains why betas aren't arriving, the fix is on the Supporter page, so put the way there beside it.
-    if (supported && SoftwareUpdate.noteNeedsSupporter(betaNote) && status == SoftwareUpdate.Status.UpToDate)
-        SheetGroup { IosActionRow(stringResource(R.string.supporter), "update-open-supporter") { onSupporter() } }
+    // Where this phone stands on betas, with the way to the Supporter page, where every fix for it lives.
+    if (supported && Supporter.available(context)) {
+        val access = remember(status, betaNote) { betaAccessNow(context) }
+        SheetGroup {
+            TweakRow(Icons.Rounded.Redeem, FolioColors.Value.Purple, stringResource(R.string.supporter), "update-open-supporter", stringResource(access.short)) { onSupporter() }
+        }
+    }
     if (!supported) return
     val release = when (val s = status) {
         is SoftwareUpdate.Status.Available -> s.release

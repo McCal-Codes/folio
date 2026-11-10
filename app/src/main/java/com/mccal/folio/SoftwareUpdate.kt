@@ -120,10 +120,6 @@ internal object SoftwareUpdate {
         else -> null
     }
 
-    /** Whether the Supporter page is where a note's fix lives: not for Beta Updates (a switch on the update page) or a server that is down. */
-    internal fun noteNeedsSupporter(note: Int?): Boolean = note != null &&
-        note != R.string.beta_note_updates_off && note != R.string.beta_note_unreachable
-
     /** Update work outlives the Settings page and the activity, and only one check or install runs at a time. */
     private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.IO)
     private val busy = java.util.concurrent.atomic.AtomicBoolean(false)

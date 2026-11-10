@@ -2564,4 +2564,20 @@
     <string name="phone_settings">Phone settings</string>
     <string name="phone_settings_unavailable">Could not open phone settings.</string>
     <string name="search_phone_settings">Search phone settings</string>
+    <string name="beta_access_card">Beta access</string>
+    <string name="beta_access_turn_on_updates">Turn on Beta Updates</string>
+    <string name="beta_access_no_code">Get beta access</string>
+    <string name="beta_access_no_code_long">No supporter code is added. Betas come with a Ko-fi code, and Folio only checks public releases until then.</string>
+    <string name="beta_access_invalid">Code not recognized</string>
+    <string name="beta_access_invalid_long">Folio does not recognize your supporter code, so betas are left out. Paste it again.</string>
+    <string name="beta_access_ended">Code has ended</string>
+    <string name="beta_access_ended_long">Your supporter code has ended, so betas are left out. Renew on Ko-fi for a new one.</string>
+    <string name="beta_access_no_scope">No beta access</string>
+    <string name="beta_access_no_scope_long">Your code does not include beta access, so betas are left out.</string>
+    <string name="beta_access_early_off">Early access is off</string>
+    <string name="beta_access_early_off_long">Early access is off, so betas are left out. Turn on Beta features above.</string>
+    <string name="beta_access_updates_off">Beta Updates is off</string>
+    <string name="beta_access_updates_off_long">Beta Updates is off in Software Update, so betas are left out.</string>
+    <string name="beta_access_ready">Beta access is on</string>
+    <string name="beta_access_ready_long">Beta access is on. Folio looks for betas whenever it checks for updates.</string>
 </resources>

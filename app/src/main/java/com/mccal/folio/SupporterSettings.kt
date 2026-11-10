@@ -14,6 +14,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -87,7 +88,7 @@ internal fun BetaTeaserCard() {
 }
 
 @Composable
-internal fun SupporterPage() {
+internal fun SupporterPage(onSoftwareUpdate: () -> Unit = {}) {
     val context = LocalContext.current
     var code by remember { mutableStateOf(Supporter.code(context)) }
     var stored by remember { mutableStateOf(Supporter.storedText(context)) }
@@ -138,6 +139,19 @@ internal fun SupporterPage() {
             })
         }
         problem?.let { CardNote(it) }
+    }
+
+    // Where this phone stands on getting betas, whatever the cause, with the way to fix it and to Software Update.
+    run {
+        var refresh by remember { mutableIntStateOf(0) }
+        val access = remember(code, stored, beta, refresh) { betaAccessNow(context) }
+        SettingsCard(stringResource(R.string.beta_access_card)) {
+            InfoRow(stringResource(R.string.status), stringResource(access.short))
+            CardNote(stringResource(access.long))
+            if (access == BetaAccess.UPDATES_OFF) CardAction(stringResource(R.string.beta_access_turn_on_updates), onClick = { SoftwareUpdate.setBeta(context, true); refresh++ })
+            if (access.needsKofi) CardAction(stringResource(if (access == BetaAccess.NO_CODE) R.string.beta_teaser_get_access else R.string.supporter_renew), onClick = { openKofi(context) })
+            if (SoftwareUpdate.supported(context)) CardAction(stringResource(R.string.software_update), onClick = onSoftwareUpdate)
+        }
     }
 
     if (code?.scopes?.contains(BetaCodes.SCOPE_BETA) == true) SettingsCard("BETA FEATURES") {
