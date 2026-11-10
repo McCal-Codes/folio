@@ -2580,4 +2580,14 @@
     <string name="beta_access_updates_off_long">Beta Updates is off in Software Update, so betas are left out.</string>
     <string name="beta_access_ready">Beta access is on</string>
     <string name="beta_access_ready_long">Beta access is on. Folio looks for betas whenever it checks for updates.</string>
+    <string name="rollback_card">Older versions</string>
+    <string name="rollback_show">Show older versions</string>
+    <string name="rollback_none">No older versions are available.</string>
+    <string name="rollback_note">Going back installs the older version under a new build number, so your apps and data stay. Folio will not offer the version you left until a newer one comes out.</string>
+    <string name="rollback_title">Go back to %1$s?</string>
+    <string name="rollback_body">An older Folio may not understand settings saved by a newer one. Save a backup first so you can restore your layout.</string>
+    <string name="rollback_backup_go">Back up and go back</string>
+    <string name="rollback_go">Go back without a backup</string>
+    <string name="rollback_backup_name">Before going back from %1$s</string>
+    <string name="rollback_not_higher">This older version is not a rollback build, so Android would refuse it.</string>
 </resources>

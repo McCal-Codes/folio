@@ -58,12 +58,16 @@ internal object SoftwareUpdate {
     private const val AUTO_UPDATED_FROM = "autoUpdatedFrom"
     /** Set only when the idle job installed it: the "Folio was updated" note is for updates you did not start yourself. */
     private const val NOTIFY_UPDATED = "notifyUpdated"
+    /** The version you went back from: checks offer nothing at or below it, so Automatic does not undo a rollback. */
+    private const val HELD_VERSION = "heldVersion"
     private const val CHANNEL = "software_update"
     private const val DAY_MS = 24L * 60 * 60 * 1000
 
     data class Release(val version: String, val apkUrl: String, val sumsUrl: String?, val notesUrl: String,
         /** The release notes from GitHub (Markdown), and the APK's size in bytes. */
-        val notes: String = "", val size: Long = 0L, val prerelease: Boolean = false)
+        val notes: String = "", val size: Long = 0L, val prerelease: Boolean = false,
+        /** An older version rebuilt under a higher versionCode (REL-34), offered only from "Older versions". */
+        val rollback: Boolean = false)
 
     /**
      * Like iOS Automatic Updates. Automatic (the default) checks daily, downloads, and installs when the phone is idle,
@@ -311,10 +315,52 @@ internal object SoftwareUpdate {
         return code?.trim().takeIf { url.startsWith("$address/") }
     }
 
-    /** The newest release with an APK among [candidates], drafts left out, or null when none has one. */
+    /** The newest release with an APK among [candidates], drafts and rollback builds left out, or null when none has one. */
     internal fun newestOf(candidates: List<JSONObject>): Release? =
-        candidates.filter { !it.optBoolean("draft") }.mapNotNull(::releaseOf)
+        candidates.filter { !it.optBoolean("draft") }.mapNotNull(::releaseOf).filter { !it.rollback }
             .reduceOrNull { a, b -> if (isNewer(b.version, a.version)) b else a }
+
+    /** A rollback build is tagged like v0.6.9-rollback.1: the old version's code under a higher versionCode (REL-34). */
+    internal fun isRollbackVersion(version: String) = "-rollback." in version
+    internal fun rollbackBase(version: String) = version.removePrefix("v").substringBefore("-rollback.")
+
+    /**
+     * The older versions this phone can go back to: rollback builds whose version is below the one installed, newest
+     * first, one per version (the highest rollback number wins).
+     */
+    internal fun rollbackOptions(candidates: List<JSONObject>, installed: String): List<Release> {
+        val here = rollbackBase(installed)
+        return candidates.filter { !it.optBoolean("draft") }.mapNotNull(::releaseOf).filter { it.rollback && isNewer(here, rollbackBase(it.version)) }
+            .groupBy { rollbackBase(it.version) }
+            .map { (_, builds) -> builds.maxBy { it.version.substringAfter("-rollback.").toIntOrNull() ?: 0 } }
+            .sortedWith { a, b -> if (isNewer(rollbackBase(a.version), rollbackBase(b.version))) -1 else 1 }
+    }
+
+    /** Whether a check should offer [newest]: it is newer than what is installed and than any version you went back from. */
+    internal fun offerable(newest: String, installed: String, held: String?): Boolean =
+        isNewer(newest, installed) && (held == null || isNewer(newest, held))
+
+    /** The older versions found by the last look, empty until [startRollbackList] has run. */
+    val rollbacks = MutableStateFlow<List<Release>?>(null)
+
+    fun startRollbackList(context: Context) {
+        val app = context.applicationContext
+        scope.launch {
+            rollbacks.value = withContext(Dispatchers.IO) {
+                runCatching {
+                    val a = org.json.JSONArray(get(RECENT))
+                    rollbackOptions((0 until a.length()).map(a::getJSONObject), installedVersion(app))
+                }.getOrDefault(emptyList())
+            }
+        }
+    }
+
+    /** Goes back to [release]: remembers what you left so the next check does not offer it again, then installs. */
+    fun startRollback(context: Context, release: Release) {
+        val app = context.applicationContext
+        app.getSharedPreferences(PREFS, 0).edit().putString(HELD_VERSION, rollbackBase(installedVersion(app))).apply()
+        startInstall(app, release)
+    }
 
     /** A published release with an APK, or null. */
     private fun releaseOf(json: JSONObject): Release? {
@@ -324,7 +370,8 @@ internal object SoftwareUpdate {
         val apk = asset { it.endsWith(".apk") } ?: return null
         val size = (0 until assets.length()).map { assets.getJSONObject(it) }.firstOrNull { it.getString("name").endsWith(".apk") }?.optLong("size") ?: 0L
         return Release(json.getString("tag_name").removePrefix("v"), apk, asset { it == "SHA256SUMS.txt" }, json.optString("html_url"),
-            notes = json.optString("body").take(20_000), size = size, prerelease = json.optBoolean("prerelease"))
+            notes = json.optString("body").take(20_000), size = size, prerelease = json.optBoolean("prerelease"),
+            rollback = isRollbackVersion(json.getString("tag_name")))
     }
 
     /** Called when Folio comes to the front and by the daily job: checks at most once a day unless Manual. */
@@ -393,7 +440,7 @@ internal object SoftwareUpdate {
                 val newest = newestOf(candidates) ?: error(context.getString(R.string.no_release_has_an_apk))
                 betaNote.value = betaNoteFor(codeStanding(context),
                     Supporter.betaOn(context), betaChannel(context), lookupFailed, refused)
-                if (!isNewer(newest.version, installedVersion(context))) Status.UpToDate
+                if (!offerable(newest.version, installedVersion(context), context.getSharedPreferences(PREFS, 0).getString(HELD_VERSION, null))) Status.UpToDate
                 else readyApk(context)?.takeIf { it.first.version == newest.version }?.let { Status.Ready(newest, tonight = false) }
                     ?: Status.Available(newest)
             }.getOrElse { Status.Failed(context.getString(R.string.couldn_t_check_for_updates_check_your_co)) }
@@ -425,9 +472,10 @@ internal object SoftwareUpdate {
                     require(expected != null && expected.equals(sha256(apk), ignoreCase = true)) { context.getString(R.string.the_download_didn_t_match_its_checksum) }
                 }
                 require(sameSigner(context, apk)) { context.getString(R.string.the_update_isn_t_signed_with_folio_s_key) }
+                require(!release.rollback || higherVersionCode(context, apk)) { context.getString(R.string.rollback_not_higher) }
                 check(apk.renameTo(File(dir, "Folio-${release.version}.apk"))) { context.getString(R.string.the_update_couldn_t_be_downloaded) }
                 File(dir, "release.json").writeText(JSONObject().put("version", release.version).put("notes", release.notes.take(4000))
-                    .put("notesUrl", release.notesUrl).toString())
+                    .put("notesUrl", release.notesUrl).put("rollback", release.rollback).toString())
             }
         }
         return result.fold({ status.value = Status.Ready(release, tonight = false); true },
@@ -440,8 +488,9 @@ internal object SoftwareUpdate {
         val info = JSONObject(File(dir, "release.json").readText())
         val version = info.getString("version")
         val apk = File(dir, "Folio-$version.apk").takeIf { it.exists() } ?: return null
-        if (!isNewer(version, installedVersion(context))) { dir.deleteRecursively(); return null }
-        Release(version, "", null, info.optString("notesUrl"), info.optString("notes")) to apk
+        val rollback = info.optBoolean("rollback")
+        if (!rollback && !isNewer(version, installedVersion(context))) { dir.deleteRecursively(); return null }
+        Release(version, "", null, info.optString("notesUrl"), info.optString("notes"), rollback = rollback) to apk
     }.getOrNull()
 
     fun installReadyNow(context: Context) = launchExclusive {
@@ -560,6 +609,13 @@ internal object SoftwareUpdate {
     }
 
     @Suppress("DEPRECATION")
+    /** Android only installs over a copy with a lower versionCode, so a rollback build must carry a higher one. */
+    private fun higherVersionCode(context: Context, apk: File): Boolean = runCatching {
+        val pm = context.packageManager
+        val theirs = pm.getPackageArchiveInfo(apk.path, 0)?.longVersionCode ?: return false
+        theirs > pm.getPackageInfo(context.packageName, 0).longVersionCode
+    }.getOrDefault(false)
+
     private fun sameSigner(context: Context, apk: File): Boolean {
         val pm = context.packageManager
         val archive = pm.getPackageArchiveInfo(apk.path, PackageManager.GET_SIGNING_CERTIFICATES) ?: return false

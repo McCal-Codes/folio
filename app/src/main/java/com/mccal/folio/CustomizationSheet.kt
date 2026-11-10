@@ -1125,7 +1125,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     }
                 }
                 CustomizationPage.TWEAK_LIBRARY -> TweakLibraryPage(state, model) { tweakId = it.id; onPage(CustomizationPage.LIBRARY_TWEAK) }
-                CustomizationPage.SOFTWARE_UPDATE -> SoftwareUpdatePage { onPage(CustomizationPage.SUPPORTER) }
+                CustomizationPage.SOFTWARE_UPDATE -> SoftwareUpdatePage(onBackup = onSaveLayoutToFolder) { onPage(CustomizationPage.SUPPORTER) }
                 CustomizationPage.SUPPORTER -> SupporterPage(onSoftwareUpdate = { onPage(CustomizationPage.SOFTWARE_UPDATE) })
                 CustomizationPage.SYSTEM_BRIDGE -> SystemBridgePage()
                 // The model's apps, not the sheet's state: Home's state is disguised while Screenshot Mode is on.
@@ -1671,6 +1671,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.also_set_as_phone_wallpaper to CustomizationPage.WALLPAPER,
     R.string.change_android_wallpaper to CustomizationPage.WALLPAPER,
     R.string.check_for_updates to CustomizationPage.SOFTWARE_UPDATE,
+    R.string.rollback_show to CustomizationPage.SOFTWARE_UPDATE,
     R.string.import_theme to CustomizationPage.THEMES,
     R.string.save_current_look_as_theme to CustomizationPage.THEMES,
     R.string.market to CustomizationPage.TWEAKS,
@@ -3552,7 +3553,7 @@ internal fun layoutSnapshotsShown(layoutHistory: Boolean, layoutDamaged: Boolean
 }
 
 /** Settings › Software Update, laid out like iOS: the version, one clear action, and automatic updates. */
-@Composable private fun SoftwareUpdatePage(onSupporter: () -> Unit = {}) {
+@Composable private fun SoftwareUpdatePage(onBackup: (String) -> Unit = {}, onSupporter: () -> Unit = {}) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val status by SoftwareUpdate.status.collectAsState()
     val betaNote by SoftwareUpdate.betaNote.collectAsState()
@@ -3635,7 +3636,44 @@ internal fun layoutSnapshotsShown(layoutHistory: Boolean, layoutDamaged: Boolean
             BetaTeaserCard()
         }
     }
+    OlderVersions(onBackup)
     CardNote(stringResource(R.string.every_update_is_checked_against_its_publ), Modifier.padding(horizontal = FolioSpace.LARGE.dp))
+}
+
+/** Software Update › Older versions: going back is a rollback build under a higher versionCode, after an offer to back up. */
+@Composable private fun OlderVersions(onBackup: (String) -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val found by SoftwareUpdate.rollbacks.collectAsState()
+    val status by SoftwareUpdate.status.collectAsState()
+    var confirming by remember { mutableStateOf<SoftwareUpdate.Release?>(null) }
+    SettingsCard(stringResource(R.string.rollback_card)) {
+        val list = found
+        if (list == null) IosActionRow(stringResource(R.string.rollback_show), "update-older-show") { SoftwareUpdate.startRollbackList(context) }
+        else if (list.isEmpty()) CardNote(stringResource(R.string.rollback_none))
+        else list.forEach { r ->
+            IosActionRow(stringResource(R.string.folio_version, SoftwareUpdate.rollbackBase(r.version)), "update-older-${SoftwareUpdate.rollbackBase(r.version)}",
+                enabled = status !is SoftwareUpdate.Status.Downloading && status != SoftwareUpdate.Status.Installing) { confirming = r }
+        }
+        CardNote(stringResource(R.string.rollback_note))
+    }
+    confirming?.let { r ->
+        val version = SoftwareUpdate.rollbackBase(r.version)
+        androidx.compose.material3.AlertDialog(onDismissRequest = { confirming = null },
+            title = { Text(stringResource(R.string.rollback_title, version)) },
+            text = { Text(stringResource(R.string.rollback_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    onBackup(context.getString(R.string.rollback_backup_name, SoftwareUpdate.installedVersion(context)))
+                    SoftwareUpdate.startRollback(context, r); confirming = null
+                }) { Text(stringResource(R.string.rollback_backup_go)) }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = { confirming = null }) { Text(stringResource(R.string.cancel)) }
+                    TextButton(onClick = { SoftwareUpdate.startRollback(context, r); confirming = null }) { Text(stringResource(R.string.rollback_go)) }
+                }
+            })
+    }
 }
 
 /** The available update, like iOS's: version, size, the release notes, progress, and Update Now / Update Tonight. */
