@@ -1686,7 +1686,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
             .put("title", restore.title).put("profileLabel", restore.profileLabel).put("work", restore.isWork)
             .put("sourceScope", restore.sourceScope)) } }
         val data = JSONObject().put("schema", stateSchemaFor(s)).put("pinned", JSONArray(s.order)).put("homeSlots", JSONArray(s.homeSlots))
-            .put("leadingSlots", JSONArray(s.leadingSlots)).put("dock", JSONArray(s.dock))
+            .put("leadingSlots", JSONArray(s.leadingSlots)).put("dock", JSONArray(s.dock.take(STANDARD_DOCK_SLOTS)))
             .put("widgets", widgets).put("labels", s.labels)
             .put("folders", folders)
             .put("restores", restores)
@@ -1772,13 +1772,14 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
             editor.putString("state_v9_backup", legacyRaw)
         if (legacyRaw != null && v10BackupNeeded(sourceSchema, stateSchemaFor(s), prefs.contains("state_v10_backup")))
             editor.putString("state_v10_backup", legacyRaw)
+        dockMirrorJson(s.dock).let { if (it != null) editor.putString(DOCK_MIRROR_KEY, it) else editor.remove(DOCK_MIRROR_KEY) }
         editor.putString("state", data.toString()).putBoolean("initialized", true)
             // Kept beside the state so a restore or theme import that changes it chooses the right window next time.
             .putBoolean(SettingKeys.SYSTEM_WALLPAPER, s.systemWallpaper).apply()
     }
 
     private fun load(): LauncherState = traced("Folio.decodeState") { runCatching {
-        decodeLauncherState(prefs.getString("state", "{}") ?: "{}", legacyRaw)
+        decodeLauncherState(prefs.getString("state", "{}") ?: "{}", legacyRaw, prefs.getString(DOCK_MIRROR_KEY, null))
     }.getOrElse {
         statePayloadInvalid = legacyRaw != null
         LauncherState(loading = false, error = getApplication<Application>().getString(
@@ -1812,7 +1813,7 @@ private fun launcherIcon(drawable: Drawable): Bitmap {
  * Reads Folio's saved state (any schema it knows), upgrading older layouts. Throws when the saved text is damaged, so
  * the caller can keep it untouched and tell the user. [legacyRaw] is the pre-schema-2 payload, when there was one.
  */
-internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState {
+internal fun decodeLauncherState(raw: String, legacyRaw: String?, dockMirror: String? = null): LauncherState {
     val j = JSONObject(raw)
     fun preset(key: String, default: LayoutPreset): LayoutPreset {
         val p = j.optJSONObject(key) ?: return default
@@ -1846,7 +1847,8 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
     } else List(HOME_CELLS) { null }
     val dockArray = j.optJSONArray("dock")
     // Four slots, or as many as were saved up to the most the dock holds; a damaged length can never be fewer than four.
-    val loadedDock = trimmedDock(List((dockArray?.length() ?: MIN_DOCK_SLOTS).coerceIn(MIN_DOCK_SLOTS, MAX_DOCK_SLOTS)) { dockArray?.optString(it)?.takeIf { it.isNotBlank() && it != "null" } })
+    val savedDock = List((dockArray?.length() ?: MIN_DOCK_SLOTS).coerceIn(MIN_DOCK_SLOTS, MAX_DOCK_SLOTS)) { dockArray?.optString(it)?.takeIf { it.isNotBlank() && it != "null" } }
+    val loadedDock = trimmedDock(mergeDockMirror(savedDock, dockMirror, (legacySlots + rawLeadingSlots).filterNotNull().toSet()))
     val widgetArray = j.optJSONArray("widgets")
     val placements = if (schema >= 6) {
         require(widgetArray != null) { "Schema $schema requires a widget placement array" }

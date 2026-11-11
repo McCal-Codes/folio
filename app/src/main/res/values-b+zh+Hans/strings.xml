@@ -2524,4 +2524,5 @@
     <string name="rollback_go">不备份直接回退</string>
     <string name="rollback_backup_name">从 %1$s 回退之前</string>
     <string name="rollback_not_higher">这个旧版本不是回退构建，Android 会拒绝安装。</string>
+    <string name="dock_more_apps_note">程序坞中的应用越多，图标越小，因此不会超出屏幕。即使屏幕显示较少，Folio 也会保留你填入的每个位置。</string>
 </resources>

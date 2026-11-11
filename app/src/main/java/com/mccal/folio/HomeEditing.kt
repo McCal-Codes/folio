@@ -294,6 +294,32 @@ fun dropApp(layout: HomeLayout, id: String, target: DropTarget, appRows: Int = M
  * [dock] without the empty places past its last app, but never fewer than [MIN_DOCK_SLOTS] places and never more than
  * [MAX_DOCK_SLOTS]: the dock is as big as what is in it, and four when it holds fewer. A dock already that small is left alone.
  */
+/** The prefs key that holds dock places beyond the standard six, beside the state (see [dockMirrorJson]). */
+internal const val DOCK_MIRROR_KEY = "dockMirror"
+
+/**
+ * Dock places beyond the standard six are kept beside the state, not in it: the state's dock holds six, which every older
+ * Folio reads whole, so going back to an older version loses nothing and an older save cannot cut a dock short. The mirror
+ * also carries the first six it was written with, so a newer Folio uses it only if an older one did not change them.
+ */
+internal fun dockMirrorJson(dock: List<String?>): String? {
+    if (dock.size <= STANDARD_DOCK_SLOTS) return null
+    fun array(list: List<String?>) = org.json.JSONArray().also { a -> list.forEach { a.put(it ?: org.json.JSONObject.NULL) } }
+    return org.json.JSONObject().put("head", array(dock.take(STANDARD_DOCK_SLOTS))).put("extra", array(dock.drop(STANDARD_DOCK_SLOTS))).toString()
+}
+
+/** The dock with its mirrored places put back, or [head] as it is when the mirror is missing, damaged or out of date. */
+internal fun mergeDockMirror(head: List<String?>, mirror: String?, taken: Set<String>): List<String?> = runCatching {
+    if (mirror == null) return head
+    val json = org.json.JSONObject(mirror)
+    fun list(key: String) = json.getJSONArray(key).let { a -> List(a.length()) { a.optString(it).takeIf { id -> id.isNotBlank() && id != "null" } } }
+    fun padded(l: List<String?>) = l + List((STANDARD_DOCK_SLOTS - l.size).coerceAtLeast(0)) { null }
+    if (padded(list("head")) != padded(head)) return head
+    // An app an older Folio put on Home meanwhile (it could not see this place) stays where it was put.
+    val extra = list("extra").map { it?.takeIf { id -> id !in taken && id !in head } }
+    padded(head) + extra
+}.getOrDefault(head)
+
 fun trimmedDock(dock: List<String?>): List<String?> {
     if (dock.size <= MIN_DOCK_SLOTS) return dock
     val trimmed = dock.take(MAX_DOCK_SLOTS).dropLastWhile { it == null }

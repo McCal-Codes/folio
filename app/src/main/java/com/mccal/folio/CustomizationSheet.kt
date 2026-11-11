@@ -3143,6 +3143,7 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
             DockPlacement.SIDE -> stringResource(R.string.the_dock_stays_on_the_side_bar_even_when)
             DockPlacement.BOTTOM -> if (wide) stringResource(R.string.the_dock_sits_along_the_bottom_under_you) else stringResource(R.string.the_dock_sits_along_the_bottom_in_landsc)
         } + if (!p.statusAlignToGrid) " The dock always stays below the status." else "")
+        CardNote(stringResource(R.string.dock_more_apps_note))
     }
     SheetGroup { IosActionRow(stringResource(R.string.reset_this_layout), destructive = true, onClick = { model.setPreset(screen, defaultPreset(screen)) }) }
     // Per-page looks (after Atria): each page can have its own icon size and labels.
