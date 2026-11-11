@@ -42,4 +42,17 @@ class StarterAppsTest {
         assertEquals(2, homeRowsFor(8))
         assertEquals(3, homeRowsFor(9))
     }
+
+    @Test fun `the rest of the rows are filled with the phone's other apps`() {
+        val others = listOf("a", "b", "c", "d", "e", "f")
+        assertEquals(listOf("x", "y", "a", "b", "c"), fillHomePicks(listOf("x", "y"), listOf("a", "x", "b", "c", "d"), 5))
+        assertEquals(listOf("x", "y"), fillHomePicks(listOf("x", "y"), others, 0))
+        assertEquals(listOf("x", "y"), fillHomePicks(listOf("x", "y"), others, 2))
+        assertEquals(listOf("x", "a", "b", "c", "d", "e", "f"), fillHomePicks(listOf("x"), others, 40))
+    }
+
+    @Test fun `a taller screen fits at least as many rows as a shorter one`() {
+        assertTrue(estimatedHomeRows(412f, 900f) >= estimatedHomeRows(412f, 700f))
+        assertTrue(estimatedHomeRows(412f, 700f) >= BASE_APP_ROWS)
+    }
 }
