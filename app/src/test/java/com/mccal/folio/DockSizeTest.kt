@@ -85,6 +85,15 @@ class DockShownWholeTest {
         assertEquals(8, homeGeometry(412f, 1100f, side, true, statusHeight = 160f, dockSlots = 8).dockShownSlots)
         assertTrue(homeGeometry(320f, 568f, side, true, statusHeight = 160f, dockSlots = 8).dockShownSlots < 8)
     }
+
+    @Test fun `a side bar too short for four places ends on a whole place`() {
+        val side = LayoutPreset(dockPlacement = DockPlacement.SIDE)
+        for (h in listOf(300f, 320f, 360f, 400f)) {
+            val g = homeGeometry(780f, h, side, true, statusHeight = 160f)
+            val places = (g.dockHeight - 16f) / 48f
+            assertEquals("$h: ${g.dockHeight}", Math.round(places).toFloat(), places, .01f)
+        }
+    }
 }
 
 /** Fit more dock apps is opt in: the default dock never goes below 48 dp a place, the compact one may go to 40 dp and shrinks its icons. */
