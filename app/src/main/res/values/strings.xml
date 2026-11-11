@@ -2590,5 +2590,5 @@
     <string name="rollback_go">Go back without a backup</string>
     <string name="rollback_backup_name">Before going back from %1$s</string>
     <string name="rollback_not_higher">This older version is not a rollback build, so Android would refuse it.</string>
-    <string name="dock_more_apps_note">More apps in the dock make the icons smaller, so they never run off the screen. Folio keeps every place you fill, even on a screen that shows fewer.</string>
+    <string name="dock_more_apps_note">More apps in the dock make the icons smaller, so they never run off the screen. How small depends on your screen: a taller screen keeps them larger and a shorter one shows fewer. Folio keeps every place you fill.</string>
 </resources>

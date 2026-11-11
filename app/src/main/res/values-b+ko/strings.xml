@@ -2546,5 +2546,5 @@
     <string name="rollback_go">백업 없이 되돌리기</string>
     <string name="rollback_backup_name">%1$s에서 되돌리기 전</string>
     <string name="rollback_not_higher">이 이전 버전은 롤백 빌드가 아니어서 Android가 거부합니다.</string>
-    <string name="dock_more_apps_note">독에 앱이 많아지면 아이콘이 작아져 화면 밖으로 넘치지 않습니다. 더 적게 표시되는 화면에서도 채운 자리는 모두 보관됩니다.</string>
+    <string name="dock_more_apps_note">독에 앱이 많아지면 아이콘이 작아져 화면 밖으로 넘치지 않습니다. 작아지는 정도는 화면 크기에 따라 다릅니다. 화면이 길수록 크게 유지되고 짧을수록 적게 표시됩니다. 채운 자리는 모두 보관됩니다.</string>
 </resources>
