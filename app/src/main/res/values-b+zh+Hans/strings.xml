@@ -2524,5 +2524,5 @@
     <string name="rollback_go">不备份直接回退</string>
     <string name="rollback_backup_name">从 %1$s 回退之前</string>
     <string name="rollback_not_higher">这个旧版本不是回退构建，Android 会拒绝安装。</string>
-    <string name="dock_more_apps_note">程序坞中的应用越多，图标越小，因此不会超出屏幕。缩小多少取决于你的屏幕：屏幕越高图标越大，越矮则显示得越少。Folio 会保留你填入的每个位置。</string>
+    <string name="dock_more_apps_note">程序坞不会超出屏幕。屏幕较高时显示更多位置，较矮时会缩小间距并显示较少位置。Folio 会保留你填入的每个位置。</string>
 </resources>

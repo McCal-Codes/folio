@@ -8,7 +8,7 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.7.0] - Unreleased
 
 ### Added
-- **Dock places stay safe:** places beyond six are kept beside your layout, so going back to an older version leaves a whole six-place dock and bringing it forward again restores the rest. More dock apps make icons smaller instead of running off the screen.
+- **Dock places stay safe:** places beyond six are kept beside your layout, so going back to an older version leaves a whole six-place dock and bringing it forward again restores the rest. A shorter screen shows fewer places, never an overflowing dock.
 - **Go back to an older version:** Software Update lists older versions that were rebuilt to install over this one. Folio offers to save a backup first and keeps your apps and data. After going back, updates resume with the next feature release.
 - **Beta access at a glance:** Settings > Supporter has a Beta access card that says where your phone stands on betas, whether that is no code, a code that ended or is not recognized, a code without beta access, Early access off, or Beta Updates off, with the way to fix it and a link to Software Update. Software Update has a matching Supporter row that opens it. Both read the same status. The Korean and Chinese text is machine translated.
 - **Dock size:** Settings > Home Screen & Dock > Dock > Size makes the dock's apps smaller or larger, 80% to 160%, and widens the dock with them. A larger size grows only as far as the dock has room, so a small phone never overflows and a tablet gets the most. 100% is the dock as it was. The Korean and Chinese text is machine translated.
