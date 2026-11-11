@@ -71,6 +71,12 @@ data class LayoutPreset(
     val dockSize: Float = 1f,
     /** Home Screen & Dock › Dock › Center on the side: the Side Bar dock sits in the middle of the free height beside the page. */
     val dockCentered: Boolean = false,
+    /**
+     * Home Screen & Dock › Dock › Fit more dock apps. Off by default: a Side Bar dock place is never shorter than 48 dp, the
+     * smallest comfortable touch target, so a short screen shows fewer places. On, a place may shrink to [COMPACT_DOCK_PITCH] and
+     * the icons shrink with it, so more places fit.
+     */
+    val dockCompact: Boolean = false,
 ) {
     fun sanitized() = copy(
         iconSize = iconSize.coerceIn(40f, 68f),
@@ -86,6 +92,9 @@ data class LayoutPreset(
 }
 
 /** The Side Bar dock is 56 to this wide; the Size setting widens it with its apps (see [dockWidthForSize]). */
+/** The least a Side Bar dock place may measure: 48 dp is the comfortable touch target, 40 dp is what Fit more dock apps allows. */
+const val STANDARD_DOCK_PITCH = 48f
+const val COMPACT_DOCK_PITCH = 40f
 const val MAX_DOCK_WIDTH = 104f
 const val MIN_DOCK_SIZE = .8f
 const val MAX_DOCK_SIZE = 1.6f
@@ -544,11 +553,12 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
     // Space between dock apps makes the dock taller; aligned with the rows, it grows evenly above and below them.
     val dockSpace = p.dockSpacing
     val dockRoom = (height - topLimit - bottomReserve).coerceAtLeast(76f)
+    val pitchFloor = if (p.dockCompact) COMPACT_DOCK_PITCH else STANDARD_DOCK_PITCH
     // The Side Bar shows only the places that fit whole; the bottom bar scrolls sideways as before.
-    val shownSlots = if (horizontalDock) slots else minOf(slots, maxOf(MIN_DOCK_SLOTS.toFloat(), kotlin.math.floor((dockRoom - 16f) / 48f)))
-    val desiredHeight = maxOf(shownSlots * 48f + 16f, (if (p.dockAlignToGrid) 2f * row + icon else 256f) + shownSlots * dockSpace)
+    val shownSlots = if (horizontalDock) slots else minOf(slots, maxOf(MIN_DOCK_SLOTS.toFloat(), kotlin.math.floor((dockRoom - 16f) / pitchFloor)))
+    val desiredHeight = maxOf(shownSlots * pitchFloor + 16f, (if (p.dockAlignToGrid) 2f * row + icon else 256f) + shownSlots * dockSpace)
     val dockHeight = minOf(desiredHeight, dockRoom)
-    val dockRowHeight = ((dockHeight - 16f) / shownSlots).coerceAtLeast(48f)
+    val dockRowHeight = ((dockHeight - 16f) / shownSlots).coerceAtLeast(pitchFloor)
     // Use the home position as the anchor, so removing library buttons does not
     // move a low-positioned dock on ordinary page swipes. Move up only to fit.
     val homeDockHeight = minOf(desiredHeight, (height - topLimit - homeReserve).coerceAtLeast(76f))
@@ -569,8 +579,10 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
     val dockIconRoom = if (horizontalDock) minOf(dockBarHeight - 22f, (barRoom - 16f) / slots - 22f) else minOf(p.dockWidth - 12f, dockRowHeight - 4f)
     val roomyDockIcon = if (!duoSpacing) oldDockIcon else maxOf(oldDockIcon, minOf(icon * DUO_DOCK_RATIO, dockIconRoom))
     // Dock › Size: smaller is smaller; larger grows only as far as the dock has room (never below what it had), so it always fits.
-    val dockIcon = if (p.dockSize <= 1f) roomyDockIcon * p.dockSize
+    val sizedDockIcon = if (p.dockSize <= 1f) roomyDockIcon * p.dockSize
         else minOf(roomyDockIcon * p.dockSize, maxOf(roomyDockIcon, dockIconRoom))
+    // Fit more dock apps: the icon gives way to the room a place has, so a tighter place never crowds it.
+    val dockIcon = if (p.dockCompact) minOf(sizedDockIcon, maxOf(dockIconRoom, 24f)) else sizedDockIcon
     val basePitch = dockIcon + 22f
     val dockPitch = if (dockSpace <= 0f) basePitch else minOf(basePitch + dockSpace, maxOf(basePitch, (barRoom - 16f) / slots))
     // With the dock at the bottom and no Side Bar beside the page (upright unfolded, or Full-width Home), the page is

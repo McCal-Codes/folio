@@ -1538,6 +1538,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.dock_height to CustomizationPage.HOME,
     R.string.dock_size to CustomizationPage.HOME,
     R.string.center_dock_on_the_side to CustomizationPage.HOME,
+    R.string.fit_more_dock_apps to CustomizationPage.HOME,
     R.string.full_width_home to CustomizationPage.HOME,
     R.string.separate_upright_layout to CustomizationPage.HOME,
     R.string.unfolded_seamless_spacing to CustomizationPage.HOME,
@@ -3134,6 +3135,8 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
         }
         CustomizationSlider(stringResource(R.string.width), stringResource(R.string.dp_value, p.dockWidth.toInt()), p.dockWidth, 56f..MAX_DOCK_WIDTH, LayoutPreset().dockWidth, peek = true) { model.setPreset(screen, p.copy(dockWidth = it)) }
         CustomizationSlider(stringResource(R.string.space_between_dock_apps), stringResource(R.string.dp_value, p.dockSpacing.toInt()), p.dockSpacing, 0f..24f, 0f, peek = true) { model.setPreset(screen, p.copy(dockSpacing = it)) }
+        if (p.dockPlacement != DockPlacement.BOTTOM) SettingsSwitch(stringResource(R.string.fit_more_dock_apps), p.dockCompact, { model.setPreset(screen, p.copy(dockCompact = it)) })
+        if (p.dockPlacement != DockPlacement.BOTTOM && p.dockCompact) CardNote(stringResource(R.string.fit_more_dock_apps_note))
         if (p.dockPlacement != DockPlacement.BOTTOM) SettingsSwitch(stringResource(R.string.center_dock_on_the_side), p.dockCentered, { model.setPreset(screen, p.copy(dockCentered = it)) })
         if (p.dockPlacement != DockPlacement.BOTTOM && !p.dockCentered) SettingsSwitch(stringResource(R.string.align_dock_with_app_rows), p.dockAlignToGrid, { model.setPreset(screen, p.copy(dockAlignToGrid = it)) })
         if (!p.dockAlignToGrid && !p.dockCentered && p.dockPlacement != DockPlacement.BOTTOM) CustomizationSlider(stringResource(R.string.dock_height), "${(p.dockPosition * 100).toInt()}%", p.dockPosition, 0f..1f,
@@ -3143,6 +3146,7 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
             DockPlacement.SIDE -> stringResource(R.string.the_dock_stays_on_the_side_bar_even_when)
             DockPlacement.BOTTOM -> if (wide) stringResource(R.string.the_dock_sits_along_the_bottom_under_you) else stringResource(R.string.the_dock_sits_along_the_bottom_in_landsc)
         } + if (!p.statusAlignToGrid) " The dock always stays below the status." else "")
+        CardNote(stringResource(R.string.dock_more_apps_note))
     }
     SheetGroup { IosActionRow(stringResource(R.string.reset_this_layout), destructive = true, onClick = { model.setPreset(screen, defaultPreset(screen)) }) }
     // Per-page looks (after Atria): each page can have its own icon size and labels.

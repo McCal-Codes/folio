@@ -2590,4 +2590,7 @@
     <string name="rollback_go">Go back without a backup</string>
     <string name="rollback_backup_name">Before going back from %1$s</string>
     <string name="rollback_not_higher">This older version is not a rollback build, so Android would refuse it.</string>
+    <string name="dock_more_apps_note">The dock never runs off the screen. A taller screen shows more places, and a shorter one shows fewer with the spacing tightened. Folio keeps every place you fill.</string>
+    <string name="fit_more_dock_apps">Fit more dock apps</string>
+    <string name="fit_more_dock_apps_note">Dock places and icons shrink so more apps fit on a short screen. Places get smaller than the 48 dp touch size Android recommends, so they can be harder to tap.</string>
 </resources>
