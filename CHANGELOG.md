@@ -65,6 +65,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **What's New stays short:** each new feature shows its first sentence, at most two lines, so more than two fit above Continue. The island entry has its own icon.
 
 ### Fixed
+- **Search finds Older versions:** searching Settings for "rollback", "downgrade" or "go back" now leads to Software Update, where going back to an older version lives.
 - **Home starts full:** a new setup now fills Home with your apps, up to the rows that fit your screen, instead of a handful of starter apps and an empty page. Folio's own entries and the dock's apps are left out of the fill, and everything is still yours to change.
 - **New installs start on Automatic rows:** a fresh install no longer starts on a fixed four rows, so a tall phone uses its height from the first launch. An existing Home keeps the rows it has.
 - **Home fills a tall screen:** Rows set to Automatic now gives each screen the rows that fit it, so a tall phone shows more rows instead of an empty space under the apps. A landscape window or a foldable's other screen no longer holds it back; each screen is its own layout.

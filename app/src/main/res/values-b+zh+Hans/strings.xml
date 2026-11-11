@@ -1290,7 +1290,7 @@
     <string name="settings_keywords_rounded_screen_corners">圆角 屏幕 边缘 corners rounded iphone duo screen round edges</string>
     <string name="settings_keywords_glass">玻璃 磨砂 模糊 描边 透明 小组件 侧边栏 着色 glass frost blur outline border transparency widgets side bar tint</string>
     <string name="settings_keywords_folders">文件夹 列 网格 背景 玻璃 folder columns grid background glass solid clear</string>
-    <string name="settings_keywords_software_update">软件更新 升级 新版本 下载 安装 自动 software update upgrade new version download install github automatic</string>
+    <string name="settings_keywords_software_update">软件更新 升级 新版本 下载 安装 自动 software update upgrade new version download install github automatic rollback roll back older version previous downgrade go back 回滚 旧版本 降级 返回</string>
     <string name="settings_keywords_tweak_library">插件库 插件 获取 安装 移除 软件包 tweak library get install remove packages sileo cydia</string>
     <string name="settings_animation_speed">动画速度</string>
     <string name="settings_keywords_animation_speed">动画 动效 速度 快 慢 animation motion speed fast slow snappy relaxed</string>
