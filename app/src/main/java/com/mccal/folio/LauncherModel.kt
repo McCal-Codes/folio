@@ -2093,8 +2093,9 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?, dockMirror: St
         buttonBarFade = j.optBoolean(SettingKeys.BUTTON_BAR_FADE, true),
         // Automatic is the new default, but it must not rearrange a Home that already exists: a save written before
         // this release comes back fixed at the four rows it was drawn with, and Settings › Home Screen & Dock offers
-        // Automatic to anyone who wants the taller screens filled.
-        homeRows = j.optInt("homeRows", if (j.optInt("schema", 1) in 1 until MORE_ROWS_SCHEMA) BASE_APP_ROWS else 0)
+        // Automatic to anyone who wants the taller screens filled. A fresh install has no save at all (no schema), so it
+        // starts on Automatic rather than on the four rows of a save it never had.
+        homeRows = j.optInt("homeRows", if (j.has("schema") && j.optInt("schema", 1) in 1 until MORE_ROWS_SCHEMA) BASE_APP_ROWS else 0)
             .takeIf { it == BASE_APP_ROWS } ?: 0,
         homeFitCompact = j.optInt("homeFitCompact", 0).takeIf { it in BASE_APP_ROWS..MAX_APP_ROWS } ?: 0,
         homeFitExpanded = j.optInt("homeFitExpanded", 0).takeIf { it in BASE_APP_ROWS..MAX_APP_ROWS } ?: 0,

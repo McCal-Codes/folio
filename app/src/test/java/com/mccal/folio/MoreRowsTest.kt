@@ -167,4 +167,9 @@ class MoreRowsTest {
         // TalkBack says where it went in a sentence of its own, not "Move Left" with the verb cut off.
         org.junit.Assert.assertEquals("Moved left", EnglishStrings.get(homeMoveOffsets(0).first().moved))
     }
+
+    @Test fun `a fresh install starts on Automatic rows, an older save keeps its four`() {
+        assertEquals(0, decodeLauncherState("{}", null).homeRows)
+        assertEquals(BASE_APP_ROWS, decodeLauncherState("{\"schema\":5}", null).homeRows)
+    }
 }
