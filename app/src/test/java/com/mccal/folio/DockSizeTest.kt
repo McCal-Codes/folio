@@ -86,3 +86,36 @@ class DockShownWholeTest {
         assertTrue(homeGeometry(320f, 568f, side, true, statusHeight = 160f, dockSlots = 8).dockShownSlots < 8)
     }
 }
+
+/** Fit more dock apps is opt in: the default dock never goes below 48 dp a place, the compact one may go to 40 dp and shrinks its icons. */
+class DockCompactTest {
+    private fun geometry(compact: Boolean, height: Float = 640f) =
+        homeGeometry(412f, height, LayoutPreset(dockCompact = compact, dockPlacement = DockPlacement.SIDE), true, statusHeight = 160f)
+
+    @Test fun `it is off by default`() {
+        assertEquals(false, LayoutPreset().dockCompact)
+    }
+
+    @Test fun `off, no place is shorter than 48 dp`() {
+        for (h in listOf(560f, 640f, 740f, 915f)) assertTrue("$h", geometry(false, h).dockRowHeight >= STANDARD_DOCK_PITCH)
+    }
+
+    @Test fun `on, no place is shorter than 40 dp and none shows fewer than off`() {
+        for (h in listOf(560f, 640f, 740f, 915f)) {
+            val on = geometry(true, h); val off = geometry(false, h)
+            assertTrue("$h", on.dockRowHeight >= COMPACT_DOCK_PITCH)
+            assertTrue("$h", on.dockShownSlots >= off.dockShownSlots)
+        }
+    }
+
+    @Test fun `on, a place never crowds its icon`() {
+        for (h in listOf(560f, 640f, 740f)) {
+            val g = geometry(true, h)
+            assertTrue("$h ${g.dockIcon} ${g.dockRowHeight}", g.dockIcon <= g.dockRowHeight - 4f + 0.01f || g.dockIcon <= 24f)
+        }
+    }
+
+    @Test fun `a tall screen looks the same on or off`() {
+        assertEquals(geometry(false, 915f).dockShownSlots, geometry(true, 915f).dockShownSlots)
+    }
+}

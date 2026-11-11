@@ -1674,7 +1674,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         fun preset(p: LayoutPreset) = JSONObject().put("iconSize", p.iconSize).put("rowGap", p.rowGap)
             .put("dockWidth", p.dockWidth).put("dockPosition", p.dockPosition).put("dockAlignToGrid", p.dockAlignToGrid)
             .put("dockPlacement", p.dockPlacement.name).put("statusAlignToGrid", p.statusAlignToGrid).put("statusPosition", p.statusPosition)
-            .put("columnGap", p.columnGap).put("dockSpacing", p.dockSpacing).put("widgetScale", p.widgetScale).put("pageTop", p.pageTop).put("dockSize", p.dockSize).put("dockCentered", p.dockCentered)
+            .put("columnGap", p.columnGap).put("dockSpacing", p.dockSpacing).put("widgetScale", p.widgetScale).put("pageTop", p.pageTop).put("dockSize", p.dockSize).put("dockCentered", p.dockCentered).put("dockCompact", p.dockCompact)
         val widgets = JSONArray().also { array -> s.widgetPlacements.forEach { w -> array.put(JSONObject()
             .put("slot", w.slot).put("id", w.id).put("page", w.page).put("column", w.column).put("row", w.row)
             .put("spanX", w.spanX).put("spanY", w.spanY)
@@ -1827,7 +1827,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?, dockMirror: St
             p.optDouble("statusPosition", 0.0).toFloat(),
             p.optDouble("columnGap", DEFAULT_COLUMN_GAP.toDouble()).toFloat(), p.optDouble("dockSpacing", 0.0).toFloat(),
             p.optDouble("widgetScale", 1.0).toFloat(), p.optBoolean("pageTop", false),
-            p.optDouble("dockSize", 1.0).toFloat(), p.optBoolean("dockCentered", false)).sanitized()
+            p.optDouble("dockSize", 1.0).toFloat(), p.optBoolean("dockCentered", false), p.optBoolean("dockCompact", false)).sanitized()
         return upgradePreset(loaded, j.optInt("schema", 1), key == "expanded")
     }
     val order = j.optJSONArray(if (j.optInt("schema", 1) >= 2) "pinned" else "order") ?: JSONArray()

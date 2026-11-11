@@ -72,7 +72,7 @@ guidelines, WCAG 2.2 AA and Apple's HIG.
 
 Good:
 
-- 48dp rows and dock minimums (`LayoutModel.kt`), 44dp jiggle remove, `minimumInteractiveComponentSize` in 7 files.
+- 48dp rows and dock minimums (`LayoutModel.kt`; Dock › Fit more dock apps is the one opt-in exception, off by default and down to 40 dp a place, with a note that places get harder to tap), 44dp jiggle remove, `minimumInteractiveComponentSize` in 7 files.
 - 77 content descriptions, 62 semantics blocks, custom move actions mirrored on the keyboard.
 - `LocalReduceMotion` and `LocalSolidGlass` exist and are used.
 - `getRecommendedTimeoutMillis` for Market notices and for everything the island shows for a moment.
