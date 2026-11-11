@@ -557,7 +557,10 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
     // The Side Bar shows only the places that fit whole; the bottom bar scrolls sideways as before.
     val shownSlots = if (horizontalDock) slots else minOf(slots, maxOf(MIN_DOCK_SLOTS.toFloat(), kotlin.math.floor((dockRoom - 16f) / pitchFloor)))
     val desiredHeight = maxOf(shownSlots * pitchFloor + 16f, (if (p.dockAlignToGrid) 2f * row + icon else 256f) + shownSlots * dockSpace)
-    val dockHeight = minOf(desiredHeight, dockRoom)
+    // A Side Bar too short for even the four places it always holds ends on a whole place and scrolls to the rest,
+    // instead of cutting the last icon in half at its edge (a landscape phone or a small window).
+    val wholePlaces = kotlin.math.floor((dockRoom - 16f) / pitchFloor + .001f).coerceAtLeast(1f)
+    val dockHeight = if (!horizontalDock && wholePlaces < shownSlots) wholePlaces * pitchFloor + 16f else minOf(desiredHeight, dockRoom)
     val dockRowHeight = ((dockHeight - 16f) / shownSlots).coerceAtLeast(pitchFloor)
     // Use the home position as the anchor, so removing library buttons does not
     // move a low-positioned dock on ordinary page swipes. Move up only to fit.

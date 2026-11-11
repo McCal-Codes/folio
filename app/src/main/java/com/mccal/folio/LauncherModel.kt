@@ -351,16 +351,19 @@ data class LauncherState(
     val widgets: List<Int> get() = layout.widgets
     val layout: HomeLayout get() = HomeLayout(homeSlots, dock, widgetPlacements, folders, widgetRestores, leadingSlots, minPages)
     val homePages get() = layout.pageCount
-    /** App rows every Home page shows, the same on both screens so pages don't change when you fold. */
+    /** App rows a fixed Rows setting gives every screen, or the fewest any measured screen fits when Automatic and the screen is not measured yet. */
     val homeAppRows: Int get() = effectiveHomeRows(homeRows, homeFitCompact, homeFitExpanded, homeFitUpright)
     /**
-     * App rows for the screen Home is on now. The open screen held upright with its own layout (Layout › Inner) gets
-     * the rows that fit it, instead of the fewest rows any screen fits, so the separate layout can use its height (#13).
-     * Pages with apps in those extra rows draw taller on the other screens (see shownHomeRows), so nothing is lost.
+     * App rows for the screen Home is on now. Automatic gives each screen the rows that fit it, so a tall phone fills its
+     * height and a foldable's screens are separate layouts, each using its own room (#13). A screen not measured yet
+     * uses the fewest rows another screen fits. Pages with apps in rows a smaller screen lacks draw taller there (see
+     * shownHomeRows), so nothing is lost. A fixed Rows setting is the same on every screen.
      */
-    fun homeAppRowsFor(screen: LayoutScreen): Int =
-        if (screen == LayoutScreen.INNER_UPRIGHT && portrait != null && homeRows <= 0 && homeFitUpright > 0)
-            homeFitUpright.coerceIn(BASE_APP_ROWS, MAX_APP_ROWS) else homeAppRows
+    fun homeAppRowsFor(screen: LayoutScreen): Int = if (homeRows > 0) homeAppRows else automaticHomeRowsFor(screen)
+    /** What Automatic gives [screen]: its own measured rows, else [automaticHomeRows]. */
+    fun automaticHomeRowsFor(screen: LayoutScreen): Int =
+        // The open screen held upright without a layout of its own shows the inner screen's layout, so it takes that fit.
+        homeFitFor(if (screen == LayoutScreen.INNER_UPRIGHT && portrait == null) LayoutScreen.INNER else screen).takeIf { it > 0 }?.coerceIn(BASE_APP_ROWS, MAX_APP_ROWS) ?: automaticHomeRows
     /** What Automatic would give, whatever fixed Rows value is chosen, so the menu can name it honestly. */
     val automaticHomeRows: Int get() = effectiveHomeRows(0, homeFitCompact, homeFitExpanded, homeFitUpright)
     /** Home can be drawn complete: its apps are in, or loading has ended (or failed). */

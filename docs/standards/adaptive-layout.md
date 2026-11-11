@@ -45,6 +45,7 @@ makes that enforceable, and it's why Folio can be ready for tri-folds and flip c
   Settings sidebar, a second page); it never turns into a different launcher.
 - **ADP-8 MUST NOT** stretch. With regular width: one column becomes two, a navigation stack becomes a split view,
   a tab bar becomes a sidebar.
+- **ADP-8a MUST** treat each screen of a foldable (and each window class) as its own layout. Automatic rows, icon size and the dock fit the screen they are on, so a tall phone fills its height whatever a landscape window or another screen fits. What is shared is the content: the pages, the apps, the dock's places. An app in a row a smaller screen lacks is drawn taller there, never dropped (`shownHomeRows`). A fixed Rows setting is the one count on every screen.
 - **ADP-9 SHOULD** keep controls reachable at the side edge (the right rail, mirrored for left-handed) and collapse
   into an overflow menu when there's no room, rather than shrinking everything.
 - **ADP-10 MUST** keep elements on the same plane from colliding: bars, pills, the island, the Side Bar, the dock and
