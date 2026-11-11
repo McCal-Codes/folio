@@ -58,4 +58,10 @@ class RollbackTest {
         assertTrue(SoftwareUpdate.offerable("0.7.0-beta.2", "0.6.9", 6090))
         assertFalse(SoftwareUpdate.offerable("0.6.9", "0.6.9", 6090))
     }
+
+    @Test fun `the idle installer never installs a rollback`() {
+        val normal = SoftwareUpdate.Release("0.7.0-beta.3", "", null, "")
+        assertTrue(SoftwareUpdate.idleInstallable(normal))
+        assertFalse(SoftwareUpdate.idleInstallable(normal.copy(version = "0.6.9.1-rollback.1", rollback = true)))
+    }
 }
