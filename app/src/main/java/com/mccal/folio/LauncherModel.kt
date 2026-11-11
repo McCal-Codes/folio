@@ -1001,13 +1001,16 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         applyDrop(id, DropTarget.Home(target.coerceIn(range)))
     }
 
+    /** How many dock places the window now shown has (see [com.mccal.folio.dockCapacity]); set by the Home screen, not saved. */
+    @Volatile var dockCapacity: Int = STANDARD_DOCK_SLOTS
+
     fun applyDrop(id: String, target: DropTarget): Boolean {
         val old = mutable.value
         val folder = old.layout.folder(id)
         if (old.apps.none { it.id == id } && folder == null) return false
         if (target is DropTarget.Folder) return folder == null && addAppToFolder(target.id, id)
         if (folder != null && target !is DropTarget.Home) return false
-        return commitLayout(dropApp(old.layout, id, target, old.homeAppRows))
+        return commitLayout(dropApp(old.layout, id, target, old.homeAppRows, dockCapacity))
     }
 
     fun createFolder(firstAppId: String, secondAppId: String, targetIndex: Int, title: String = "Folder"): String? {
@@ -1671,7 +1674,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         fun preset(p: LayoutPreset) = JSONObject().put("iconSize", p.iconSize).put("rowGap", p.rowGap)
             .put("dockWidth", p.dockWidth).put("dockPosition", p.dockPosition).put("dockAlignToGrid", p.dockAlignToGrid)
             .put("dockPlacement", p.dockPlacement.name).put("statusAlignToGrid", p.statusAlignToGrid).put("statusPosition", p.statusPosition)
-            .put("columnGap", p.columnGap).put("dockSpacing", p.dockSpacing).put("widgetScale", p.widgetScale).put("pageTop", p.pageTop)
+            .put("columnGap", p.columnGap).put("dockSpacing", p.dockSpacing).put("widgetScale", p.widgetScale).put("pageTop", p.pageTop).put("dockSize", p.dockSize).put("dockCentered", p.dockCentered)
         val widgets = JSONArray().also { array -> s.widgetPlacements.forEach { w -> array.put(JSONObject()
             .put("slot", w.slot).put("id", w.id).put("page", w.page).put("column", w.column).put("row", w.row)
             .put("spanX", w.spanX).put("spanY", w.spanY)
@@ -1822,7 +1825,8 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
             p.optBoolean("statusAlignToGrid", !p.optBoolean("statusTop", false)),
             p.optDouble("statusPosition", 0.0).toFloat(),
             p.optDouble("columnGap", DEFAULT_COLUMN_GAP.toDouble()).toFloat(), p.optDouble("dockSpacing", 0.0).toFloat(),
-            p.optDouble("widgetScale", 1.0).toFloat(), p.optBoolean("pageTop", false)).sanitized()
+            p.optDouble("widgetScale", 1.0).toFloat(), p.optBoolean("pageTop", false),
+            p.optDouble("dockSize", 1.0).toFloat(), p.optBoolean("dockCentered", false)).sanitized()
         return upgradePreset(loaded, j.optInt("schema", 1), key == "expanded")
     }
     val order = j.optJSONArray(if (j.optInt("schema", 1) >= 2) "pinned" else "order") ?: JSONArray()

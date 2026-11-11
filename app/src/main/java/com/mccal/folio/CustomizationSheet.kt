@@ -1536,6 +1536,8 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.align_dock_with_app_rows to CustomizationPage.HOME,
     R.string.app_icon_size to CustomizationPage.HOME,
     R.string.dock_height to CustomizationPage.HOME,
+    R.string.dock_size to CustomizationPage.HOME,
+    R.string.center_dock_on_the_side to CustomizationPage.HOME,
     R.string.full_width_home to CustomizationPage.HOME,
     R.string.separate_upright_layout to CustomizationPage.HOME,
     R.string.unfolded_seamless_spacing to CustomizationPage.HOME,
@@ -3126,10 +3128,15 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
     SettingsCard(stringResource(R.string.dock)) {
         IosMenuRow(stringResource(R.string.placement), listOf(DockPlacement.AUTOMATIC to stringResource(R.string.automatic), DockPlacement.SIDE to stringResource(R.string.side_rail), DockPlacement.BOTTOM to stringResource(R.string.bottom)),
             p.dockPlacement, { model.setPreset(screen, p.copy(dockPlacement = it)) }, tag = "dock-placement")
-        CustomizationSlider(stringResource(R.string.width), stringResource(R.string.dp_value, p.dockWidth.toInt()), p.dockWidth, 56f..84f, LayoutPreset().dockWidth, peek = true) { model.setPreset(screen, p.copy(dockWidth = it)) }
+        // Size grows the dock's apps and the dock with them; Width then still sets the dock's own width.
+        CustomizationSlider(stringResource(R.string.dock_size), "${(p.dockSize * 100).toInt()}%", p.dockSize, MIN_DOCK_SIZE..MAX_DOCK_SIZE, LayoutPreset().dockSize, peek = true) {
+            model.setPreset(screen, p.copy(dockSize = it, dockWidth = dockWidthForSize(it)))
+        }
+        CustomizationSlider(stringResource(R.string.width), stringResource(R.string.dp_value, p.dockWidth.toInt()), p.dockWidth, 56f..MAX_DOCK_WIDTH, LayoutPreset().dockWidth, peek = true) { model.setPreset(screen, p.copy(dockWidth = it)) }
         CustomizationSlider(stringResource(R.string.space_between_dock_apps), stringResource(R.string.dp_value, p.dockSpacing.toInt()), p.dockSpacing, 0f..24f, 0f, peek = true) { model.setPreset(screen, p.copy(dockSpacing = it)) }
-        if (p.dockPlacement != DockPlacement.BOTTOM) SettingsSwitch(stringResource(R.string.align_dock_with_app_rows), p.dockAlignToGrid, { model.setPreset(screen, p.copy(dockAlignToGrid = it)) })
-        if (!p.dockAlignToGrid && p.dockPlacement != DockPlacement.BOTTOM) CustomizationSlider(stringResource(R.string.dock_height), "${(p.dockPosition * 100).toInt()}%", p.dockPosition, 0f..1f,
+        if (p.dockPlacement != DockPlacement.BOTTOM) SettingsSwitch(stringResource(R.string.center_dock_on_the_side), p.dockCentered, { model.setPreset(screen, p.copy(dockCentered = it)) })
+        if (p.dockPlacement != DockPlacement.BOTTOM && !p.dockCentered) SettingsSwitch(stringResource(R.string.align_dock_with_app_rows), p.dockAlignToGrid, { model.setPreset(screen, p.copy(dockAlignToGrid = it)) })
+        if (!p.dockAlignToGrid && !p.dockCentered && p.dockPlacement != DockPlacement.BOTTOM) CustomizationSlider(stringResource(R.string.dock_height), "${(p.dockPosition * 100).toInt()}%", p.dockPosition, 0f..1f,
             LayoutPreset().dockPosition, peek = true) { model.setPreset(screen, p.copy(dockPosition = it)) }
         CardNote(when (p.dockPlacement) {
             DockPlacement.AUTOMATIC -> if (wide) stringResource(R.string.the_dock_stays_on_the_side_bar_and_moves) else stringResource(R.string.the_dock_stays_on_the_side_bar)

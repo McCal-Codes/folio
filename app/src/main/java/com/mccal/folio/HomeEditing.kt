@@ -136,9 +136,9 @@ sealed interface DropTarget {
     data object Remove : DropTarget
 }
 
-fun canPlaceInDock(layout: HomeLayout, id: String): Boolean =
+fun canPlaceInDock(layout: HomeLayout, id: String, capacity: Int = STANDARD_DOCK_SLOTS): Boolean =
     id.isNotBlank() && !isReservedFolderId(id) && layout.folders.none { id in it.appIds } &&
-        (id in layout.dock || layout.dock.any { it == null } || layout.dock.size < MAX_DOCK_SLOTS)
+        (id in layout.dock || layout.dock.any { it == null } || layout.dock.size < capacity)
 
 fun WidgetPlacement.coveredIndices(): Set<Int> {
     if (page < -1) return emptySet()
@@ -180,7 +180,7 @@ fun widgetCandidate(layout: HomeLayout, slot: Int, targetIndex: Int, spanX: Int,
  * Moves use insertion order and transfer shortcuts between Home and the dock. Apps pushed along skip cells in rows a page
  * doesn't show with [appRows] app rows (the dragged app's own cell and the target are always usable: they're on screen).
  */
-fun dropApp(layout: HomeLayout, id: String, target: DropTarget, appRows: Int = MAX_APP_ROWS): HomeLayout {
+fun dropApp(layout: HomeLayout, id: String, target: DropTarget, appRows: Int = MAX_APP_ROWS, dockCapacity: Int = STANDARD_DOCK_SLOTS): HomeLayout {
     if (id.isBlank() || layout.folders.any { id in it.appIds }) return layout
     return when (target) {
         is DropTarget.Home -> {
@@ -260,8 +260,8 @@ fun dropApp(layout: HomeLayout, id: String, target: DropTarget, appRows: Int = M
         is DropTarget.Dock -> {
             // The dock grows as apps are dragged in: when it has room to, one open place past its end takes an app, and a
             // full dock makes room for a drop onto an app rather than turning it away.
-            val grows = layout.dock.size < MAX_DOCK_SLOTS
-            if (target.index !in 0..(if (grows) layout.dock.size else layout.dock.lastIndex) || !canPlaceInDock(layout, id)) return layout
+            val grows = layout.dock.size < dockCapacity
+            if (target.index !in 0..(if (grows) layout.dock.size else layout.dock.lastIndex) || !canPlaceInDock(layout, id, dockCapacity)) return layout
             val dock = layout.dock.toMutableList()
             val source = dock.indexOf(id)
             dock.indices.filter { it != source && dock[it] == id }.forEach { dock[it] = null }
