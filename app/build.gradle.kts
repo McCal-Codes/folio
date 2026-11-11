@@ -158,7 +158,8 @@ android {
         versionCode = folioVersion.substringBefore('-').split('.').map(String::toInt).let { parts ->
             require(parts.size in 3..4) { "folioVersion needs MAJOR.MINOR.PATCH, and may add .HOTFIX: was $folioVersion" }
             val hotfix = parts.getOrElse(3) { 0 }
-            require(hotfix in 1..9 || parts.size == 3) { "the hotfix digit runs 1 to 9: was $folioVersion" }
+            // 9 is reserved for a rollback build (REL-34), so a hotfix runs 1 to 8.
+            require(hotfix in 1..8 || parts.size == 3) { "the hotfix digit runs 1 to 8: was $folioVersion" }
             (parts[0] * 10000 + parts[1] * 100 + parts[2]) * 10 + hotfix
         }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

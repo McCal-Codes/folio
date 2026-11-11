@@ -434,7 +434,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     }
                 }
                 CustomizationPage.HOME -> {
-                    HomeLayoutSettings(state, wide, { wide = it }, upright, { upright = it }, model, homePage, onEditPins, onWidget, onAddWidget, onRemoveWidget)
+                    HomeLayoutSettings(state, wide, { wide = it }, upright, { upright = it }, model, homePage, onEditPins)
                     SettingsCard(stringResource(R.string.folders)) {
                         IosMenuRow(stringResource(R.string.columns), listOf(0 to stringResource(R.string.automatic), 3 to "3", 4 to "4"), state.folderColumns, model::setFolderColumns, tag = "folder-columns")
                         IosMenuRow(stringResource(R.string.folder_background), FolderBackground.entries.map { it to stringResource(it.label) }, state.folderBackground, model::setFolderBackground, tag = "folder-background")
@@ -1125,8 +1125,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     }
                 }
                 CustomizationPage.TWEAK_LIBRARY -> TweakLibraryPage(state, model) { tweakId = it.id; onPage(CustomizationPage.LIBRARY_TWEAK) }
-                CustomizationPage.SOFTWARE_UPDATE -> SoftwareUpdatePage { onPage(CustomizationPage.SUPPORTER) }
-                CustomizationPage.SUPPORTER -> SupporterPage()
+                CustomizationPage.SOFTWARE_UPDATE -> SoftwareUpdatePage(onBackup = onSaveLayoutToFolder) { onPage(CustomizationPage.SUPPORTER) }
+                CustomizationPage.SUPPORTER -> SupporterPage(onSoftwareUpdate = { onPage(CustomizationPage.SOFTWARE_UPDATE) })
                 CustomizationPage.SYSTEM_BRIDGE -> SystemBridgePage()
                 // The model's apps, not the sheet's state: Home's state is disguised while Screenshot Mode is on.
                 CustomizationPage.SCREENSHOT_SWAP -> ScreenshotSwapPage(model.state.collectAsState().value.apps)
@@ -1671,6 +1671,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.also_set_as_phone_wallpaper to CustomizationPage.WALLPAPER,
     R.string.change_android_wallpaper to CustomizationPage.WALLPAPER,
     R.string.check_for_updates to CustomizationPage.SOFTWARE_UPDATE,
+    R.string.rollback_show to CustomizationPage.SOFTWARE_UPDATE,
     R.string.import_theme to CustomizationPage.THEMES,
     R.string.save_current_look_as_theme to CustomizationPage.THEMES,
     R.string.market to CustomizationPage.TWEAKS,
@@ -3070,8 +3071,7 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
 }
 
 @Composable private fun HomeLayoutSettings(state: LauncherState, wide: Boolean, onWide: (Boolean) -> Unit, upright: Boolean, onUpright: (Boolean) -> Unit,
-    model: LauncherModel, homePage: Int, onEditPins: () -> Unit, onWidget: (Int) -> Unit,
-    onAddWidget: (Int) -> Unit, onRemoveWidget: (Int) -> Unit) {
+    model: LauncherModel, homePage: Int, onEditPins: () -> Unit) {
     val screen = if (!wide) LayoutScreen.COVER else if (upright && state.portrait != null) LayoutScreen.INNER_UPRIGHT else LayoutScreen.INNER
     val p = state.presetFor(screen)
     IosSegmented(listOf(false to stringResource(R.string.cover), true to stringResource(R.string.inner)), wide, onWide, Modifier.padding(vertical = FolioSpace.TINY.dp), tag = "layout-screen")
@@ -3166,21 +3166,6 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
         }
     }
     CardNote(stringResource(R.string.changes_how_icons_look_on_one_page_widge), Modifier.padding(horizontal = FolioSpace.TINY.dp))
-    SheetGroupLabel(stringResource(R.string.widgets_page_number, homePage + 1))
-    SheetGroup {
-        state.widgetPlacements.filter { it.page == homePage || (wide && it.page == -1) }.forEach { placement ->
-            val removeLabel = stringResource(if (placement.page == -1) R.string.remove_widget_from_unfolded_only_page else R.string.remove_widget)
-            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(start = FolioSpace.LARGE.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(if (placement.page == -1) stringResource(R.string.unfolded_only_page) else stringResource(R.string.widget_size_row, placement.spanX, placement.spanY, placement.row + 1), Modifier.weight(1f),
-                    color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.BODY.sp)
-                TextButton(onClick = { onWidget(placement.slot) }) { Text(stringResource(R.string.replace)) }
-                IconButton(onClick = { onRemoveWidget(placement.slot) }, modifier = Modifier.semantics { contentDescription = removeLabel }) {
-                    Icon(Icons.Rounded.RemoveCircle, null, tint = FolioColors.Red) }
-            }
-            MenuDivider()
-        }
-        IosActionRow(stringResource(R.string.add_widget_to_this_page), onClick = { onAddWidget(homePage) })
-    }
 }
 
 /** Keeps Android's pop-up and Folio's island message card from showing for the same message. */
@@ -3568,7 +3553,7 @@ internal fun layoutSnapshotsShown(layoutHistory: Boolean, layoutDamaged: Boolean
 }
 
 /** Settings › Software Update, laid out like iOS: the version, one clear action, and automatic updates. */
-@Composable private fun SoftwareUpdatePage(onSupporter: () -> Unit = {}) {
+@Composable private fun SoftwareUpdatePage(onBackup: (String) -> Unit = {}, onSupporter: () -> Unit = {}) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val status by SoftwareUpdate.status.collectAsState()
     val betaNote by SoftwareUpdate.betaNote.collectAsState()
@@ -3600,9 +3585,13 @@ internal fun layoutSnapshotsShown(layoutHistory: Boolean, layoutDamaged: Boolean
             }
         }
     }
-    // When a note explains why betas aren't arriving, the fix is on the Supporter page, so put the way there beside it.
-    if (supported && SoftwareUpdate.noteNeedsSupporter(betaNote) && status == SoftwareUpdate.Status.UpToDate)
-        SheetGroup { IosActionRow(stringResource(R.string.supporter), "update-open-supporter") { onSupporter() } }
+    // Where this phone stands on betas, with the way to the Supporter page, where every fix for it lives.
+    if (supported && Supporter.available(context)) {
+        val access = remember(status, betaNote) { betaAccessNow(context) }
+        SheetGroup {
+            TweakRow(Icons.Rounded.Redeem, FolioColors.Value.Purple, stringResource(R.string.supporter), "update-open-supporter", stringResource(access.short)) { onSupporter() }
+        }
+    }
     if (!supported) return
     val release = when (val s = status) {
         is SoftwareUpdate.Status.Available -> s.release
@@ -3647,7 +3636,44 @@ internal fun layoutSnapshotsShown(layoutHistory: Boolean, layoutDamaged: Boolean
             BetaTeaserCard()
         }
     }
+    OlderVersions(onBackup)
     CardNote(stringResource(R.string.every_update_is_checked_against_its_publ), Modifier.padding(horizontal = FolioSpace.LARGE.dp))
+}
+
+/** Software Update › Older versions: going back is a rollback build under a higher versionCode, after an offer to back up. */
+@Composable private fun OlderVersions(onBackup: (String) -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val found by SoftwareUpdate.rollbacks.collectAsState()
+    val status by SoftwareUpdate.status.collectAsState()
+    var confirming by remember { mutableStateOf<SoftwareUpdate.Release?>(null) }
+    SettingsCard(stringResource(R.string.rollback_card)) {
+        val list = found
+        if (list == null) IosActionRow(stringResource(R.string.rollback_show), "update-older-show") { SoftwareUpdate.startRollbackList(context) }
+        else if (list.isEmpty()) CardNote(stringResource(R.string.rollback_none))
+        else list.forEach { r ->
+            IosActionRow(stringResource(R.string.folio_version, SoftwareUpdate.rollbackBase(r.version)), "update-older-${SoftwareUpdate.rollbackBase(r.version)}",
+                enabled = status !is SoftwareUpdate.Status.Downloading && status != SoftwareUpdate.Status.Installing) { confirming = r }
+        }
+        CardNote(stringResource(R.string.rollback_note))
+    }
+    confirming?.let { r ->
+        val version = SoftwareUpdate.rollbackBase(r.version)
+        androidx.compose.material3.AlertDialog(onDismissRequest = { confirming = null },
+            title = { Text(stringResource(R.string.rollback_title, version)) },
+            text = { Text(stringResource(R.string.rollback_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    onBackup(context.getString(R.string.rollback_backup_name, SoftwareUpdate.installedVersion(context)))
+                    SoftwareUpdate.startRollback(context, r); confirming = null
+                }) { Text(stringResource(R.string.rollback_backup_go)) }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = { confirming = null }) { Text(stringResource(R.string.cancel)) }
+                    TextButton(onClick = { SoftwareUpdate.startRollback(context, r); confirming = null }) { Text(stringResource(R.string.rollback_go)) }
+                }
+            })
+    }
 }
 
 /** The available update, like iOS's: version, size, the release notes, progress, and Update Now / Update Tonight. */

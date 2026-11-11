@@ -37,15 +37,6 @@ class SoftwareUpdateTest {
         assertEquals(R.string.beta_note_code_ended, SoftwareUpdate.betaNoteFor(SoftwareUpdate.CodeStanding.ENDED, true, true, false, false))
     }
 
-    @Test fun `the Supporter button shows only for notes the Supporter page can fix`() {
-        assertFalse(SoftwareUpdate.noteNeedsSupporter(null))
-        assertFalse("a switch on the update page itself", SoftwareUpdate.noteNeedsSupporter(R.string.beta_note_updates_off))
-        assertFalse("a server problem, not the person's", SoftwareUpdate.noteNeedsSupporter(R.string.beta_note_unreachable))
-        for (note in listOf(R.string.beta_note_code_invalid, R.string.beta_note_code_ended,
-            R.string.beta_note_early_access_off, R.string.beta_note_refused))
-            assertTrue(SoftwareUpdate.noteNeedsSupporter(note))
-    }
-
     @Test fun `a refusal from the beta server is told apart from the server being out of reach`() {
         val w = SoftwareUpdate.CodeStanding.WORKING
         assertEquals(R.string.beta_note_refused, SoftwareUpdate.betaNoteFor(w, true, true, lookupFailed = true, refused = true))

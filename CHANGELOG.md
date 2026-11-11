@@ -8,6 +8,8 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.7.0] - Unreleased
 
 ### Added
+- **Go back to an older version:** Software Update lists older versions that were rebuilt to install over this one. Folio offers to save a backup first and keeps your apps and data. After going back, updates resume with the next feature release.
+- **Beta access at a glance:** Settings > Supporter has a Beta access card that says where your phone stands on betas, whether that is no code, a code that ended or is not recognized, a code without beta access, Early access off, or Beta Updates off, with the way to fix it and a link to Software Update. Software Update has a matching Supporter row that opens it. Both read the same status. The Korean and Chinese text is machine translated.
 - **Dock size:** Settings > Home Screen & Dock > Dock > Size makes the dock's apps smaller or larger, 80% to 160%, and widens the dock with them. A larger size grows only as far as the dock has room, so a small phone never overflows and a tablet gets the most. 100% is the dock as it was. The Korean and Chinese text is machine translated.
 - **More dock places on tall phones:** the dock holds up to six apps as before, and a tall window, about 780 dp or more, holds seven or eight. Dragging an app to the end of a full dock opens another place for as long as the window has room. Short windows and the cover screen keep six.
 - **Center the dock on the side:** Settings > Home Screen & Dock > Dock > Center on the side puts the Side Bar dock in the middle of the free height beside Home, with the same space above and below, on any screen height. On a window too short for every place, the dock shows only the places that fit whole, never half an icon, and keeps the rest saved for a taller screen. The Korean and Chinese text is machine translated.
@@ -50,6 +52,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Page effects with more curves:** a page effect package can set curves for more channels (the 0.7.0 format), listed as tweaks.pageEffects.channels.
 
 ### Changed
+- Widgets are managed from Edit on Home only. The Widgets list in Home Screen & Dock settings is gone.
 - **Swiping a panel away follows your finger:** Notification Center and Control Center move up with your finger when you swipe up and close when you let go, if you went far enough or flicked. A short pull springs back. They used to close in one jump partway through the swipe.
 - **Control Center controls settle in:** when Control Center opens, the controls on its first page fade in and rise a few points one after another, 20 ms apart, instead of arriving all at once. It does not run while you are editing controls or with Reduce Motion on.
 - **What to Test for the 0.7.0 betas:** the list in Folio Dev and the betas now puts the new StandBy, panel, pull tab, Market and Spotlight checks first, and the StandBy styles steps match the twelve clock looks.
