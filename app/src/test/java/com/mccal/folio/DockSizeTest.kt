@@ -88,8 +88,8 @@ class DockShownWholeTest {
 
     @Test fun `a side bar too short for four places ends on a whole place`() {
         val side = LayoutPreset(dockPlacement = DockPlacement.SIDE)
-        for (h in listOf(300f, 320f, 360f, 400f)) {
-            val g = homeGeometry(780f, h, side, true, statusHeight = 160f)
+        for (h in listOf(200f, 226f, 250f, 274f, 300f, 320f, 360f, 400f)) {
+            val g = homeGeometry(686f, h, side, true, statusHeight = 160f)
             val places = (g.dockHeight - 16f) / 48f
             assertEquals("$h: ${g.dockHeight}", Math.round(places).toFloat(), places, .01f)
         }
