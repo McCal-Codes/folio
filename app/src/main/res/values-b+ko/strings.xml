@@ -1329,7 +1329,7 @@
     <string name="settings_keywords_rounded_screen_corners">모서리 둥글게 아이폰 iPhone Duo 화면 가장자리</string>
     <string name="settings_keywords_glass">글래스 반투명 흐림 윤곽선 테두리 투명도 위젯 사이드바 색조</string>
     <string name="settings_keywords_folders">폴더 열 격자 배경 글래스 불투명 투명</string>
-    <string name="settings_keywords_software_update">소프트웨어 업데이트 업그레이드 새 버전 다운로드 설치 GitHub 자동</string>
+    <string name="settings_keywords_software_update">소프트웨어 업데이트 업그레이드 새 버전 다운로드 설치 GitHub 자동 롤백 이전 버전 다운그레이드 되돌리기</string>
     <string name="settings_keywords_tweak_library">트윅 보관함 받기 설치 제거 패키지 Sileo Cydia</string>
     <string name="settings_animation_speed">애니메이션 속도</string>
     <string name="settings_keywords_animation_speed">애니메이션 동작 속도 빠르게 느리게 느긋하게</string>

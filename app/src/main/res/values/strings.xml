@@ -1351,7 +1351,7 @@
     <string name="settings_keywords_rounded_screen_corners">corners rounded iphone duo screen round edges</string>
     <string name="settings_keywords_glass">glass frost blur outline border transparency widgets side bar tint</string>
     <string name="settings_keywords_folders">folder columns grid background glass solid clear</string>
-    <string name="settings_keywords_software_update">software update upgrade new version download install github automatic</string>
+    <string name="settings_keywords_software_update">software update upgrade new version download install github automatic rollback roll back older version previous downgrade go back</string>
     <string name="settings_keywords_tweak_library">tweak library get install remove packages sileo cydia</string>
     <string name="settings_animation_speed">Animation speed</string>
     <string name="settings_keywords_animation_speed">animation motion speed fast slow snappy relaxed</string>
