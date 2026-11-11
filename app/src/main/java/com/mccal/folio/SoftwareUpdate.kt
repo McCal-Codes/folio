@@ -352,23 +352,34 @@ internal object SoftwareUpdate {
         return (versionCodeOf(newest) ?: return false) > installedCode
     }
 
-    /** The older versions found by the last look, empty until [startRollbackList] has run. */
+    /** The older versions found by the last look, null until [startRollbackList] has run. */
     val rollbacks = MutableStateFlow<List<Release>?>(null)
+    /** True when the last look could not reach the release list, so "none available" is not claimed. */
+    val rollbackLookupFailed = MutableStateFlow(false)
+
+    /** Only a normal update may be installed by the idle job: a rollback is installed only when you ask for it. */
+    internal fun idleInstallable(release: Release) = !release.rollback
 
     fun startRollbackList(context: Context) {
         val app = context.applicationContext
         scope.launch {
-            rollbacks.value = withContext(Dispatchers.IO) {
+            rollbackLookupFailed.value = false
+            val found = withContext(Dispatchers.IO) {
                 runCatching {
                     val a = org.json.JSONArray(get(RECENT))
                     rollbackOptions((0 until a.length()).map(a::getJSONObject), installedVersion(app))
-                }.getOrDefault(emptyList())
+                }.getOrNull()
             }
+            if (found == null) rollbackLookupFailed.value = true else rollbacks.value = found
         }
     }
 
     /** Goes back to [release]. The build's versionCode keeps the version you left from being offered until the next family. */
-    fun startRollback(context: Context, release: Release) = startInstall(context, release)
+    fun startRollback(context: Context, release: Release) {
+        // An update waiting for the idle job must not install in place of, or after, the version you chose.
+        SoftwareUpdateJob.cancelInstall(context)
+        startInstall(context, release)
+    }
 
     private fun installedCode(context: Context): Long =
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode }.getOrDefault(0L)
@@ -412,6 +423,7 @@ internal object SoftwareUpdate {
         if (!busy.compareAndSet(false, true)) return
         try {
             val ready = readyApk(context) ?: return
+            if (!idleInstallable(ready.first)) return
             installReady(context, ready.first, ready.second, automatic = true)
         } finally { busy.set(false) }
     }

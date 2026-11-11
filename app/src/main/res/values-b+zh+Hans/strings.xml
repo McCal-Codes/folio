@@ -2527,4 +2527,6 @@
     <string name="dock_more_apps_note">程序坞不会超出屏幕。屏幕较高时显示更多位置，较矮时会缩小间距并显示较少位置。Folio 会保留你填入的每个位置。</string>
     <string name="fit_more_dock_apps">程序坞容纳更多应用</string>
     <string name="fit_more_dock_apps_note">程序坞的位置和图标会缩小，以便在较矮的屏幕上放下更多应用。位置会小于 Android 建议的 48 dp 触控尺寸，可能更难点按。</string>
+    <string name="rollback_lookup_failed">无法查找旧版本。请检查网络连接。</string>
+    <string name="rollback_try_again">重试</string>
 </resources>

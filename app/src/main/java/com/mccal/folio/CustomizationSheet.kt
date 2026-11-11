@@ -1673,6 +1673,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.change_android_wallpaper to CustomizationPage.WALLPAPER,
     R.string.check_for_updates to CustomizationPage.SOFTWARE_UPDATE,
     R.string.rollback_show to CustomizationPage.SOFTWARE_UPDATE,
+    R.string.rollback_try_again to CustomizationPage.SOFTWARE_UPDATE,
     R.string.import_theme to CustomizationPage.THEMES,
     R.string.save_current_look_as_theme to CustomizationPage.THEMES,
     R.string.market to CustomizationPage.TWEAKS,
@@ -3648,11 +3649,16 @@ internal fun layoutSnapshotsShown(layoutHistory: Boolean, layoutDamaged: Boolean
 @Composable private fun OlderVersions(onBackup: (String) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val found by SoftwareUpdate.rollbacks.collectAsState()
+    val failed by SoftwareUpdate.rollbackLookupFailed.collectAsState()
     val status by SoftwareUpdate.status.collectAsState()
     var confirming by remember { mutableStateOf<SoftwareUpdate.Release?>(null) }
     SettingsCard(stringResource(R.string.rollback_card)) {
         val list = found
-        if (list == null) IosActionRow(stringResource(R.string.rollback_show), "update-older-show") { SoftwareUpdate.startRollbackList(context) }
+        if (failed) {
+            CardNote(stringResource(R.string.rollback_lookup_failed))
+            IosActionRow(stringResource(R.string.rollback_try_again), "update-older-retry") { SoftwareUpdate.startRollbackList(context) }
+        }
+        else if (list == null) IosActionRow(stringResource(R.string.rollback_show), "update-older-show") { SoftwareUpdate.startRollbackList(context) }
         else if (list.isEmpty()) CardNote(stringResource(R.string.rollback_none))
         else list.forEach { r ->
             IosActionRow(stringResource(R.string.folio_version, SoftwareUpdate.rollbackBase(r.version)), "update-older-${SoftwareUpdate.rollbackBase(r.version)}",

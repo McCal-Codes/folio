@@ -2593,4 +2593,6 @@
     <string name="dock_more_apps_note">The dock never runs off the screen. A taller screen shows more places, and a shorter one shows fewer with the spacing tightened. Folio keeps every place you fill.</string>
     <string name="fit_more_dock_apps">Fit more dock apps</string>
     <string name="fit_more_dock_apps_note">Dock places and icons shrink so more apps fit on a short screen. Places get smaller than the 48 dp touch size Android recommends, so they can be harder to tap.</string>
+    <string name="rollback_lookup_failed">Couldn\'t look for older versions. Check your connection.</string>
+    <string name="rollback_try_again">Try again</string>
 </resources>
