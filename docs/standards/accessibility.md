@@ -9,6 +9,8 @@ guidelines, WCAG 2.2 AA and Apple's HIG.
 
 - **A11Y-1 MUST** give every interactive element a hit area of at least 48 × 48dp. The glyph can be smaller; grow the
   hit area with `minimumInteractiveComponentSize()` or padding.
+  One exception, and only when the person turns it on: Dock › Fit more dock apps lets a Side Bar dock place measure 40 dp tall,
+  and says in the settings that places get harder to tap (McCal, 11 Nov 2026). It is off by default.
 - **A11Y-2 MUST** keep hit areas from overlapping, and stable while their element moves ([DYN-19](dynamic-ui.md)).
 
 ### Screen readers
