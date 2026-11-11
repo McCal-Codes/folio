@@ -63,7 +63,9 @@ internal object SoftwareUpdate {
 
     data class Release(val version: String, val apkUrl: String, val sumsUrl: String?, val notesUrl: String,
         /** The release notes from GitHub (Markdown), and the APK's size in bytes. */
-        val notes: String = "", val size: Long = 0L, val prerelease: Boolean = false)
+        val notes: String = "", val size: Long = 0L, val prerelease: Boolean = false,
+        /** An older version rebuilt under a higher versionCode (REL-34), offered only from "Older versions". */
+        val rollback: Boolean = false)
 
     /**
      * Like iOS Automatic Updates. Automatic (the default) checks daily, downloads, and installs when the phone is idle,
@@ -85,13 +87,53 @@ internal object SoftwareUpdate {
 
     val status = MutableStateFlow<Status>(Status.Idle)
 
+    /**
+     * Why a supporter's last check could not look for betas, as a string resource, or null when it did (or the phone
+     * has no supporter code). Without it a lapsed code, the Early access switch or an unreachable beta server all
+     * looked like "Folio is up to date".
+     */
+    val betaNote = MutableStateFlow<Int?>(null)
+
+    /** A stored supporter code is [NONE] (nothing stored), [INVALID] (not signed by Folio or withdrawn), [ENDED] or [WORKING]. */
+    internal enum class CodeStanding { NONE, INVALID, ENDED, WORKING }
+
+    internal fun codeStanding(context: Context): CodeStanding {
+        val text = Supporter.storedText(context) ?: return CodeStanding.NONE
+        if (Supporter.code(context) != null) return CodeStanding.WORKING
+        // An ended code still carries a good signature, which is what tells "ran out" from "not a Folio code".
+        val signed = BetaCodes.verify(text, Supporter.keys(context), java.time.LocalDate.of(1970, 1, 2), BetaKeys.WITHDRAWN) is BetaCodes.Result.Valid
+        return if (signed) CodeStanding.ENDED else CodeStanding.INVALID
+    }
+
+    /**
+     * What to tell a supporter whose check did not include betas. [code]: where the stored code stands, see
+     * [CodeStanding]. [earlyAccess]: the Early access switch is on. [betaUpdates]: Beta Updates is on. [lookupFailed]:
+     * the beta server was asked and did not answer. [refused]: it answered, and would not take the code.
+     */
+    internal fun betaNoteFor(code: CodeStanding, earlyAccess: Boolean, betaUpdates: Boolean, lookupFailed: Boolean,
+        refused: Boolean = false): Int? = when {
+        code == CodeStanding.NONE -> null
+        code == CodeStanding.INVALID -> R.string.beta_note_code_invalid
+        code == CodeStanding.ENDED -> R.string.beta_note_code_ended
+        !earlyAccess -> R.string.beta_note_early_access_off
+        !betaUpdates -> R.string.beta_note_updates_off
+        refused -> R.string.beta_note_refused
+        lookupFailed -> R.string.beta_note_unreachable
+        else -> null
+    }
+
     /** Update work outlives the Settings page and the activity, and only one check or install runs at a time. */
     private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.IO)
     private val busy = java.util.concurrent.atomic.AtomicBoolean(false)
 
     fun startCheck(context: Context) = launchExclusive { check(context.applicationContext) }
     fun startInstall(context: Context, release: Release) = launchExclusive { downloadAndInstall(context.applicationContext, release) }
-    fun startCheckIfDue(context: Context) = launchExclusive { checkIfDue(context.applicationContext) }
+    fun startCheckIfDue(context: Context) {
+        // The supporter reminder is local and cheap, and Manual mode has no daily job, so it also runs when Folio opens.
+        val app = context.applicationContext
+        scope.launch { runCatching { SupporterReminder.check(app) } }
+        launchExclusive { checkIfDue(app) }
+    }
 
     private fun launchExclusive(block: suspend () -> Unit) {
         if (!busy.compareAndSet(false, true)) return
@@ -271,6 +313,66 @@ internal object SoftwareUpdate {
         return code?.trim().takeIf { url.startsWith("$address/") }
     }
 
+    /** The newest release with an APK among [candidates], drafts and rollback builds left out, or null when none has one. */
+    internal fun newestOf(candidates: List<JSONObject>): Release? =
+        candidates.filter { !it.optBoolean("draft") }.mapNotNull(::releaseOf).filter { !it.rollback }
+            .reduceOrNull { a, b -> if (isNewer(b.version, a.version)) b else a }
+
+    /** A rollback build is tagged like v0.6.9-rollback.1: the old version's code under a higher versionCode (REL-34). */
+    internal fun isRollbackVersion(version: String) = "-rollback." in version
+    internal fun rollbackBase(version: String) = version.removePrefix("v").substringBefore("-rollback.")
+
+    /**
+     * The older versions this phone can go back to: rollback builds whose version is below the one installed, newest
+     * first, one per version (the highest rollback number wins).
+     */
+    internal fun rollbackOptions(candidates: List<JSONObject>, installed: String): List<Release> {
+        val here = rollbackBase(installed)
+        return candidates.filter { !it.optBoolean("draft") }.mapNotNull(::releaseOf).filter { it.rollback && isNewer(here, rollbackBase(it.version)) }
+            .groupBy { rollbackBase(it.version) }
+            .map { (_, builds) -> builds.maxBy { it.version.substringAfter("-rollback.").toIntOrNull() ?: 0 } }
+            .sortedWith { a, b -> if (isNewer(rollbackBase(a.version), rollbackBase(b.version))) -1 else 1 }
+    }
+
+    /** The versionCode the build gives a version name (see app/build.gradle.kts), or null when the name is not MAJOR.MINOR.PATCH[.HOTFIX]. */
+    internal fun versionCodeOf(version: String): Int? {
+        val parts = rollbackBase(version).substringBefore('-').split('.').map { it.toIntOrNull() ?: return null }
+        if (parts.size !in 3..4) return null
+        return (parts[0] * 10000 + parts[1] * 100 + parts[2]) * 10 + parts.getOrElse(3) { 0 }
+    }
+
+    /**
+     * Whether a check should offer [newest]. It must be newer than what is installed. After a rollback it must also carry
+     * a higher versionCode than the rollback build, which sits at the top of its release family (REL-34): a hotfix or the
+     * final release of that family would be refused by Android, so Folio waits for the next family instead.
+     */
+    internal fun offerable(newest: String, installed: String, installedCode: Long): Boolean {
+        if (!isNewer(newest, rollbackBase(installed))) return false
+        if (!isRollbackVersion(installed)) return true
+        return (versionCodeOf(newest) ?: return false) > installedCode
+    }
+
+    /** The older versions found by the last look, empty until [startRollbackList] has run. */
+    val rollbacks = MutableStateFlow<List<Release>?>(null)
+
+    fun startRollbackList(context: Context) {
+        val app = context.applicationContext
+        scope.launch {
+            rollbacks.value = withContext(Dispatchers.IO) {
+                runCatching {
+                    val a = org.json.JSONArray(get(RECENT))
+                    rollbackOptions((0 until a.length()).map(a::getJSONObject), installedVersion(app))
+                }.getOrDefault(emptyList())
+            }
+        }
+    }
+
+    /** Goes back to [release]. The build's versionCode keeps the version you left from being offered until the next family. */
+    fun startRollback(context: Context, release: Release) = startInstall(context, release)
+
+    private fun installedCode(context: Context): Long =
+        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode }.getOrDefault(0L)
+
     /** A published release with an APK, or null. */
     private fun releaseOf(json: JSONObject): Release? {
         val assets = json.optJSONArray("assets") ?: return null
@@ -279,7 +381,8 @@ internal object SoftwareUpdate {
         val apk = asset { it.endsWith(".apk") } ?: return null
         val size = (0 until assets.length()).map { assets.getJSONObject(it) }.firstOrNull { it.getString("name").endsWith(".apk") }?.optLong("size") ?: 0L
         return Release(json.getString("tag_name").removePrefix("v"), apk, asset { it == "SHA256SUMS.txt" }, json.optString("html_url"),
-            notes = json.optString("body").take(20_000), size = size, prerelease = json.optBoolean("prerelease"))
+            notes = json.optString("body").take(20_000), size = size, prerelease = json.optBoolean("prerelease"),
+            rollback = isRollbackVersion(json.getString("tag_name")))
     }
 
     /** Called when Folio comes to the front and by the daily job: checks at most once a day unless Manual. */
@@ -299,6 +402,8 @@ internal object SoftwareUpdate {
 
     /** Run by the daily job, off the main thread. */
     internal suspend fun backgroundCheck(context: Context) {
+        // The supporter reminder rides on the daily job; it reads local state only and never touches the network.
+        runCatching { SupporterReminder.check(context) }
         if (busy.compareAndSet(false, true)) try { checkIfDue(context) } finally { busy.set(false) }
     }
 
@@ -320,8 +425,11 @@ internal object SoftwareUpdate {
     private suspend fun check(context: Context) {
         if (!supported(context)) return
         status.value = Status.Checking
+        betaNote.value = null
         status.value = withContext(Dispatchers.IO) {
             runCatching {
+                var lookupFailed = false
+                var refused = false
                 val list = { text: String -> org.json.JSONArray(text).let { a -> (0 until a.length()).map(a::getJSONObject) } }
                 // On the beta channel, betas and the public releases together: a supporter shouldn't be stranded on
                 // an old beta when a newer stable release goes out, and shouldn't miss a beta either. Betas come
@@ -329,7 +437,10 @@ internal object SoftwareUpdate {
                 // read, and the public releases carry on alone.
                 val candidates = if (betaChannel(context)) {
                     val brokered = betaSource(BETA_BROKER, brokerCode(context))
-                    val betas = brokered?.let { runCatching { list(get(it.first, it.second)) }.getOrNull() }
+                    val betas = brokered?.let {
+                        runCatching { list(get(it.first, it.second)) }.getOrElse { e -> if (e is BrokerRefused) refused = true; null }
+                    }
+                    lookupFailed = brokered != null && betas == null
                     val public = runCatching { list(get(RECENT)) }.getOrNull()
                     // Either may fail on its own; both failing is a failed check.
                     if (betas == null && public == null) error(context.getString(R.string.no_release_has_an_apk))
@@ -337,9 +448,10 @@ internal object SoftwareUpdate {
                 } else {
                     listOf(JSONObject(get(LATEST)))
                 }
-                val newest = candidates.filter { !it.optBoolean("draft") }.mapNotNull(::releaseOf)
-                    .reduceOrNull { a, b -> if (isNewer(b.version, a.version)) b else a } ?: error(context.getString(R.string.no_release_has_an_apk))
-                if (!isNewer(newest.version, installedVersion(context))) Status.UpToDate
+                val newest = newestOf(candidates) ?: error(context.getString(R.string.no_release_has_an_apk))
+                betaNote.value = betaNoteFor(codeStanding(context),
+                    Supporter.betaOn(context), betaChannel(context), lookupFailed, refused)
+                if (!offerable(newest.version, installedVersion(context), installedCode(context))) Status.UpToDate
                 else readyApk(context)?.takeIf { it.first.version == newest.version }?.let { Status.Ready(newest, tonight = false) }
                     ?: Status.Available(newest)
             }.getOrElse { Status.Failed(context.getString(R.string.couldn_t_check_for_updates_check_your_co)) }
@@ -371,9 +483,10 @@ internal object SoftwareUpdate {
                     require(expected != null && expected.equals(sha256(apk), ignoreCase = true)) { context.getString(R.string.the_download_didn_t_match_its_checksum) }
                 }
                 require(sameSigner(context, apk)) { context.getString(R.string.the_update_isn_t_signed_with_folio_s_key) }
+                require(!release.rollback || higherVersionCode(context, apk)) { context.getString(R.string.rollback_not_higher) }
                 check(apk.renameTo(File(dir, "Folio-${release.version}.apk"))) { context.getString(R.string.the_update_couldn_t_be_downloaded) }
                 File(dir, "release.json").writeText(JSONObject().put("version", release.version).put("notes", release.notes.take(4000))
-                    .put("notesUrl", release.notesUrl).toString())
+                    .put("notesUrl", release.notesUrl).put("rollback", release.rollback).toString())
             }
         }
         return result.fold({ status.value = Status.Ready(release, tonight = false); true },
@@ -386,8 +499,9 @@ internal object SoftwareUpdate {
         val info = JSONObject(File(dir, "release.json").readText())
         val version = info.getString("version")
         val apk = File(dir, "Folio-$version.apk").takeIf { it.exists() } ?: return null
-        if (!isNewer(version, installedVersion(context))) { dir.deleteRecursively(); return null }
-        Release(version, "", null, info.optString("notesUrl"), info.optString("notes")) to apk
+        val rollback = info.optBoolean("rollback")
+        if (!rollback && !isNewer(version, installedVersion(context))) { dir.deleteRecursively(); return null }
+        Release(version, "", null, info.optString("notesUrl"), info.optString("notes"), rollback = rollback) to apk
     }.getOrNull()
 
     fun installReadyNow(context: Context) = launchExclusive {
@@ -423,6 +537,24 @@ internal object SoftwareUpdate {
         status.value = if (release != null && readyApk(context) != null) Status.Ready(release, tonight = false) else Status.Idle
     }
 
+    /** The newest beta newer than this one, and what it brings: shown to someone with no supporter code, so they can see what a coffee gets them. */
+    data class BetaTeaser(val version: String, val highlights: List<String>, val more: Int)
+
+    /**
+     * Read from public places only, the tags and the notes in the open repository, so it needs no code and sends none.
+     * Null when no beta is newer than this phone's version, or when either place can't be reached.
+     */
+    suspend fun betaTeaser(context: Context): BetaTeaser? = withContext(Dispatchers.IO) {
+        runCatching {
+            val tags = org.json.JSONArray(get("https://api.github.com/repos/McCal-Codes/folio/tags?per_page=30"))
+            val newest = (0 until tags.length()).map { tags.getJSONObject(it).getString("name").removePrefix("v") }
+                .filter { "-beta." in it }.reduceOrNull { a, b -> if (isNewer(b, a)) b else a }
+            if (newest == null || !isNewer(newest, installedVersion(context))) return@runCatching null
+            val (shown, more) = betaHighlights(get("https://raw.githubusercontent.com/McCal-Codes/folio/main/docs/releases/$newest.md"))
+            if (shown.isEmpty()) null else BetaTeaser(newest, shown, more)
+        }.getOrNull()
+    }
+
     private fun get(url: String, code: String? = null): String {
         val c = URL(url).openConnection() as HttpURLConnection
         c.setRequestProperty("Accept", "application/vnd.github+json")
@@ -430,8 +562,13 @@ internal object SoftwareUpdate {
         // The supporter code is the only credential the broker wants, and it goes in a header rather than the address.
         if (code != null) c.setRequestProperty("Authorization", "Bearer $code") // english-only
         c.connectTimeout = 10_000; c.readTimeout = 15_000
+        // The broker answering "no" to a code is a different thing from not answering, and the person is told which.
+        if (code != null && c.responseCode in 400..499) { val status = c.responseCode; c.disconnect(); throw BrokerRefused(status) }
         return c.inputStream.bufferedReader().use { it.readText() }.also { c.disconnect() }
     }
+
+    /** The beta server understood the request and refused the supporter code (its [status] is a 4xx). */
+    private class BrokerRefused(val status: Int) : java.io.IOException("the beta server refused the code ($status)")
 
     /**
      * Opens [url] for reading. With a [code], it goes to the broker alone: the broker answers with a redirect to
@@ -483,6 +620,13 @@ internal object SoftwareUpdate {
     }
 
     @Suppress("DEPRECATION")
+    /** Android only installs over a copy with a lower versionCode, so a rollback build must carry a higher one. */
+    private fun higherVersionCode(context: Context, apk: File): Boolean = runCatching {
+        val pm = context.packageManager
+        val theirs = pm.getPackageArchiveInfo(apk.path, 0)?.longVersionCode ?: return false
+        theirs > pm.getPackageInfo(context.packageName, 0).longVersionCode
+    }.getOrDefault(false)
+
     private fun sameSigner(context: Context, apk: File): Boolean {
         val pm = context.packageManager
         val archive = pm.getPackageArchiveInfo(apk.path, PackageManager.GET_SIGNING_CERTIFICATES) ?: return false
@@ -589,4 +733,18 @@ class SoftwareUpdateJob : android.app.job.JobService() {
 
         fun cancelInstall(context: Context) { scheduler(context)?.cancel(INSTALL) }
     }
+}
+
+/**
+ * The feature lines of a beta's notes: the bullets under its "What's new" heading, with the Markdown taken out and
+ * each cut to a line's length, [limit] of them plus how many more there were.
+ */
+internal fun betaHighlights(markdown: String, limit: Int = 5): Pair<List<String>, Int> {
+    val lines = markdown.lines()
+    val start = lines.indexOfFirst { it.startsWith("## ") && it.contains("new", ignoreCase = true) }
+    if (start < 0) return emptyList<String>() to 0
+    val bullets = lines.drop(start + 1).takeWhile { !it.startsWith("## ") }.filter { it.startsWith("- ") }
+        .map { it.removePrefix("- ").replace("**", "").replace("`", "").trim() }
+        .map { if (it.length > 150) it.take(147).trimEnd() + "..." else it }
+    return bullets.take(limit) to maxOf(0, bullets.size - limit)
 }

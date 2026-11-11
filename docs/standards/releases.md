@@ -45,8 +45,14 @@ what they were testing. Every rule below is aimed at that shape of mistake.
   (REL-13). Nothing is ported, cherry-picked or rebuilt between the two. Docs, tools and tests may change in between,
   since nobody installs them. (Until 2 Oct 2026 this said "the same tree", which held a fix to a tool or a note back a
   whole release.)
-- **REL-4c** A `hotfix/x.y.z.n` branch from a tag is the last resort, only when a breaking migration is mid-flight on
-  `main`. It ships and merges back the same day.
+- **REL-4c** A `hotfix/x.y.z.n` branch from a tag is the last resort. It is allowed in two cases: a breaking migration
+  is mid-flight on `main`, or the bug is in the stable build's own update or supporter path, so only a new stable can
+  show the person what is wrong (0.6.9.1, 10 Nov 2026). The pull request says which, carries the `release-exception`
+  label, and the same fix goes on `main` for the next beta. It ships and merges back the same day.
+- **REL-4d MUST** merge a hotfix back through its own branch off `main` (`merge-back-x.y.z.n`), not by merging `main`
+  into the hotfix. The hotfix branch stays at the commit the tag names, and the merge-back gets CI, which GitHub does
+  not run on a pull request that conflicts. Keep `main`'s version. `CHANGELOG.md` has different line endings on `main`
+  and on a tag, so a hand merge conflicts on every line: take `main`'s file and insert the hotfix's section.
 - **REL-5 MUST** name branches after the change, never after the agent, the session or the tool. No AI attribution
   in branch names, commit messages, pull request text or code comments.
 - **REL-6 MUST** check [docs/in-flight.md](../in-flight.md), the other worktrees and the open pull requests before
@@ -70,8 +76,8 @@ what they were testing. Every rule below is aimed at that shape of mistake.
 - **REL-11 MUST** follow semver in `folioVersion`, and derive `versionCode` from it rather than writing it by hand,
   with REL-12's formula. Every new code must be larger than the last, whatever the formula was when the last one
   shipped.
-- **REL-12** A fix on top of a release is a four-part version, `x.y.z.n`, and `versionCode` leaves nine slots per
-  release for them: `(MAJOR * 10000 + MINOR * 100 + PATCH) * 10 + HOTFIX` ([ADR 0007](../adr/0007-release-trains.md)).
+- **REL-12** A fix on top of a release is a four-part version, `x.y.z.n`, and `versionCode` leaves eight slots per
+  release for them (digit 9 is a rollback build's, REL-34): `(MAJOR * 10000 + MINOR * 100 + PATCH) * 10 + HOTFIX` ([ADR 0007](../adr/0007-release-trains.md)).
   A fix release never has to consume the number a feature release wanted, which is what went wrong on 23 Sep 2026.
 - **REL-13 MUST** make the version bump its own commit, the last one before the tag, touching only the version, the
   changelog date, the roadmap's statuses for that release and its release doc.
@@ -98,8 +104,26 @@ what they were testing. Every rule below is aimed at that shape of mistake.
   version name, so `beta.1 < beta.2 < x.y.z`.
 - **REL-20 MUST** ship a beta first for anything that changes how Folio updates, installs or checks a supporter
   code, and let it sit with supporters for at least a day. Those paths cannot be tested any other way.
+- **REL-20a** A hotfix cannot wait a day in a beta, so for one that touches an update or supporter path REL-20 is met
+  by the same fix riding the next beta from `main`. Keep such a hotfix to what the person is told where it can be,
+  and name any change to what is checked or sent in the pull request.
 - **REL-21 SHOULD** say in the beta's notes what is worth trying, most-likely-broken first, and ask for the device,
   the screen and the version from Settings › What's New.
+
+### Updating
+
+- **REL-33 MUST** make an update or supporter check say why when it leaves something out. "Folio is up to date" is
+  only true when nothing was left out: an ended or unrecognized code, Early access or Beta Updates off, and a beta
+  server that refused or could not be reached each get their own line, and a test covers every outcome (0.6.9.1, where
+  all of them read as "up to date").
+- **REL-34** Going back to an older version is a roll-forward. Android refuses a lower `versionCode`, so the older
+  build is republished under a higher version (REL-16 still holds: the number means that one build), and the app
+  lists it under Software Update › Older versions, never as an update, after offering a backup. A rollback build takes the top `versionCode` of the
+  release family it is installed into (7009 in 0.7.x), so the hotfix digit runs 1 to 8 and 9 is reserved for it. It also
+  means a hotfix or the final release of that family cannot install over a rollback: Folio offers only a release with a
+  higher `versionCode`, which is the next family (`SoftwareUpdate.offerable`). The steps are in [the rollback runbook](../releases/rollback.md).
+- **REL-35 MUST** open each line under Added in the Unreleased changelog with a bold title of 40 characters or fewer: What's New
+  shows the title as the line. `WhatsNewTest` fails the build otherwise.
 
 ### What goes out beside a build
 

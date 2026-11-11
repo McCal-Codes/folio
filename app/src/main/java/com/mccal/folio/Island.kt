@@ -68,7 +68,9 @@ data class NotificationItem(val key: String, val packageName: String, val appLab
     /** From Android's ranking, for sections: how loud the channel is ([IMPORTANCE_UNKNOWN] when not ranked), and the flags below. */
     val importance: Int = IMPORTANCE_UNKNOWN, val conversation: Boolean = false, val ongoing: Boolean = false, val urgent: Boolean = false,
     /** For StandBy 2 notification dots and glow: accent color, lock-screen visibility, badge allowance, and DND/visual suppression. */
-    val color: Int? = null, val visibility: Int = Notification.VISIBILITY_PUBLIC, val canShowBadge: Boolean = true, val silenced: Boolean = false)
+    val color: Int? = null, val visibility: Int = Notification.VISIBILITY_PUBLIC, val canShowBadge: Boolean = true, val silenced: Boolean = false,
+    /** The profile it was posted for, null for the one Folio runs in: a Dual Messenger copy has the same package name as the original. */
+    val user: android.os.UserHandle? = null)
 
 /** A messaging app's notification channel and whether Android pops it up itself (importance HIGH or above). */
 data class MessageChannel(val packageName: String, val appLabel: String, val channelId: String, val channelName: String?, val importance: Int,
@@ -362,7 +364,7 @@ class IslandListenerService : NotificationListenerService() {
                 color = n.color.takeIf { it != Notification.COLOR_DEFAULT },
                 visibility = effectiveVisibility,
                 canShowBadge = !ranked || ranking.canShowBadge(),
-                silenced = silenced)
+                silenced = silenced, user = sbn.user)
         }
 
     /** Calls, alarms, timers and the like: never put in Quiet, whatever the channel's importance says. */

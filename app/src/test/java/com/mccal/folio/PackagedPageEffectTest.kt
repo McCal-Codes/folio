@@ -48,6 +48,30 @@ class PackagedPageEffectTest {
         assertTrue("nothing is chosen for the user", launcher.state.pageEffect == PageEffect.NONE)
     }
 
+    // The market module checks the channels' shape and hands them over as text; the app clamps and bakes them.
+    @Test fun `the host hands a package's channels to the engine`() {
+        val added = mutableListOf<PackagedPageEffect>()
+        val launcher = object : MarketLauncher {
+            override val state = LauncherState()
+            override fun installTweak(feature: TweakFeature) = Unit
+            override fun removeTweak(feature: TweakFeature) = Unit
+            override fun setFeatureScope(id: String, screen: FolioScreen, value: ScopeValue) = Unit
+            override fun applyTheme(theme: FolioTheme) = Unit
+            override fun applyArtBackground(art: Artwork, bytes: ByteArray, sha256: String) = ""
+            override fun restoreArtBackground(artId: String, snapshot: String) = Unit
+            override fun addPageEffect(effect: PackagedPageEffect) { added += effect }
+            override fun removePageEffect(id: String) = Unit
+        }
+        val channels = """{"translateY":{"keys":[{"at":1,"value":0.9}],"ease":"linear"},"pivotY":1.3}"""
+        MarketHost(launcher).apply(PackageChange.PageEffect("dev.example.stairs", "Stairs", 0f, "center", .1f, 3f, channels))
+        val spec = added.single().spec
+        assertEquals("clamped to a quarter page", .25f, spec.translateY(1f), 1e-6f)
+        assertEquals(1.3f, spec.pivotY, 1e-6f)
+        // A v1 change still makes a v1 effect.
+        MarketHost(launcher).apply(PackageChange.PageEffect("com.mccal.folio.effect.tilt", "Tilt", 18f, "center", .08f, 3.5f))
+        assertEquals(null, added.last().spec.channels)
+    }
+
     private val tilt = PackagedPageEffect.of("com.mccal.folio.effect.tilt", "Tilt", 18f, "center", .08f, 3.5f)
     private val installed = LauncherState(packagedEffects = listOf(tilt))
 

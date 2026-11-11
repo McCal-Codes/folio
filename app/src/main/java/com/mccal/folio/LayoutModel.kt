@@ -64,18 +64,43 @@ data class LayoutPreset(
     val widgetScale: Float = 1f,
     /** Home Screen & Dock › Position › Apps › Top: the page starts at the top instead of centered in the free space. */
     val pageTop: Boolean = false,
+    /**
+     * Home Screen & Dock › Dock › Size: how big the dock's apps are, as a share of Folio's own for the screen (1 = as before).
+     * Larger sizes grow only as far as the dock's room allows, so a small window never overflows and a tablet gets the most.
+     */
+    val dockSize: Float = 1f,
+    /** Home Screen & Dock › Dock › Center on the side: the Side Bar dock sits in the middle of the free height beside the page. */
+    val dockCentered: Boolean = false,
+    /**
+     * Home Screen & Dock › Dock › Fit more dock apps. Off by default: a Side Bar dock place is never shorter than 48 dp, the
+     * smallest comfortable touch target, so a short screen shows fewer places. On, a place may shrink to [COMPACT_DOCK_PITCH] and
+     * the icons shrink with it, so more places fit.
+     */
+    val dockCompact: Boolean = false,
 ) {
     fun sanitized() = copy(
         iconSize = iconSize.coerceIn(40f, 68f),
         rowGap = rowGap.coerceIn(0f, 28f),
-        dockWidth = dockWidth.coerceIn(56f, 84f),
+        dockWidth = dockWidth.coerceIn(56f, MAX_DOCK_WIDTH),
         dockPosition = dockPosition.coerceIn(0f, 1f),
         statusPosition = statusPosition.coerceIn(0f, 1f),
         columnGap = columnGap.takeIf { it.isFinite() }?.coerceIn(8f, 40f) ?: DEFAULT_COLUMN_GAP,
         dockSpacing = dockSpacing.takeIf { it.isFinite() }?.coerceIn(0f, 24f) ?: 0f,
         widgetScale = widgetScale.takeIf { it.isFinite() }?.coerceIn(.8f, 1.25f) ?: 1f,
+        dockSize = dockSize.takeIf { it.isFinite() }?.coerceIn(MIN_DOCK_SIZE, MAX_DOCK_SIZE) ?: 1f,
     )
 }
+
+/** The Side Bar dock is 56 to this wide; the Size setting widens it with its apps (see [dockWidthForSize]). */
+/** The least a Side Bar dock place may measure: 48 dp is the comfortable touch target, 40 dp is what Fit more dock apps allows. */
+const val STANDARD_DOCK_PITCH = 48f
+const val COMPACT_DOCK_PITCH = 40f
+const val MAX_DOCK_WIDTH = 104f
+const val MIN_DOCK_SIZE = .8f
+const val MAX_DOCK_SIZE = 1.6f
+
+/** The dock's width for a Size: Folio's 68 dp at 100%, then as much wider or narrower as the dock's apps (about 47 dp) are. */
+fun dockWidthForSize(size: Float): Float = (68f + 47.3f * (size - 1f)).coerceIn(56f, MAX_DOCK_WIDTH)
 
 const val DEFAULT_COLUMN_GAP = 16f
 /** Narrowest column (dp) when app names show, so common names fit on one line. */
@@ -169,6 +194,11 @@ data class HomeGeometry(
     val dockBarRoom: Float = 0f,
     /** The size of the apps in the dock (and the bar). Equal to [dockIconSize] unless DUO_SPACING made them larger. */
     val dockIcon: Float = dockIconSize(iconSize),
+    /**
+     * How many of the dock's places the Side Bar shows whole: as many as stack at 48 dp in the room it has (never fewer than four).
+     * A dock holding more shows its first places and keeps the rest saved, like the iPhone's dock, which never shows half an icon.
+     */
+    val dockShownSlots: Int = MAX_DOCK_SLOTS,
 )
 
 /**
@@ -286,9 +316,21 @@ fun railControlsReserve(count: Int, homeIconSize: Float): Float {
     return maxOf(28f, FolioSpace.SNUG + stack + 10f)
 }
 
-/** How many apps the dock holds: four, or more if the person asks (up to six). */
+/**
+ * How many apps the dock holds: four, or more if the person asks. Up to [STANDARD_DOCK_SLOTS] on any window; a tall one has
+ * room for more, up to [MAX_DOCK_SLOTS] (see [dockCapacity]). [MAX_DOCK_SLOTS] is also what is saved, restored and imported.
+ */
 const val MIN_DOCK_SLOTS = 4
-const val MAX_DOCK_SLOTS = 6
+const val STANDARD_DOCK_SLOTS = 6
+const val MAX_DOCK_SLOTS = 8
+
+/**
+ * How many places the dock may have in a window [heightDp] tall: what the Side Bar can stack under the status rail and above
+ * the page controls (about 250 dp together) at one dock app's pitch, never fewer than [STANDARD_DOCK_SLOTS] so no window
+ * loses what it had, never more than [MAX_DOCK_SLOTS]. A 900 dp phone takes eight, a 780 dp one seven.
+ */
+fun dockCapacity(heightDp: Float, homeIconSize: Float, dockSize: Float = 1f): Int =
+    ((heightDp - 250f) / (dockIconSize(homeIconSize) * dockSize + 22f)).toInt().coerceIn(STANDARD_DOCK_SLOTS, MAX_DOCK_SLOTS)
 
 fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Boolean, statusHeight: Float = 0f, labelHeight: Float = 20f, inLibrary: Boolean = false, homeBottomSpace: Float = 44f,
     /** How many round controls (search, back to Home) sit at the bottom of the rail on the page shown now: 0, 1 or 2. */
@@ -355,7 +397,7 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
     val fullWidth = horizontalDock && !tallRegular && !statusRail
     val expanded = width * classScale >= 650f && height * classScale >= HOME_REGULAR_MIN_HEIGHT_DP && !tallRegular
     val homeWidth = if (expanded) minOf(460f, width * 0.56f, if (foldAtCenter) width / 2f else Float.MAX_VALUE) else width
-    val dockBarHeight = if (horizontalDock) dockIconSize(p.iconSize) + 28f else 0f
+    val dockBarHeight = if (horizontalDock) dockIconSize(p.iconSize) * p.dockSize + 28f else 0f
     val homeBottomSpace = bottomSpaceIn + if (horizontalDock) dockBarHeight + 16f else 0f
     // Columns about as wide as an icon and its breathing room, centered, instead of stretching across a big screen.
     // Status sits in the top-right corner, so the same margin is kept on both sides and the grid stays centered.
@@ -510,9 +552,13 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
     // Never shorter than four 48dp dock targets, even when a short window has shrunk the rows.
     // Space between dock apps makes the dock taller; aligned with the rows, it grows evenly above and below them.
     val dockSpace = p.dockSpacing
-    val desiredHeight = maxOf(slots * 48f + 16f, (if (p.dockAlignToGrid) 2f * row + icon else 256f) + slots * dockSpace)
-    val dockHeight = minOf(desiredHeight, (height - topLimit - bottomReserve).coerceAtLeast(76f))
-    val dockRowHeight = ((dockHeight - 16f) / slots).coerceAtLeast(48f)
+    val dockRoom = (height - topLimit - bottomReserve).coerceAtLeast(76f)
+    val pitchFloor = if (p.dockCompact) COMPACT_DOCK_PITCH else STANDARD_DOCK_PITCH
+    // The Side Bar shows only the places that fit whole; the bottom bar scrolls sideways as before.
+    val shownSlots = if (horizontalDock) slots else minOf(slots, maxOf(MIN_DOCK_SLOTS.toFloat(), kotlin.math.floor((dockRoom - 16f) / pitchFloor)))
+    val desiredHeight = maxOf(shownSlots * pitchFloor + 16f, (if (p.dockAlignToGrid) 2f * row + icon else 256f) + shownSlots * dockSpace)
+    val dockHeight = minOf(desiredHeight, dockRoom)
+    val dockRowHeight = ((dockHeight - 16f) / shownSlots).coerceAtLeast(pitchFloor)
     // Use the home position as the anchor, so removing library buttons does not
     // move a low-positioned dock on ordinary page swipes. Move up only to fit.
     val homeDockHeight = minOf(desiredHeight, (height - topLimit - homeReserve).coerceAtLeast(76f))
@@ -520,6 +566,8 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
     // top, so the dock starts below the status rail instead of running into it.
     // Two columns (iPhone Duo): status pinned to the top of the rail, the dock to the bottom, open space between.
     val homeDockTop = (if (splitColumns) height - homeReserve - homeDockHeight
+        // Centered: the same space above the dock (under the status) as below it (over the page controls), whatever the screen's height.
+        else if (p.dockCentered) topLimit + (height - homeReserve - topLimit - homeDockHeight).coerceAtLeast(0f) / 2f
         else if (p.dockAlignToGrid) contentTop + widget + 18f - 2f * dockSpace else height * p.dockPosition - homeDockHeight / 2f)
         .coerceIn(topLimit, maxOf(topLimit, height - homeDockHeight - homeReserve))
     val dockTop = homeDockTop.coerceIn(topLimit, maxOf(topLimit, height - dockHeight - bottomReserve))
@@ -528,8 +576,13 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
     // DUO_SPACING dock apps: never smaller than today's, larger only while the pill, the row (or the bar, and its room)
     // still holds them with margin, so every fit rule keeps working.
     val oldDockIcon = dockIconSize(icon)
-    val dockIcon = if (!duoSpacing) oldDockIcon else maxOf(oldDockIcon, minOf(icon * DUO_DOCK_RATIO,
-        if (horizontalDock) minOf(dockBarHeight - 22f, (barRoom - 16f) / slots - 22f) else minOf(p.dockWidth - 12f, dockRowHeight - 4f)))
+    val dockIconRoom = if (horizontalDock) minOf(dockBarHeight - 22f, (barRoom - 16f) / slots - 22f) else minOf(p.dockWidth - 12f, dockRowHeight - 4f)
+    val roomyDockIcon = if (!duoSpacing) oldDockIcon else maxOf(oldDockIcon, minOf(icon * DUO_DOCK_RATIO, dockIconRoom))
+    // Dock › Size: smaller is smaller; larger grows only as far as the dock has room (never below what it had), so it always fits.
+    val sizedDockIcon = if (p.dockSize <= 1f) roomyDockIcon * p.dockSize
+        else minOf(roomyDockIcon * p.dockSize, maxOf(roomyDockIcon, dockIconRoom))
+    // Fit more dock apps: the icon gives way to the room a place has, so a tighter place never crowds it.
+    val dockIcon = if (p.dockCompact) minOf(sizedDockIcon, maxOf(dockIconRoom, 24f)) else sizedDockIcon
     val basePitch = dockIcon + 22f
     val dockPitch = if (dockSpace <= 0f) basePitch else minOf(basePitch + dockSpace, maxOf(basePitch, (barRoom - 16f) / slots))
     // With the dock at the bottom and no Side Bar beside the page (upright unfolded, or Full-width Home), the page is
@@ -540,7 +593,7 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
         horizontalDock = horizontalDock, dockBarHeight = dockBarHeight, dockBesideRail = dockBesideRail, statusTop = statusTop,
         appRows = rows, fitAppRows = if (splitColumns) BASE_APP_ROWS else fitRows, rowGap = gap, columnsInset = columnsInset, dockPitch = dockPitch,
         // barRoom keeps a 32 dp margin for spacing the apps out; the bar itself may use the whole room beside the Side Bar.
-        dockBarRoom = (barRoom + 32f).coerceAtLeast(0f), dockIcon = dockIcon)
+        dockBarRoom = (barRoom + 32f).coerceAtLeast(0f), dockIcon = dockIcon, dockShownSlots = shownSlots.toInt())
     // The page controls take more than the space this was measured for, and the usual four rows would end under them:
     // lay the window out again for the real space (once), so no row of a short window is clipped.
     // The visible page ends before the last row's own space under its label.

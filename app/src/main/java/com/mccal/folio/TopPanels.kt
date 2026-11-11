@@ -868,6 +868,13 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
     DisposableEffect(controls) { controls.start(); onDispose { controls.stop() } }
     val media = (IslandListenerService.activity.collectAsStateWithLifecycle().value as? IslandActivity.Media)
     val open = { intent: Intent -> onClose(); runCatching { context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }; Unit }
+    // Starts the first intent a phone has an app for, and says so when none opens: a tap that silently does nothing reads as broken (#554).
+    // Starting and catching is the check, because `resolveActivity` can't see another app's activities without a <queries> entry.
+    val openFirst = { label: Int, intents: List<Intent> ->
+        onClose()
+        val opened = intents.any { runCatching { context.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess }
+        if (!opened) IslandEvents.notice(context, context.getString(R.string.folio_couldn_t_open_1_s_on_this_phone, context.getString(label)))
+    }
     fun launchFirst(packages: List<String>) = packages.firstNotNullOfOrNull { context.packageManager.getLaunchIntentForPackage(it) }
     fun available(control: CcControl) = when (control) {
         CcControl.WALLET -> launchFirst(CcControl.WALLETS) != null
@@ -909,12 +916,8 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
             CcControl.DND -> if (!controls.toggleDnd()) open(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
             CcControl.FLASHLIGHT -> controls.toggleTorch()
             CcControl.CAMERA -> open(Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA))
-            CcControl.TIMER -> {
-                val timer = Intent(AlarmClock.ACTION_SHOW_TIMERS)
-                val target = if (timer.resolveActivity(context.packageManager) != null) timer else Intent(AlarmClock.ACTION_SHOW_ALARMS)
-                open(target)
-            }
-            CcControl.ALARM -> open(Intent(AlarmClock.ACTION_SHOW_ALARMS))
+            CcControl.TIMER -> openFirst(R.string.timer, listOf(Intent(AlarmClock.ACTION_SHOW_TIMERS), Intent(AlarmClock.ACTION_SHOW_ALARMS)))
+            CcControl.ALARM -> openFirst(R.string.alarm, listOf(Intent(AlarmClock.ACTION_SHOW_ALARMS)))
             CcControl.CALCULATOR -> {
                 val calc = Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALCULATOR)
                 val target = if (calc.resolveActivity(context.packageManager) != null) calc else {

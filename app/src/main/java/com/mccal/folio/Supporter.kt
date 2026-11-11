@@ -93,6 +93,20 @@ internal object Supporter {
         code.ends(supporterWindowStart(started(context, code), readClock(context, today), code.months))
 
     /**
+     * Where this phone's supporter code stands. [code] answers null for an expired code just as it does for no code,
+     * which is why the update page said nothing when someone's months ran out: from the outside they looked the same.
+     */
+    fun state(context: Context, today: LocalDate = LocalDate.now(), keys: List<String> = keys(context)): SupporterState {
+        val text = stored(context) ?: return SupporterState.None
+        val valid = code(context, today, keys)
+        // An expired code still carries a good signature, which is what tells "ran out" from "never was a code".
+        val signed = valid ?: ((BetaCodes.verify(text, keys, LocalDate.of(1970, 1, 2), BetaKeys.WITHDRAWN) as? BetaCodes.Result.Valid)?.code)
+        // Days are counted on the same guarded day the code was judged by: a clock that leapt too far is not believed.
+        val judged = readClock(context, today) ?: today
+        return supporterStateFor(valid != null, signed?.let { ends(context, it, today) }, signed != null, judged, signed?.serial ?: 0L)
+    }
+
+    /**
      * The day to judge a window by, noted down so a later clock can't fall behind it. Null means this phone has
      * never seen a real date: nothing to count from, and nothing to count against.
      */
@@ -237,6 +251,33 @@ internal object Supporter {
  * phone on its build date — and neither a month that has run out nor one that hasn't should turn on that. Null is
  * a phone that has never had a real date at all: a fresh one that hasn't reached the network yet.
  */
+/** Where a phone's supporter code stands: none, running (and until when), or run out (and since when). */
+internal sealed interface SupporterState {
+    data object None : SupporterState
+    /** [ends] is the last day it works, null for a code that never runs out. */
+    data class Active(val ends: LocalDate?, val daysLeft: Long?, val serial: Long = 0) : SupporterState
+    /** A genuine code whose time has run out; [ended] is its last day, null when that isn't known. */
+    data class Expired(val ended: LocalDate?, val serial: Long = 0) : SupporterState
+}
+
+/** [running]: the code works today. [genuine]: it carries Folio's signature, running or not. */
+internal fun supporterStateFor(running: Boolean, ends: LocalDate?, genuine: Boolean, today: LocalDate, serial: Long = 0): SupporterState = when {
+    running -> SupporterState.Active(ends, ends?.let { java.time.temporal.ChronoUnit.DAYS.between(today, it) }, serial)
+    genuine -> SupporterState.Expired(ends, serial)
+    else -> SupporterState.None
+}
+
+/** The two reminders a code gets: a week before it ends, and once it has. Each is sent once per code. */
+internal enum class SupporterReminderStage { SOON, ENDED }
+
+internal const val SUPPORTER_SOON_DAYS = 7L
+
+internal fun supporterReminderStage(state: SupporterState): SupporterReminderStage? = when (state) {
+    is SupporterState.Active -> if (state.daysLeft != null && state.daysLeft <= SUPPORTER_SOON_DAYS) SupporterReminderStage.SOON else null
+    is SupporterState.Expired -> SupporterReminderStage.ENDED
+    SupporterState.None -> null
+}
+
 /**
  * A phone's date can be wrong in both directions. Winding it back must not hand back time that has been used, which
  * is why the latest day ever seen is kept — but a dead battery can bring the clock up as 2030, and latching that

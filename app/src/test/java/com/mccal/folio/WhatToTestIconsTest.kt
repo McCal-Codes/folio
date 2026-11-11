@@ -26,4 +26,10 @@ class WhatToTestIconsTest {
     @Test fun `the first What's New sheet shows four features`() {
         assertEquals(4, FEATURES_SHOWN)
     }
+
+    @Test fun `a feature on the sheet is its first sentence`() {
+        assertEquals("Type \"dark\" and it lists settings.", WhatsNew.firstSentence("Type \"dark\" and it lists settings. It follows the same switch."))
+        assertEquals("One sentence only", WhatsNew.firstSentence("One sentence only"))
+        assertEquals("Version 0.7.0 is here.", WhatsNew.firstSentence("Version 0.7.0 is here. More below."))
+    }
 }

@@ -23,10 +23,10 @@ class DockSlotsTest {
         assertEquals(listOf("a", "b", null, null), decodeLauncherState("""{"dock":["a","b"]}""", legacyRaw = null).dock)
     }
 
-    @Test fun `a saved dock keeps up to six places, and a damaged one is held to that`() {
+    @Test fun `a saved dock keeps up to eight places, and a damaged one is held to that`() {
         assertEquals(listOf("a", "b", "c", "d", "e"), decodeLauncherState("""{"dock":["a","b","c","d","e",null]}""", legacyRaw = null).dock)
         assertEquals("a dock left with empty places from the old selector closes", 4, decodeLauncherState("""{"dock":["a",null,null,null,null,null]}""", legacyRaw = null).dock.size)
-        assertEquals(6, decodeLauncherState(JSONObject().put("dock", org.json.JSONArray(List(40) { "x$it" })).toString(), legacyRaw = null).dock.size)
+        assertEquals(8, decodeLauncherState(JSONObject().put("dock", org.json.JSONArray(List(40) { "x$it" })).toString(), legacyRaw = null).dock.size)
     }
 
     private fun layout(dock: List<String?>, home: List<String?> = emptyList()) = HomeLayout(home, dock)
@@ -37,7 +37,7 @@ class DockSlotsTest {
         assertEquals(listOf("a", "b", "c", "d", "e"), trimmedDock(listOf("a", "b", "c", "d", "e", null)))
         assertEquals("a dock of four or fewer is left as it is", listOf("a", null), trimmedDock(listOf("a", null)))
         assertEquals(listOf(null, null, null, null), trimmedDock(List(6) { null }))
-        assertEquals("never more than six", 6, trimmedDock(List(9) { "x$it" }).size)
+        assertEquals("never more than eight", 8, trimmedDock(List(11) { "x$it" }).size)
     }
 
     @Test fun `a full dock opens one place for an app dragged to its end, up to six`() {
@@ -51,6 +51,30 @@ class DockSlotsTest {
         val seven = layout(six.dock, home = listOf("g"))
         assertEquals(seven, dropApp(seven, "g", DropTarget.Dock(6)))
         assertEquals(seven, dropApp(seven, "g", DropTarget.Dock(2)))
+    }
+
+    @Test fun `a tall window takes more dock places than six, a short one keeps six`() {
+        val preset = LayoutPreset()
+        assertEquals("a short window keeps today's six", 6, dockCapacity(640f, preset.iconSize))
+        assertEquals(6, dockCapacity(700f, preset.iconSize))
+        assertTrue("a taller one takes seven", dockCapacity(780f, preset.iconSize) in 7..8)
+        assertEquals("a very tall phone takes eight, the most", 8, dockCapacity(1000f, preset.iconSize))
+        assertEquals("never more than is stored", MAX_DOCK_SLOTS, dockCapacity(5000f, preset.iconSize))
+        assertTrue("more height never means fewer places", (500..1100 step 20).map { dockCapacity(it.toFloat(), preset.iconSize) }.zipWithNext().all { (a, b) -> b >= a })
+    }
+
+    @Test fun `a tall window's dock grows past six, and a short one still refuses`() {
+        val six = layout(listOf("a", "b", "c", "d", "e", "f"), home = listOf("g", "h", "i"))
+        assertEquals("six is full where the window is short", six, dropApp(six, "g", DropTarget.Dock(6)))
+        val seven = dropApp(six, "g", DropTarget.Dock(6), dockCapacity = 8)
+        assertEquals(listOf("a", "b", "c", "d", "e", "f", "g"), seven.dock)
+        val eight = dropApp(seven, "h", DropTarget.Dock(7), dockCapacity = 8)
+        assertEquals(8, eight.dock.size)
+        assertEquals("eight is the most", eight, dropApp(eight, "i", DropTarget.Dock(8), dockCapacity = 8))
+        assertTrue(canPlaceInDock(six, "g", capacity = 7))
+        assertFalse(canPlaceInDock(six, "g"))
+        assertEquals(DockRefusal.Full, dockRefusal(six, "g"))
+        assertNull(dockRefusal(six, "g", capacity = 7))
     }
 
     @Test fun `dropping onto an app in a full dock makes room instead of turning it away`() {
@@ -83,10 +107,17 @@ class DockSlotsTest {
     }
 
     @Test fun `a backup with a dock of a size nobody makes is refused`() {
-        for (size in listOf(3, 7)) {
+        for (size in listOf(3, 9)) {
             val raw = JSONObject(encodeLayoutBackup(blank, emptyList(), "phone")).put("dock", org.json.JSONArray(List(size) { JSONObject.NULL })).toString()
             val refused = runCatching { decodeLayoutBackup(raw, emptyList(), emptyList(), "phone") }.isFailure
             assertTrue("$size places", refused)
+        }
+    }
+
+    @Test fun `a backup of a dock with seven or eight places is restored`() {
+        for (size in listOf(7, 8)) {
+            val raw = JSONObject(encodeLayoutBackup(blank, emptyList(), "phone")).put("dock", org.json.JSONArray(List(size) { JSONObject.NULL })).toString()
+            assertEquals(size, decodeLayoutBackup(raw, emptyList(), emptyList(), "phone").layout.dock.size)
         }
     }
 

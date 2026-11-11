@@ -63,9 +63,7 @@ internal fun Onboarding(isDefaultHome: Boolean, onMakeDefault: () -> Unit, onSha
     state: LauncherState? = null, model: LauncherModel? = null, onOpenBridge: () -> Unit = {}) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("setup_experience", Context.MODE_PRIVATE) }
-    var tick by remember { mutableIntStateOf(0) }
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    LaunchedEffect(lifecycle) { lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) { tick++ } }
+    val tick = rememberSetupTick().intValue
     fun open(intent: Intent?) { intent?.let { runCatching { context.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } } }
 
     // Like iPhone's Setup Assistant: only what makes Folio work, one question per screen. Everything optional
