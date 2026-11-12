@@ -31,28 +31,30 @@ internal fun ccAllowedSizes(id: String, cols: Int): List<Pair<Int, Int>> = when 
 
 /** The places Control Center's Controls page has today, for [controls] in their saved order: the same page [controlCenterGrid] draws. */
 internal fun ccDefaultLayout(cols: Int, controls: List<String>, focus: Boolean): List<CcSlot> {
-    val out = mutableListOf<CcSlot>()
+    val base = mutableListOf<CcSlot>()
+    val out = base
     out += CcSlot(CC_CONNECTIVITY, 0, 0, 2, 2)
+    // Focus starts as the small 2 by 1 bar (as iOS draws it on the Duo) and the small controls take the cells beside it; it can still be
+    // dragged out to the full width. The controls fill the first free cells, reading left to right and top to bottom.
     if (cols >= 6) {
         out += CcSlot(CC_MEDIA, 2, 0, cols - 4, 2)
         out += CcSlot(CC_BRIGHTNESS, cols - 2, 0, 1, 2)
         out += CcSlot(CC_VOLUME, cols - 1, 0, 1, 2)
-        var row = 2
-        if (focus) { out += CcSlot(CC_FOCUS, 0, row, cols, 1); row++ }
-        controls.forEachIndexed { i, id -> out += CcSlot(id, i % cols, row + i / cols, 1, 1) }
+        if (focus) out += CcSlot(CC_FOCUS, 0, 2, 2, 1)
     } else {
         out += CcSlot(CC_MEDIA, 2, 0, 2, 2)
-        var row = 2
-        if (focus) { out += CcSlot(CC_FOCUS, 0, row, 4, 1); row++ }
-        // The first four small controls sit as a 2 by 2 beside the two sliders.
-        controls.take(4).forEachIndexed { i, id -> out += CcSlot(id, i % 2, row + i / 2, 1, 1) }
-        out += CcSlot(CC_BRIGHTNESS, 2, row, 1, 2)
-        out += CcSlot(CC_VOLUME, 3, row, 1, 2)
-        row += 2
-        controls.drop(4).forEachIndexed { i, id -> out += CcSlot(id, i % 4, row + i / 4, 1, 1) }
+        // The two sliders sit beside the Focus bar and the first small controls.
+        out += CcSlot(CC_BRIGHTNESS, 2, 2, 1, 2)
+        out += CcSlot(CC_VOLUME, 3, 2, 1, 2)
+        if (focus) out += CcSlot(CC_FOCUS, 0, 2, 2, 1)
     }
-    return out
+    var placed: List<CcSlot> = base
+    for (id in controls) placed = ccAdd(placed, id, cols, CC_MAX_SAVED_ROWS) ?: placed
+    return placed
 }
+
+/** The cap on rows when placing or checking layouts: far more than any window shows, so a bad file cannot make a huge grid. */
+private const val CC_MAX_SAVED_ROWS = 40
 
 /** How many grid rows the slots use. */
 internal fun ccRowsUsed(slots: List<CcSlot>): Int = slots.maxOfOrNull { it.bottom } ?: 0
@@ -106,9 +108,6 @@ internal fun ccAdd(slots: List<CcSlot>, id: String, cols: Int, rows: Int): List<
 internal fun ccFreeCells(slots: List<CcSlot>, cols: Int, rows: Int): List<Pair<Int, Int>> =
     (0 until rows).flatMap { r -> (0 until cols).map { c -> c to r } }
         .filter { (c, r) -> slots.none { c >= it.col && c < it.right && r >= it.row && r < it.bottom } }
-
-/** The cap on rows when checking a saved layout: far more than any window shows, so a bad file cannot make a huge grid. */
-private const val CC_MAX_SAVED_ROWS = 40
 
 /** A layout the person made in the editor, for a grid [cols] wide. A grid of another width cannot use it (see [ccLayoutFor]). */
 data class CcSavedLayout(val cols: Int, val slots: List<CcSlot>, val focusOn: Boolean = false)

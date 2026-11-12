@@ -18,7 +18,9 @@ class ControlCenterLayoutTest {
             val slots = ccDefaultLayout(cols, chosen, focus)
             assertTrue("overlap or outside at $cols columns, $n controls", noOverlap(slots, cols))
             // controlCenterRows counts one more row than the grid has (the page strip's), so the grid has one less.
-            assertEquals("rows at $cols columns, $n controls, focus $focus", controlCenterRows(cols, n, focus) - 1, ccRowsUsed(slots))
+            // The small Focus bar leaves cells beside it, so the page can be shorter than the one drawn without the editor, never taller.
+            if (!focus) assertEquals("rows at $cols columns, $n controls", controlCenterRows(cols, n, focus) - 1, ccRowsUsed(slots))
+            else assertTrue("rows at $cols columns, $n controls, focus", ccRowsUsed(slots) <= controlCenterRows(cols, n, focus) - 1)
             assertEquals("every control is placed once", chosen.toSet(), slots.map { it.id }.toSet().intersect(chosen.toSet()))
             assertEquals(slots.size, slots.map { it.id }.toSet().size)
         }
@@ -26,11 +28,12 @@ class ControlCenterLayoutTest {
 
     @Test fun `four columns put the first four small controls beside the sliders, six or more put the sliders at the end of the top row`() {
         val four = ccDefaultLayout(4, controls.take(6), focus = true).associateBy { it.id }
-        assertEquals(CcSlot(CC_FOCUS, 0, 2, 4, 1), four[CC_FOCUS])
-        assertEquals(CcSlot(CC_BRIGHTNESS, 2, 3, 1, 2), four[CC_BRIGHTNESS])
+        assertEquals(CcSlot(CC_FOCUS, 0, 2, 2, 1), four[CC_FOCUS])
+        assertEquals(CcSlot(CC_BRIGHTNESS, 2, 2, 1, 2), four[CC_BRIGHTNESS])
         assertEquals(CcSlot(controls[0], 0, 3, 1, 1), four[controls[0]])
+        assertEquals(CcSlot(controls[1], 1, 3, 1, 1), four[controls[1]])
         assertEquals(CcSlot(controls[3], 1, 4, 1, 1), four[controls[3]])
-        assertEquals(CcSlot(controls[4], 0, 5, 1, 1), four[controls[4]])
+        assertEquals(CcSlot(controls[4], 2, 4, 1, 1), four[controls[4]])
         val six = ccDefaultLayout(6, controls.take(6), focus = false).associateBy { it.id }
         assertEquals(CcSlot(CC_MEDIA, 2, 0, 2, 2), six[CC_MEDIA])
         assertEquals(CcSlot(CC_VOLUME, 5, 0, 1, 2), six[CC_VOLUME])
