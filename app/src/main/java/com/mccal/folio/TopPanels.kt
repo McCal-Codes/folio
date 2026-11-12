@@ -77,6 +77,7 @@ import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
+import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.role
@@ -105,7 +106,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     onSystemPanel: (ShadePanel) -> Unit, showClock: Boolean = true, grouped: Boolean = true, sections: Boolean = false,
     ccControls: List<String> = CcControl.DEFAULTS, onCcControls: (List<String>) -> Unit = {},
     ccLayout: CcSavedLayout? = null, onCcLayout: (CcSavedLayout?) -> Unit = {},
-    ccSize: PanelSize = PanelSize.STANDARD, ccCentered: Boolean = false, ncLayout: NcLayout = NcLayout.FULL_SCREEN, ccLook: CcLook = CcLook.CLEAR,
+    ccSize: PanelSize = PanelSize.STANDARD, ccCentered: Boolean = false, ccLeft: Boolean = false, ncLayout: NcLayout = NcLayout.FULL_SCREEN, ccLook: CcLook = CcLook.CLEAR,
     ccOptions: CcOptions = CcOptions(),
     focusModes: List<FocusMode> = emptyList(), activeFocus: String? = null, onFocus: (String?) -> Unit = {},
     onSwitchPanel: ((ShadePanel) -> Unit)? = null) {
@@ -190,6 +191,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
             split -> Alignment.TopEnd
             current == ShadePanel.NOTIFICATIONS -> if (wide) Alignment.TopCenter else Alignment.TopStart
             wide && ccCentered -> Alignment.TopCenter
+            wide && ccLeft -> Alignment.TopStart
             else -> Alignment.TopEnd
         }) {
         // Notification Center uses the width; Control Center is a compact fixed grid (like iPad) so it isn't oversized.
@@ -245,6 +247,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
                 split -> Alignment.TopEnd
                 which == ShadePanel.NOTIFICATIONS -> if (wide) Alignment.TopCenter else Alignment.TopStart
                 wide && ccCentered -> Alignment.TopCenter
+                wide && ccLeft -> Alignment.TopStart
                 else -> Alignment.TopEnd
             }
             androidx.compose.animation.AnimatedContent(current, Modifier.fillMaxWidth().then(if (tall) Modifier.fillMaxHeight() else Modifier), transitionSpec = {
@@ -1032,13 +1035,28 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         val slotRowsFit = if (pagesAvailable == null) 12 else ccRowsThatFit(pagesAvailable.value, cell.value, gap.value)
         val slotRows = if (slotMode) maxOf(ccRowsUsed(slots) + (if (edit.active) 1 else 0), ccRowsUsed(ccDefaultLayout(cols, chosen.map { it.name }, focusOn))).coerceAtLeast(1) else 0
         val slotMoveRows = maxOf(slotRows, minOf(slotRowsFit, slotRows + 1))
-        val galleryRows = if (edit.active) ccEditGalleryRows(CcControl.entries.count { it !in chosen && available(it) }, cols) else 0
+        val galleryRows = if (edit.active) ccEditGalleryRows(0, cols) else 0
+        // What the gallery can add: modules taken off in the editor and controls that are not on the page. The + in the header and Add a Control both open it.
+        var galleryOpen by remember { mutableStateOf(false) }
+        val galleryItems = run {
+            val moduleLabel: @Composable (String) -> String = { id -> when (id) {
+                CC_CONNECTIVITY -> stringResource(R.string.cc_page_connectivity); CC_MEDIA -> stringResource(R.string.now_playing)
+                CC_BRIGHTNESS -> stringResource(R.string.brightness); CC_VOLUME -> stringResource(R.string.volume); else -> stringResource(R.string.focus) } }
+            (if (slotMode) ccMissingModules(slots, focusOn) else emptyList()).map { id -> CcGalleryItem(id, moduleLabel(id), when (id) { CC_CONNECTIVITY -> Icons.Rounded.Wifi; CC_MEDIA -> Icons.Rounded.MusicNote
+                CC_BRIGHTNESS -> Icons.Rounded.LightMode; CC_VOLUME -> Icons.Rounded.Tune; else -> Icons.Rounded.DarkMode }, true) } +
+                CcControl.entries.filter { it !in chosen && available(it) }.map { c -> CcGalleryItem(c.name, stringResource(c.label), c.icon(), false) }
+        }
+        if (galleryOpen && edit.active) CcControlGallery(galleryItems, onDismiss = { galleryOpen = false }, onAdd = { item ->
+            if (item.module) onCcLayout(CcSavedLayout(cols, ccAdd(slots, item.id, cols, slotMoveRows) ?: slots, focusOn)) else onControls(controlNames + item.id)
+            if (galleryItems.size <= 1) galleryOpen = false
+        })
         fun controlsRows(index: Int) = (if (slotMode && index == 0) slotRows else ccPlanRows(plan, index, cols, focusOn)) + if (index == plan.perPage.lastIndex) galleryRows else 0
         val neededRows = maxOf(if (CcPage.MEDIA in extraPages) ccMediaRows(plan, focusOn) else 0, plan.perPage.indices.maxOf { controlsRows(it) })
         val wantedHeight = cell * neededRows + gap * (neededRows - 1)
         val pageHeight = if (pagesAvailable == null) wantedHeight else minOf(wantedHeight, pagesAvailable).coerceAtLeast(cell)
 
         // The sliders: beside the small controls with four columns, at the end of the top row with six or eight.
+        var hold by remember { mutableStateOf<CcHold?>(null) }
         val brightnessSlider: @Composable (Dp) -> Unit = { height ->
             TallSlider(if (controls.brightness < .35f) Icons.Rounded.BrightnessLow else Icons.Rounded.LightMode, stringResource(R.string.brightness), controls.brightness, cell, height,
                 onStart = { if (!android.provider.Settings.System.canWrite(context)) open(controls.writeSettingsIntent()) }, ticks = options.sliderTicks,
@@ -1049,7 +1067,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                     AutoBrightnessChip(controls.brightnessAuto, cell, alpha) {
                         if (!android.provider.Settings.System.canWrite(context)) open(controls.writeSettingsIntent()) else controls.setBrightnessAuto(!controls.brightnessAuto)
                     }
-                } else null) { value ->
+                } else null, onLongPress = if (edit.active) null else { { hold = CcHold.BRIGHTNESS } }) { value ->
                 controls.changeBrightness(value) }
         }
         val volumeSlider: @Composable (Dp) -> Unit = { height ->
@@ -1057,9 +1075,33 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                 controls.volume <= .01f -> Icons.AutoMirrored.Rounded.VolumeOff
                 controls.volume < .5f -> Icons.AutoMirrored.Rounded.VolumeDown
                 else -> Icons.AutoMirrored.Rounded.VolumeUp
-            }, stringResource(R.string.volume), controls.volume, cell, height, ticks = options.sliderTicks, onHold = controls::holdVolume) { controls.changeVolume(it) }
+            }, stringResource(R.string.volume), controls.volume, cell, height, ticks = options.sliderTicks, onHold = controls::holdVolume,
+                onLongPress = if (edit.active) null else { { hold = CcHold.VOLUME } }) { controls.changeVolume(it) }
         }
         val sliders: @Composable (Dp) -> Unit = { height -> brightnessSlider(height); volumeSlider(height) }
+
+        // The cards a press and hold on a slider opens (CcHoldCard): the same control wider, with what a tap leaves out.
+        when (hold) {
+            CcHold.BRIGHTNESS -> CcHoldCard(stringResource(R.string.brightness), onDismiss = { hold = null }) {
+                CcHoldSlider(if (controls.brightness < .35f) Icons.Rounded.BrightnessLow else Icons.Rounded.LightMode, stringResource(R.string.brightness), controls.brightness,
+                    onStart = { if (!android.provider.Settings.System.canWrite(context)) open(controls.writeSettingsIntent()) }, onHold = controls::holdBrightness) { controls.changeBrightness(it) }
+                if (controls.autoBrightnessKnown) {
+                    SettingsSwitch(stringResource(R.string.cc_auto_brightness), controls.brightnessAuto, { on ->
+                        if (!android.provider.Settings.System.canWrite(context)) open(controls.writeSettingsIntent()) else controls.setBrightnessAuto(on) }, "cc-hold-auto-brightness")
+                }
+            }
+            CcHold.VOLUME -> CcHoldCard(stringResource(R.string.volume), onDismiss = { hold = null }) {
+                listOf(AudioManager.STREAM_MUSIC to R.string.cc_hold_media, AudioManager.STREAM_RING to R.string.cc_hold_ring, AudioManager.STREAM_ALARM to R.string.cc_hold_alarm).forEach { (stream, name) ->
+                    var level by remember(stream) { mutableStateOf(controls.streamFraction(stream)) }
+                    CcHoldSlider(if (level <= .01f) Icons.AutoMirrored.Rounded.VolumeOff else Icons.AutoMirrored.Rounded.VolumeUp, stringResource(name), level) { v ->
+                        level = v
+                        if (stream == AudioManager.STREAM_MUSIC) controls.changeVolume(v) else controls.setStreamVolume(stream, v)
+                    }
+                }
+                CcHoldAction(stringResource(R.string.cc_hold_open_volume)) { hold = null; controls.showVolumePanel() }
+            }
+            null -> {}
+        }
 
         val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
         val connectivity = listOf(
@@ -1132,8 +1174,9 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                                 CC_BRIGHTNESS -> stringResource(R.string.brightness); CC_VOLUME -> stringResource(R.string.volume); CC_FOCUS -> stringResource(R.string.focus)
                                 else -> CcControl.entries.firstOrNull { it.name == id }?.let { stringResource(it.label) } ?: id } }
                             CcSlotGrid(slots, cols, slotMoveRows, cell, gap, edit.active, raised = if (slotConnectivityOpen) CC_CONNECTIVITY else null,
-                                removable = { id -> CcControl.entries.any { it.name == id } }, labelOf = labelOfSlot,
-                                onChange = { next -> onCcLayout(CcSavedLayout(cols, next)) }, onRemove = { id -> onControls(controlNames - id) }) { slot ->
+                                removable = { true }, labelOf = labelOfSlot,
+                                onChange = { next -> onCcLayout(CcSavedLayout(cols, next, focusOn)) },
+                                onRemove = { id -> if (CcControl.entries.any { it.name == id }) onControls(controlNames - id) else onCcLayout(CcSavedLayout(cols, ccRemove(slots, id), focusOn)) }) { slot ->
                                 when (slot.id) {
                                     CC_CONNECTIVITY ->
                                         if (slotConnectivityOpen && !edit.active) Module(Modifier.width(span(minOf(cols, 4))).wrapContentHeight(unbounded = true)
@@ -1217,25 +1260,13 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                             }
                         }
                         }
-                        // Edit mode: gallery of controls that aren't in Control Center yet
+                        // Edit mode: "Add a Control" under the grid opens the gallery (the + in the header does the same).
                         if (edit.active && spec.index == plan.perPage.lastIndex) {
-                            val unused = CcControl.entries.filter { it !in chosen && available(it) }
-                            Text(if (unused.isEmpty()) stringResource(R.string.all_controls_added) else stringResource(R.string.add_a_control), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp,
-                                fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = FolioSpace.TINY.dp, start = FolioSpace.TINY.dp))
-                            unused.chunked(cols).forEach { row ->
-                                Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
-                                    row.forEach { c ->
-                                        Column(Modifier.width(cell), horizontalAlignment = Alignment.CenterHorizontally) {
-                                            Box {
-                                                SquareToggle(c.icon(), stringResource(R.string.add_control, stringResource(c.label)), false, Color.White, cell) { onControls(controlNames + c.name) }
-                                                Box(Modifier.align(Alignment.TopEnd).offset(6.dp, (-6).dp).size(20.dp).clip(CircleShape).background(AccentGreen),
-                                                    contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Add, null, tint = Color.White, modifier = Modifier.size(14.dp)) }
-                                            }
-                                            Text(stringResource(c.label), color = Color.White, fontSize = 10.sp, maxLines = 2, lineHeight = 12.sp,
-                                                textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.padding(top = FolioSpace.TINY.dp))
-                                        }
-                                    }
-                                }
+                            Row(Modifier.width(gridWidth).clip(RoundedCornerShape(FolioRadius.CARD.dp)).then(if (galleryItems.isEmpty()) Modifier else Modifier.clickable(role = androidx.compose.ui.semantics.Role.Button) { galleryOpen = true })
+                                .padding(FolioSpace.SMALL.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                                if (galleryItems.isNotEmpty()) Icon(Icons.Rounded.AddCircle, null, tint = Color.White, modifier = Modifier.size(18.dp).padding(end = FolioSpace.TINY.dp))
+                                Text(if (galleryItems.isEmpty()) stringResource(R.string.all_controls_added) else stringResource(R.string.add_a_control),
+                                    color = if (galleryItems.isEmpty()) FolioGlass.secondary else Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
                             }
                         }
                     }
@@ -1308,7 +1339,10 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                     if (reserveSwitchRow) Spacer(Modifier.height(PANEL_SWITCH_ROW_DP.dp))
                     // iOS 18 header: edit on the left, power on the right.
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        if (edit.active) PanelPill(stringResource(R.string.done)) { edit.stop() }
+                        if (edit.active) {
+                            PanelPill(stringResource(R.string.done)) { edit.stop() }
+                            if (galleryItems.isNotEmpty()) { Spacer(Modifier.width(gap)); GlassIconButton(Icons.Rounded.Add, stringResource(R.string.add_a_control)) { galleryOpen = true } }
+                        }
                         else if (pages.getOrNull(current)?.page == CcPage.CONTROLS) GlassIconButton(Icons.Rounded.Add, stringResource(R.string.edit_controls)) { edit.start() }
                         Spacer(Modifier.weight(1f))
                         // The switch to Notification Center stands in the middle of the header while there is room beside the edit and power buttons.
@@ -1602,7 +1636,7 @@ private fun SquareToggle(icon: ImageVector, label: String, on: Boolean, accent: 
 
 @Composable
 private fun TallSlider(icon: ImageVector, label: String, value: Float, width: Dp, height: Dp,
-    onStart: () -> Unit = {}, onHold: (Boolean) -> Unit = {}, ticks: Boolean = true, badge: (@Composable BoxScope.(Float) -> Unit)? = null, onValue: (Float) -> Unit) {
+    onStart: () -> Unit = {}, onHold: (Boolean) -> Unit = {}, ticks: Boolean = true, badge: (@Composable BoxScope.(Float) -> Unit)? = null, onLongPress: (() -> Unit)? = null, onValue: (Float) -> Unit) {
     // A change from outside (a volume key, automatic brightness) moves the fill with the same no-overshoot spring as a drag,
     // and not at all under Reduce Motion. It never ticks: the haptics below run only from the finger.
     val shown by androidx.compose.animation.core.animateFloatAsState(value.coerceIn(0f, 1f),
@@ -1610,7 +1644,12 @@ private fun TallSlider(icon: ImageVector, label: String, value: Float, width: Dp
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     var dragging by remember { mutableStateOf(false) }
     val readout by androidx.compose.animation.core.animateFloatAsState(if (dragging) 1f else 0f, FolioMotion.spring(FolioMotion.Quick), label = "slider readout")
+    val holdLabel = stringResource(R.string.cc_show_options)
     Box(Modifier.size(width, height).clip(RoundedCornerShape(width * .36f)).background(LocalCcLook.current.tile)
+        // A press and hold that does not move opens the control's card; a drag that starts first cancels it.
+        .then(if (onLongPress == null) Modifier else Modifier.pointerInput(Unit) {
+            detectTapGestures(onLongPress = { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); onLongPress() })
+        })
         .pointerInput(Unit) {
             var last = -1f
             detectVerticalDragGestures(onDragStart = { onStart(); onHold(true); last = -1f; dragging = true },
@@ -1627,6 +1666,7 @@ private fun TallSlider(icon: ImageVector, label: String, value: Float, width: Dp
             contentDescription = label
             progressBarRangeInfo = androidx.compose.ui.semantics.ProgressBarRangeInfo(value, 0f..1f)
             setProgress { target -> onStart(); onValue(target.coerceIn(0f, 1f)); true } // TalkBack can adjust it
+            if (onLongPress != null) onLongClick(holdLabel) { onLongPress(); true }
         }) {
         Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(shown).background(Color.White))
         Icon(icon, null, tint = if (shown > .18f) FolioColors.MenuSurface else Color.White,
@@ -1814,6 +1854,21 @@ private class DeviceControls(private val context: Context) {
     /** A finger went down on, or came up from, a slider. On release the latest outside change lands, then the real value is read. */
     fun holdVolume(down: Boolean) { if (down) volumeLevel.hold() else { volumeLevel.release(); levels.requestRefresh() } }
     fun holdBrightness(down: Boolean) { if (down) brightnessLevel.hold() else { brightnessLevel.release(); levels.requestRefresh() } }
+
+    /** A stream's volume as 0 to 1 (Ring and Alarm as well as Media, for the volume card). */
+    fun streamFraction(stream: Int): Float {
+        val max = audio.getStreamMaxVolume(stream); val min = audio.getStreamMinVolume(stream)
+        return if (max <= min) 0f else ((audio.getStreamVolume(stream) - min).toFloat() / (max - min)).coerceIn(0f, 1f)
+    }
+
+    /** Sets a stream other than Media; Android may refuse Ring while Do Not Disturb is on, which is left as it was. */
+    fun setStreamVolume(stream: Int, value: Float) {
+        val max = audio.getStreamMaxVolume(stream); val min = audio.getStreamMinVolume(stream)
+        runCatching { audio.setStreamVolume(stream, volumeStep(value, min, max), 0) }
+    }
+
+    /** Shows Android's own volume panel. */
+    fun showVolumePanel() { runCatching { audio.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_SAME, AudioManager.FLAG_SHOW_UI) } }
 
     fun toggleTorch() { torchId?.let { id -> runCatching { camera.setTorchMode(id, !torchOn) } } }
 

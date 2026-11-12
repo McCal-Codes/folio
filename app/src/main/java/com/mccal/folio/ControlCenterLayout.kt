@@ -111,13 +111,14 @@ internal fun ccFreeCells(slots: List<CcSlot>, cols: Int, rows: Int): List<Pair<I
 private const val CC_MAX_SAVED_ROWS = 40
 
 /** A layout the person made in the editor, for a grid [cols] wide. A grid of another width cannot use it (see [ccLayoutFor]). */
-data class CcSavedLayout(val cols: Int, val slots: List<CcSlot>)
+data class CcSavedLayout(val cols: Int, val slots: List<CcSlot>, val focusOn: Boolean = false)
 
 private fun ccKnownId(id: String): Boolean =
     id in setOf(CC_CONNECTIVITY, CC_MEDIA, CC_BRIGHTNESS, CC_VOLUME, CC_FOCUS) || CcControl.entries.any { it.name == id }
 
 internal fun ccLayoutToJson(layout: CcSavedLayout): org.json.JSONObject = org.json.JSONObject()
     .put("cols", layout.cols)
+    .put("focus", layout.focusOn)
     .put("slots", org.json.JSONArray(layout.slots.map { org.json.JSONObject().put("id", it.id).put("col", it.col).put("row", it.row).put("w", it.w).put("h", it.h) }))
 
 /**
@@ -137,7 +138,7 @@ internal fun ccLayoutFromJson(json: org.json.JSONObject?): CcSavedLayout? {
     }
     val ok = slots.map { it.id }.toSet().size == slots.size &&
         slots.all { ccKnownId(it.id) && (it.w to it.h) in ccAllowedSizes(it.id, cols) && ccFits(slots, it, cols, CC_MAX_SAVED_ROWS) }
-    return if (ok) CcSavedLayout(cols, slots) else null
+    return if (ok) CcSavedLayout(cols, slots, json.optBoolean("focus", false)) else null
 }
 
 /**
@@ -150,6 +151,15 @@ internal fun ccLayoutFor(saved: CcSavedLayout?, cols: Int, controls: List<String
     var slots = saved.slots.filter { s -> s.id in controls || !CcControl.entries.any { it.name == s.id } }
     if (!focus) slots = slots.filter { it.id != CC_FOCUS }
     for (id in controls) if (slots.none { it.id == id }) slots = ccAdd(slots, id, cols, CC_MAX_SAVED_ROWS) ?: slots
-    if (focus && slots.none { it.id == CC_FOCUS }) slots = ccAdd(slots, CC_FOCUS, cols, CC_MAX_SAVED_ROWS) ?: slots
+    // Focus switched on in Settings after the layout was saved with it off takes the first free place; once the layout has seen it on, a
+    // missing Focus was taken off in the editor and stays off.
+    if (focus && !saved.focusOn && slots.none { it.id == CC_FOCUS }) slots = ccAdd(slots, CC_FOCUS, cols, CC_MAX_SAVED_ROWS) ?: slots
+    // A module (connectivity, Now Playing, brightness, volume, Focus) missing from a saved layout was taken off in the editor, so it stays off
+    // until it is added back from the gallery.
     return slots
 }
+
+/** The modules a saved layout has taken off, which the editor's gallery offers to add back ([focus] false means Focus is off in Settings). */
+internal fun ccMissingModules(slots: List<CcSlot>, focus: Boolean): List<String> =
+    listOf(CC_CONNECTIVITY, CC_MEDIA, CC_BRIGHTNESS, CC_VOLUME, CC_FOCUS)
+        .filter { id -> slots.none { it.id == id } && (id != CC_FOCUS || focus) }

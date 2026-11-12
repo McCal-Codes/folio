@@ -113,6 +113,17 @@ class ControlCenterSavedLayoutTest {
 
     private fun saved(cols: Int = 6) = CcSavedLayout(cols, ccDefaultLayout(cols, controls, focus = false))
 
+    @Test fun `a module taken off stays off, is offered back, and returns to a free place`() {
+        val full = ccDefaultLayout(6, controls, focus = true)
+        val off = CcSavedLayout(6, ccRemove(ccRemove(full, CC_VOLUME), CC_FOCUS), focusOn = true)
+        assertEquals(off, ccLayoutFromJson(ccLayoutToJson(off)))
+        val drawn = ccLayoutFor(off, 6, controls, focus = true)
+        assertEquals(listOf(CC_VOLUME, CC_FOCUS), ccMissingModules(drawn, focus = true))
+        assertEquals(listOf(CC_VOLUME), ccMissingModules(drawn, focus = false).filter { it != CC_FOCUS })
+        val back = ccAdd(drawn, CC_VOLUME, 6, 8)
+        assertEquals(true, back != null && back.any { it.id == CC_VOLUME })
+    }
+
     @Test fun `a saved layout survives writing and reading`() {
         val layout = saved()
         assertEquals(layout, ccLayoutFromJson(ccLayoutToJson(layout)))
@@ -182,5 +193,40 @@ class CcSlotGridMathTest {
         assertEquals(1 to 3, ccNextSize(listOf(pinned), CC_BRIGHTNESS, 4, 3))
         assertNull(ccNextSize(listOf(pinned), CC_BRIGHTNESS, 4, 2))
         assertNull(ccNextSize(listOf(CcSlot(CC_CONNECTIVITY, 0, 0, 2, 2)), CC_CONNECTIVITY, 4, 4))
+    }
+}
+
+class CcSideTest {
+    @Test fun `the side is the middle when centered, left when left handed, and the right otherwise`() {
+        assertEquals(CcSide.RIGHT, ccSideOf(centered = false, left = false))
+        assertEquals(CcSide.MIDDLE, ccSideOf(centered = true, left = false))
+        assertEquals(CcSide.LEFT, ccSideOf(centered = false, left = true))
+        assertEquals(CcSide.MIDDLE, ccSideOf(centered = true, left = true))
+    }
+}
+
+class CcGalleryFilterTest {
+    private val icon = androidx.compose.ui.graphics.vector.ImageVector.Builder("t", androidx.compose.ui.unit.Dp(1f), androidx.compose.ui.unit.Dp(1f), 1f, 1f).build()
+    private val items = listOf(
+        CcGalleryItem("DND", "Do Not Disturb", icon, false),
+        CcGalleryItem("CAMERA", "Camera", icon, false),
+        CcGalleryItem(CC_VOLUME, "Volume", icon, true),
+    )
+
+    @Test fun `a blank search shows everything and a word finds names that hold it, ignoring case`() {
+        assertEquals(items, ccGalleryFilter(items, "  "))
+        assertEquals(listOf("CAMERA"), ccGalleryFilter(items, "cAm").map { it.id })
+        assertEquals(listOf("DND"), ccGalleryFilter(items, " disturb ").map { it.id })
+        assertEquals(emptyList<CcGalleryItem>(), ccGalleryFilter(items, "zzz"))
+    }
+}
+
+class CcHoldCardTest {
+    @Test fun `the card's number is the slider as a whole percent, held between 0 and 100`() {
+        assertEquals("0%", ccPercentLabel(0f))
+        assertEquals("40%", ccPercentLabel(.4f))
+        assertEquals("100%", ccPercentLabel(1f))
+        assertEquals("0%", ccPercentLabel(-.3f))
+        assertEquals("100%", ccPercentLabel(1.7f))
     }
 }

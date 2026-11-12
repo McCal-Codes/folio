@@ -108,7 +108,7 @@ class CcOptionsTest {
         // The old rows are all still on the page (they moved into cards, none was dropped).
         val root = generateSequence(java.io.File("").absoluteFile) { it.parentFile }.first { java.io.File(it, "CHANGELOG.md").exists() }
         val cards = java.io.File(root, "app/src/main/java/com/mccal/folio/ControlCenterSettings.kt").readText()
-        for (name in listOf("control_center_size", "control_center_look", "cc_look_note", "unfolded_control_center_in_the_middle", "to_restyle_samsungs_own_pull_down_colors"))
+        for (name in listOf("control_center_size", "control_center_look", "cc_look_note", "control_center_side", "to_restyle_samsungs_own_pull_down_colors"))
             assertTrue("$name is still on the page", "R.string.$name" in cards)
     }
 }

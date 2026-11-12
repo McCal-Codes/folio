@@ -206,6 +206,8 @@ data class LauncherState(
     val ccSize: PanelSize = PanelSize.STANDARD,
     /** Unfolded: Control Center in the middle instead of under the right-hand pull. */
     val ccCentered: Boolean = false,
+    /** Control Center sits under the top left corner on a wide window (left handed); [ccCentered] wins when both are set. */
+    val ccLeft: Boolean = false,
     /** How Control Center's tiles are drawn: Clear glass, Frosted or Solid. */
     val ccLook: CcLook = CcLook.CLEAR,
     /** Control Center's pages, sliders and tap behavior (FeatureGate.CC_SETTINGS_V2); the defaults are what it always did. */
@@ -1461,11 +1463,12 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     fun setCcControls(controls: List<String>) = updateSettings(soon = false) { it.copy(ccControls = controls.distinct()) }
     fun setCcSize(size: PanelSize) = updateSettings(soon = false) { it.copy(ccSize = size) }
     fun setCcCentered(value: Boolean) = updateSettings(soon = false) { it.copy(ccCentered = value) }
+    internal fun setCcSide(side: CcSide) = updateSettings(soon = false) { it.copy(ccCentered = side == CcSide.MIDDLE, ccLeft = side == CcSide.LEFT) }
     fun setCcLook(look: CcLook) = updateSettings(soon = false) { it.copy(ccLook = look) }
     fun setCcOptions(options: CcOptions) = updateSettings(soon = false) { it.copy(ccOptions = options) }
     /** Reset Control Center, and its Undo: size, look, the middle and the options, in one write. The chosen controls are not touched. */
-    internal fun restoreControlCenter(size: PanelSize, centered: Boolean, look: CcLook, options: CcOptions, layout: CcSavedLayout? = null) =
-        updateSettings(soon = false) { it.copy(ccSize = size, ccCentered = centered, ccLook = look, ccOptions = options, ccLayout = layout) }
+    internal fun restoreControlCenter(size: PanelSize, centered: Boolean, look: CcLook, options: CcOptions, layout: CcSavedLayout? = null, left: Boolean = false) =
+        updateSettings(soon = false) { it.copy(ccSize = size, ccCentered = centered, ccLeft = left, ccLook = look, ccOptions = options, ccLayout = layout) }
     fun setNcLayout(value: NcLayout) = updateSettings(soon = false) { it.copy(ncLayout = value) }
     fun setShadeOverApps(value: Boolean) = updateSettings(soon = false) { it.copy(shadeOverApps = value) }
     fun setShadePull(value: Boolean) = updateSettings(soon = false) { it.copy(shadePull = value) }
@@ -1712,7 +1715,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
             .put("iconShape", s.iconShape.name).put("iconPack", s.iconPack ?: JSONObject.NULL).put("badgeStyle", s.badgeStyle.name).put("badgeColor", s.badgeColor.name).put("badgeLook", s.badgeLook.name).put("badgeSize", s.badgeSize.name).put("badgesWhenOpened", s.badgesWhenOpened)
             .put("badgesSeen", JSONObject().apply { s.badgesSeen.forEach { (pkg, count) -> put(pkg, count) } }).put("searchPill", s.searchPill).put("homeStrip", s.homeStrip.key).put("swipeDownHome", s.swipeDownHome).put("messagesApp", s.messagesApp ?: JSONObject.NULL).put(SettingKeys.MESSAGES_AVOID_DOUBLE, s.messagesAvoidDouble)
             .put(SettingKeys.ISLAND_ALERTS, s.islandAlerts).put(SettingKeys.ISLAND_ALERT_APPS_OFF, JSONArray(s.islandAlertAppsOff.toList())).put("ccControls", JSONArray(s.ccControls)).also { j -> s.ccLayout?.let { j.put("ccLayout", ccLayoutToJson(it)) } }
-            .put("ccSize", s.ccSize.name).put("ccCentered", s.ccCentered).put("ccLook", s.ccLook.name).also { s.ccOptions.writeTo(it) }.put("ncLayout", s.ncLayout.name)
+            .put("ccSize", s.ccSize.name).put("ccCentered", s.ccCentered).put("ccLeft", s.ccLeft).put("ccLook", s.ccLook.name).also { s.ccOptions.writeTo(it) }.put("ncLayout", s.ncLayout.name)
             // The old switch is kept, so a backup restored in an earlier Folio still opens the same way.
             .put("ncSplit", s.ncLayout == NcLayout.FULL_SCREEN).put("shadeOverApps", s.shadeOverApps).put("shadePull", s.shadePull).put("shadePullTab", s.shadePullTab).put("pullTarget", s.pullTarget.name)
             .put("widgetStacks", JSONObject().apply { s.widgetStacks.forEach { (slot, ids) -> put(slot.toString(), JSONArray(ids)) } })
@@ -2000,6 +2003,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?, dockMirror: St
         ccLayout = ccLayoutFromJson(j.optJSONObject("ccLayout")),
         ccSize = runCatching { PanelSize.valueOf(j.optString("ccSize")) }.getOrDefault(PanelSize.STANDARD),
         ccCentered = j.optBoolean("ccCentered", false),
+        ccLeft = j.optBoolean("ccLeft", false),
         ccLook = runCatching { CcLook.valueOf(j.optString("ccLook")) }.getOrDefault(CcLook.CLEAR),
         ccOptions = CcOptions.read(j),
         ncLayout = ncLayoutFrom(j.optString("ncLayout").ifEmpty { null }, if (j.has("ncSplit")) j.optBoolean("ncSplit") else null),

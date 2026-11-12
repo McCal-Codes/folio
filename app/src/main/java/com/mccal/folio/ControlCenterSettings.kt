@@ -14,7 +14,12 @@ import androidx.compose.ui.semantics.semantics
 import kotlinx.coroutines.delay
 
 /** What Reset Control Center changed, kept for a few seconds so Undo can put it back. */
-private data class CcSettingsSnapshot(val size: PanelSize, val centered: Boolean, val look: CcLook, val options: CcOptions, val layout: CcSavedLayout?)
+/** Where Control Center sits on a wide window: under the top right corner (as before), in the middle, or under the top left for a left handed grip. */
+internal enum class CcSide(val label: Int) { RIGHT(R.string.cc_side_right), MIDDLE(R.string.cc_side_middle), LEFT(R.string.cc_side_left) }
+
+internal fun ccSideOf(centered: Boolean, left: Boolean): CcSide = if (centered) CcSide.MIDDLE else if (left) CcSide.LEFT else CcSide.RIGHT
+
+private data class CcSettingsSnapshot(val left: Boolean, val size: PanelSize, val centered: Boolean, val look: CcLook, val options: CcOptions, val layout: CcSavedLayout?)
 
 /**
  * The Control Center part of Settings > Notifications & Control Center, in short cards (FeatureGate.CC_SETTINGS_V2): the size and look
@@ -35,7 +40,7 @@ internal fun ControlCenterSettingsCards(state: LauncherState, model: LauncherMod
         IosMenuRow(stringResource(R.string.control_center_look), CcLook.entries.map { it to stringResource(it.label) }, state.ccLook, model::setCcLook, tag = "cc-look")
         CardNote(stringResource(R.string.cc_look_note))
         // Side by side puts Control Center on the right itself, and a card sits under its own corner, so only Full screen can centre it.
-        if (state.ncLayout == NcLayout.FULL_SCREEN) SettingsSwitch(stringResource(R.string.unfolded_control_center_in_the_middle), state.ccCentered, model::setCcCentered, "cc-centered-switch")
+        if (state.ncLayout == NcLayout.FULL_SCREEN) IosMenuRow(stringResource(R.string.control_center_side), CcSide.entries.map { it to stringResource(it.label) }, ccSideOf(state.ccCentered, state.ccLeft), model::setCcSide, tag = "cc-side")
         CardNote(stringResource(R.string.to_restyle_samsungs_own_pull_down_colors))
     }
     SettingsCard(stringResource(R.string.cc_pages_title)) {
@@ -60,10 +65,10 @@ internal fun ControlCenterSettingsCards(state: LauncherState, model: LauncherMod
         val before = undo
         // Undo stands in the Reset row's own place, so it is where the finger was and never below the fold; the note under it says what happened.
         if (before == null) IosActionRow(stringResource(R.string.cc_reset), "cc-reset", destructive = true) {
-            undo = CcSettingsSnapshot(state.ccSize, state.ccCentered, state.ccLook, state.ccOptions, state.ccLayout)
+            undo = CcSettingsSnapshot(state.ccLeft, state.ccSize, state.ccCentered, state.ccLook, state.ccOptions, state.ccLayout)
             model.restoreControlCenter(PanelSize.STANDARD, false, CcLook.CLEAR, CcOptions())
         } else IosActionRow(stringResource(R.string.undo), "cc-reset-undo") {
-            model.restoreControlCenter(before.size, before.centered, before.look, before.options, before.layout)
+            model.restoreControlCenter(before.size, before.centered, before.look, before.options, before.layout, before.left)
             undo = null
         }
         CardNote(stringResource(if (before == null) R.string.cc_reset_note else R.string.cc_reset_done),

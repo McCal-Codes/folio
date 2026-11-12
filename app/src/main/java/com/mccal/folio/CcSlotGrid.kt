@@ -1,6 +1,7 @@
 package com.mccal.folio
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -8,6 +9,7 @@ import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,6 +23,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -90,6 +95,10 @@ internal fun CcSlotGrid(
     val removeLabel = stringResource(R.string.cc_remove)
 
     Box(Modifier.size(span(cols), if (rows > 0) span(rows) else 0.dp)) {
+        // The free places, as faint circles, so it is plain where a control can be dropped (as iOS).
+        if (editing) ccFreeCells(slots, cols, rows).forEach { (c, r) ->
+            Box(Modifier.offset(step * c, step * r).size(cell).padding(cell * .08f).clip(CircleShape).background(Color.White.copy(alpha = .07f)))
+        }
         slots.forEach { slot ->
             val id = slot.id
             val lifted = dragging == id
@@ -143,11 +152,11 @@ internal fun CcSlotGrid(
                             )
                         })
                     // A still outline: the places are being arranged, so nothing else about the control moves or glows.
-                    Box(Modifier.matchParentSize().border(1.dp, Color.White.copy(alpha = if (lifted || live) .9f else .35f), RoundedCornerShape(26.dp)))
+                    if (lifted || live) Box(Modifier.matchParentSize().border(1.5.dp, Color.White.copy(alpha = .9f), RoundedCornerShape(26.dp)))
                     if (removable(id)) Box(Modifier.align(Alignment.TopStart).offset((-14).dp, (-14).dp).size(44.dp)
                         .pointerInput(id) { detectTapGestures { onRemove(id) } }, contentAlignment = Alignment.Center) {
-                        Box(Modifier.size(22.dp).clip(CircleShape).background(FolioColors.MenuSurface).border(1.dp, Color.White.copy(alpha = .6f), CircleShape), contentAlignment = Alignment.Center) {
-                            Box(Modifier.size(10.dp, 2.dp).background(Color.White))
+                        Box(Modifier.size(22.dp).clip(CircleShape).background(Color.White.copy(alpha = .92f)), contentAlignment = Alignment.Center) {
+                            Box(Modifier.size(10.dp, 2.dp).background(Color.Black.copy(alpha = .75f)))
                         }
                     }
                     if (ccAllowedSizes(id, cols).size > 1) Box(Modifier.align(Alignment.BottomEnd).offset(10.dp, 10.dp).size(44.dp)
@@ -167,7 +176,13 @@ internal fun CcSlotGrid(
                                 onDragCancel = { resizing = null; resize = Offset.Zero },
                             )
                         }, contentAlignment = Alignment.Center) {
-                        Box(Modifier.size(16.dp).clip(CircleShape).background(Color.White.copy(alpha = .85f)))
+                        // A curved handle that follows the control's own corner, as iOS draws it, instead of a dot on the corner.
+                        Canvas(Modifier.size(30.dp)) {
+                            val stroke = 4.dp.toPx()
+                            val r = 26.dp.toPx()
+                            drawArc(Color.White.copy(alpha = if (live) 1f else .85f), startAngle = 0f, sweepAngle = 90f, useCenter = false,
+                                topLeft = Offset(size.width - 2 * r - stroke, size.height - 2 * r - stroke), size = Size(2 * r, 2 * r), style = Stroke(stroke, cap = StrokeCap.Round))
+                        }
                     }
                 }
             }
