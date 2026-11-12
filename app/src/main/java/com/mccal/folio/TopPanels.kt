@@ -26,6 +26,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
@@ -1474,17 +1475,21 @@ private fun RailReadouts(status: DeviceStatus) {
     val cellWords = if (status.cellularLevel == null) stringResource(R.string.cellular_signal_unavailable) else stringResource(R.string.cc_rail_mark, stringResource(R.string.cellular_data), stringResource(if (cellOn) R.string.state_on else R.string.state_off))
     // Words under the marks, as on the Duo: the network's name when Android gives it (else "Wi-Fi"), and SOS when the phone has no signal at all.
     val noService = !status.airplane && status.cellularLevel == 0
+    // A name too long for the rail slides sideways to show all of it (still ellipsized when the person asked for less motion).
+    val reduceMotion = LocalReduceMotion.current
+    val slide = if (reduceMotion) Modifier else Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 600, velocity = 24.dp)
+    val slideEnd = if (reduceMotion) TextOverflow.Ellipsis else TextOverflow.Clip
     val wordSize = FolioType.GROUP_LABEL.sp
     Column(Modifier.widthIn(max = 56.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.TINY.dp)) {
         Icon(Icons.Rounded.Wifi, null, tint = Color.White.copy(alpha = if (wifiOn) 1f else .35f), modifier = Modifier.size(22.dp).semantics { contentDescription = wifiWords })
-        if (wifiOn) Text(status.wifiName ?: stringResource(R.string.wi_fi), color = Color.White, fontSize = wordSize, maxLines = 1, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.clearAndSetSemantics {})
+        if (wifiOn) Text(status.wifiName ?: stringResource(R.string.wi_fi), color = Color.White, fontSize = wordSize, maxLines = 1, overflow = slideEnd,
+            modifier = slide.clearAndSetSemantics {})
         Icon(Icons.Rounded.SignalCellularAlt, null, tint = Color.White.copy(alpha = if (cellOn) 1f else .35f), modifier = Modifier.size(22.dp).semantics { contentDescription = cellWords })
         // No service: SOS. Otherwise the network the phone is on.
         if (noService) Text(stringResource(R.string.status_sos), color = Color.White, fontSize = wordSize, fontWeight = FontWeight.SemiBold, maxLines = 1,
             modifier = Modifier.clearAndSetSemantics {})
-        else if (cellOn && status.carrierName != null) Text(status.carrierName!!, color = Color.White, fontSize = wordSize, maxLines = 1, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.clearAndSetSemantics {})
+        else if (cellOn && status.carrierName != null) Text(status.carrierName!!, color = Color.White, fontSize = wordSize, maxLines = 1, overflow = slideEnd,
+            modifier = slide.clearAndSetSemantics {})
     }
 }
 
