@@ -107,3 +107,80 @@ class ControlCenterLayoutTest {
         assertTrue(ccFreeCells(without, 4, rows).contains(0 to 3))
     }
 }
+
+class ControlCenterSavedLayoutTest {
+    private val controls = CcControl.DEFAULTS
+
+    private fun saved(cols: Int = 6) = CcSavedLayout(cols, ccDefaultLayout(cols, controls, focus = false))
+
+    @Test fun `a saved layout survives writing and reading`() {
+        val layout = saved()
+        assertEquals(layout, ccLayoutFromJson(ccLayoutToJson(layout)))
+    }
+
+    @Test fun `nothing saved, a bad file, or a wrong width falls back to the default page`() {
+        val default6 = ccDefaultLayout(6, controls, false)
+        assertEquals(default6, ccLayoutFor(null, 6, controls, false))
+        assertEquals(default6, ccLayoutFor(saved(4), 6, controls, false))
+        assertNull(ccLayoutFromJson(null))
+        assertNull(ccLayoutFromJson(org.json.JSONObject("{\"cols\":6}")))
+    }
+
+    @Test fun `a layout with an unknown id, a repeat, an overlap, a bad size or a place outside the grid is refused whole`() {
+        fun read(vararg slots: CcSlot) = ccLayoutFromJson(ccLayoutToJson(CcSavedLayout(6, slots.toList())))
+        val ok = CcSlot(CcControl.entries.first().name, 0, 0, 1, 1)
+        assertEquals(CcSavedLayout(6, listOf(ok)), read(ok))
+        assertNull(read(ok.copy(id = "nope")))
+        assertNull(read(ok, ok))
+        assertNull(read(ok, ok.copy(id = CcControl.entries[1].name)))
+        assertNull(read(ok.copy(w = 3)))
+        assertNull(read(ok.copy(col = 6)))
+        assertNull(read(ok.copy(row = -1)))
+    }
+
+    @Test fun `a saved place is kept, a control turned off leaves it, and one turned on takes the first free place`() {
+        val layout = saved()
+        val first = controls.first()
+        val moved = ccMove(layout.slots, first, 5, 6, 6, 8)
+        assertEquals(5 to 6, moved.first { it.id == first }.let { it.col to it.row })
+        val kept = ccLayoutFor(CcSavedLayout(6, moved), 6, controls, false)
+        assertEquals(moved.first { it.id == first }, kept.first { it.id == first })
+        val fewer = ccLayoutFor(CcSavedLayout(6, moved), 6, controls - first, false)
+        assertTrue(fewer.none { it.id == first })
+        val extra = CcControl.entries.map { it.name }.first { it !in controls }
+        val more = ccLayoutFor(layout, 6, controls + extra, false)
+        assertTrue(more.any { it.id == extra })
+        assertEquals(more.size, more.map { it.id }.toSet().size)
+    }
+
+    @Test fun `Focus follows its switch`() {
+        val withFocus = CcSavedLayout(6, ccDefaultLayout(6, controls, focus = true))
+        assertTrue(ccLayoutFor(withFocus, 6, controls, focus = false).none { it.id == CC_FOCUS })
+        assertTrue(ccLayoutFor(saved(), 6, controls, focus = true).any { it.id == CC_FOCUS })
+    }
+}
+
+class CcSlotGridMathTest {
+    @Test fun `a drag lands on the nearest whole cell and under half a cell goes back`() {
+        assertEquals(2 to 3, ccDragTarget(1, 3, 100f, 0f, 100f))
+        assertEquals(1 to 3, ccDragTarget(1, 3, 49f, -49f, 100f))
+        assertEquals(0 to 1, ccDragTarget(1, 2, -90f, -110f, 100f))
+        assertEquals(1 to 1, ccDragTarget(1, 1, 500f, 500f, 0f))
+    }
+
+    @Test fun `a corner drag reports the size in cells it reached`() {
+        assertEquals(3f to 2.5f, ccDragSize(2, 2, 100f, 50f, 100f))
+    }
+
+    @Test fun `the next size skips ones that do not fit and is null when there is none`() {
+        val focus = CcSlot(CC_FOCUS, 0, 0, 4, 1)
+        assertEquals(2 to 1, ccNextSize(listOf(focus), CC_FOCUS, 4, 4))
+        val blocked = listOf(focus, CcSlot(CcControl.entries.first().name, 0, 1, 1, 1))
+        // 2 by 1 fits, 2 by 2 would hit the control below.
+        assertEquals(2 to 1, ccNextSize(blocked, CC_FOCUS, 4, 4))
+        val pinned = CcSlot(CC_BRIGHTNESS, 0, 0, 1, 2)
+        assertEquals(1 to 3, ccNextSize(listOf(pinned), CC_BRIGHTNESS, 4, 3))
+        assertNull(ccNextSize(listOf(pinned), CC_BRIGHTNESS, 4, 2))
+        assertNull(ccNextSize(listOf(CcSlot(CC_CONNECTIVITY, 0, 0, 2, 2)), CC_CONNECTIVITY, 4, 4))
+    }
+}

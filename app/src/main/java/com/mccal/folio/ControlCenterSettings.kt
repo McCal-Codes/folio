@@ -14,7 +14,7 @@ import androidx.compose.ui.semantics.semantics
 import kotlinx.coroutines.delay
 
 /** What Reset Control Center changed, kept for a few seconds so Undo can put it back. */
-private data class CcSettingsSnapshot(val size: PanelSize, val centered: Boolean, val look: CcLook, val options: CcOptions)
+private data class CcSettingsSnapshot(val size: PanelSize, val centered: Boolean, val look: CcLook, val options: CcOptions, val layout: CcSavedLayout?)
 
 /**
  * The Control Center part of Settings > Notifications & Control Center, in short cards (FeatureGate.CC_SETTINGS_V2): the size and look
@@ -60,10 +60,10 @@ internal fun ControlCenterSettingsCards(state: LauncherState, model: LauncherMod
         val before = undo
         // Undo stands in the Reset row's own place, so it is where the finger was and never below the fold; the note under it says what happened.
         if (before == null) IosActionRow(stringResource(R.string.cc_reset), "cc-reset", destructive = true) {
-            undo = CcSettingsSnapshot(state.ccSize, state.ccCentered, state.ccLook, state.ccOptions)
+            undo = CcSettingsSnapshot(state.ccSize, state.ccCentered, state.ccLook, state.ccOptions, state.ccLayout)
             model.restoreControlCenter(PanelSize.STANDARD, false, CcLook.CLEAR, CcOptions())
         } else IosActionRow(stringResource(R.string.undo), "cc-reset-undo") {
-            model.restoreControlCenter(before.size, before.centered, before.look, before.options)
+            model.restoreControlCenter(before.size, before.centered, before.look, before.options, before.layout)
             undo = null
         }
         CardNote(stringResource(if (before == null) R.string.cc_reset_note else R.string.cc_reset_done),

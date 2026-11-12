@@ -2595,4 +2595,10 @@
     <string name="fit_more_dock_apps_note">Dock places and icons shrink so more apps fit on a short screen. Places get smaller than the 48 dp touch size Android recommends, so they can be harder to tap.</string>
     <string name="rollback_lookup_failed">Couldn\'t look for older versions. Check your connection.</string>
     <string name="rollback_try_again">Try again</string>
+    <string name="cc_move_left">Move left</string>
+    <string name="cc_move_right">Move right</string>
+    <string name="cc_move_up">Move up</string>
+    <string name="cc_move_down">Move down</string>
+    <string name="cc_change_size">Change size</string>
+    <string name="cc_remove">Remove</string>
 </resources>

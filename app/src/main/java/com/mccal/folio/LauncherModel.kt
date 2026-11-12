@@ -201,6 +201,8 @@ data class LauncherState(
     val islandAlertAppsOff: Set<String> = emptySet(),
     /** Control Center's small controls, in order (names of [CcControl]). */
     val ccControls: List<String> = CcControl.DEFAULTS,
+    /** Places made in the Control Center editor (FeatureGate.CC_EDITOR); null until the person moves something. */
+    internal val ccLayout: CcSavedLayout? = null,
     val ccSize: PanelSize = PanelSize.STANDARD,
     /** Unfolded: Control Center in the middle instead of under the right-hand pull. */
     val ccCentered: Boolean = false,
@@ -1455,14 +1457,15 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     fun setIslandAlerts(value: Boolean) = updateSettings(soon = false) { it.copy(islandAlerts = value) }
     fun setIslandAlertApp(packageName: String, enabled: Boolean) = updateSettings(soon = false) {
         it.copy(islandAlertAppsOff = if (enabled) it.islandAlertAppsOff - packageName else it.islandAlertAppsOff + packageName) }
+    internal fun setCcLayout(layout: CcSavedLayout?) = updateSettings(soon = false) { it.copy(ccLayout = layout) }
     fun setCcControls(controls: List<String>) = updateSettings(soon = false) { it.copy(ccControls = controls.distinct()) }
     fun setCcSize(size: PanelSize) = updateSettings(soon = false) { it.copy(ccSize = size) }
     fun setCcCentered(value: Boolean) = updateSettings(soon = false) { it.copy(ccCentered = value) }
     fun setCcLook(look: CcLook) = updateSettings(soon = false) { it.copy(ccLook = look) }
     fun setCcOptions(options: CcOptions) = updateSettings(soon = false) { it.copy(ccOptions = options) }
     /** Reset Control Center, and its Undo: size, look, the middle and the options, in one write. The chosen controls are not touched. */
-    fun restoreControlCenter(size: PanelSize, centered: Boolean, look: CcLook, options: CcOptions) =
-        updateSettings(soon = false) { it.copy(ccSize = size, ccCentered = centered, ccLook = look, ccOptions = options) }
+    internal fun restoreControlCenter(size: PanelSize, centered: Boolean, look: CcLook, options: CcOptions, layout: CcSavedLayout? = null) =
+        updateSettings(soon = false) { it.copy(ccSize = size, ccCentered = centered, ccLook = look, ccOptions = options, ccLayout = layout) }
     fun setNcLayout(value: NcLayout) = updateSettings(soon = false) { it.copy(ncLayout = value) }
     fun setShadeOverApps(value: Boolean) = updateSettings(soon = false) { it.copy(shadeOverApps = value) }
     fun setShadePull(value: Boolean) = updateSettings(soon = false) { it.copy(shadePull = value) }
@@ -1708,7 +1711,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
             .put(SettingKeys.ISLAND_EVENTS_OFF, JSONArray(s.islandEventsOff.toList())).put("libraryCategories", s.libraryCategories).put("libraryWork", s.libraryWork).put("iconStyle", s.iconStyle.name).put("iconTint", s.iconTint)
             .put("iconShape", s.iconShape.name).put("iconPack", s.iconPack ?: JSONObject.NULL).put("badgeStyle", s.badgeStyle.name).put("badgeColor", s.badgeColor.name).put("badgeLook", s.badgeLook.name).put("badgeSize", s.badgeSize.name).put("badgesWhenOpened", s.badgesWhenOpened)
             .put("badgesSeen", JSONObject().apply { s.badgesSeen.forEach { (pkg, count) -> put(pkg, count) } }).put("searchPill", s.searchPill).put("homeStrip", s.homeStrip.key).put("swipeDownHome", s.swipeDownHome).put("messagesApp", s.messagesApp ?: JSONObject.NULL).put(SettingKeys.MESSAGES_AVOID_DOUBLE, s.messagesAvoidDouble)
-            .put(SettingKeys.ISLAND_ALERTS, s.islandAlerts).put(SettingKeys.ISLAND_ALERT_APPS_OFF, JSONArray(s.islandAlertAppsOff.toList())).put("ccControls", JSONArray(s.ccControls))
+            .put(SettingKeys.ISLAND_ALERTS, s.islandAlerts).put(SettingKeys.ISLAND_ALERT_APPS_OFF, JSONArray(s.islandAlertAppsOff.toList())).put("ccControls", JSONArray(s.ccControls)).also { j -> s.ccLayout?.let { j.put("ccLayout", ccLayoutToJson(it)) } }
             .put("ccSize", s.ccSize.name).put("ccCentered", s.ccCentered).put("ccLook", s.ccLook.name).also { s.ccOptions.writeTo(it) }.put("ncLayout", s.ncLayout.name)
             // The old switch is kept, so a backup restored in an earlier Folio still opens the same way.
             .put("ncSplit", s.ncLayout == NcLayout.FULL_SCREEN).put("shadeOverApps", s.shadeOverApps).put("shadePull", s.shadePull).put("shadePullTab", s.shadePullTab).put("pullTarget", s.pullTarget.name)
@@ -1994,6 +1997,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?, dockMirror: St
         islandAlertAppsOff = j.optJSONArray(SettingKeys.ISLAND_ALERT_APPS_OFF)?.let { a -> (0 until a.length()).map(a::getString).toSet() } ?: emptySet(),
         ccControls = j.optJSONArray("ccControls")?.let { a -> (0 until a.length()).map(a::getString).filter { name -> CcControl.entries.any { it.name == name } } }
             ?: CcControl.DEFAULTS,
+        ccLayout = ccLayoutFromJson(j.optJSONObject("ccLayout")),
         ccSize = runCatching { PanelSize.valueOf(j.optString("ccSize")) }.getOrDefault(PanelSize.STANDARD),
         ccCentered = j.optBoolean("ccCentered", false),
         ccLook = runCatching { CcLook.valueOf(j.optString("ccLook")) }.getOrDefault(CcLook.CLEAR),

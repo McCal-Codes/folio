@@ -104,6 +104,7 @@ import java.time.format.DateTimeFormatter
 internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: DeviceStatus, onClose: () -> Unit,
     onSystemPanel: (ShadePanel) -> Unit, showClock: Boolean = true, grouped: Boolean = true, sections: Boolean = false,
     ccControls: List<String> = CcControl.DEFAULTS, onCcControls: (List<String>) -> Unit = {},
+    ccLayout: CcSavedLayout? = null, onCcLayout: (CcSavedLayout?) -> Unit = {},
     ccSize: PanelSize = PanelSize.STANDARD, ccCentered: Boolean = false, ncLayout: NcLayout = NcLayout.FULL_SCREEN, ccLook: CcLook = CcLook.CLEAR,
     ccOptions: CcOptions = CcOptions(),
     focusModes: List<FocusMode> = emptyList(), activeFocus: String? = null, onFocus: (String?) -> Unit = {},
@@ -234,7 +235,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
         if (shape == ShadeShape.BOTH) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp, Alignment.CenterHorizontally)) {
             // Either pull opens both: Notification Center on the left and Control Center on the right, each with its own close button.
             NotificationCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.NOTIFICATIONS)), false, grouped, sections, listMax = cardListMax, onClose = onClose, onSystemQuickSettings = { onSystemPanel(ShadePanel.QUICK_SETTINGS) }) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
-            ControlCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.QUICK_SETTINGS)), status, ccControls, onCcControls, ccSize, ccOptions, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open, pageBack = pageBack) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
+            ControlCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.QUICK_SETTINGS)), status, ccControls, onCcControls, ccSize, ccOptions, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open, pageBack = pageBack, ccLayout = ccLayout, onCcLayout = onCcLayout) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
         }
         else {
             // Moving between the panels is a plain cross-fade in place: the container always spans the width, and each panel sits where it sits when it
@@ -255,7 +256,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
                     if (which == ShadePanel.NOTIFICATIONS) NotificationCenter(panelModifier(ShadePanel.NOTIFICATIONS), showClock && !split && shape != ShadeShape.CARD, grouped, sections,
                         listMax = if (shape == ShadeShape.CARD) cardListMax else Dp.Infinity, onClose = onClose, onSwitch = switcher.takeUnless { hoistSwitch }, reserveSwitchRow = hoistSwitch,
                         detail = detail, onSystemQuickSettings = { onSystemPanel(ShadePanel.QUICK_SETTINGS) }) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
-                    else ControlCenter(panelModifier(ShadePanel.QUICK_SETTINGS), status, ccControls, onCcControls, ccSize, ccOptions, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open, pageBack = pageBack,
+                    else ControlCenter(panelModifier(ShadePanel.QUICK_SETTINGS), status, ccControls, onCcControls, ccSize, ccOptions, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open, pageBack = pageBack, ccLayout = ccLayout, onCcLayout = onCcLayout,
                         onSwitch = switcher.takeUnless { hoistSwitch }, reserveSwitchRow = hoistSwitch) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
                 }
             }
@@ -862,7 +863,7 @@ private fun CcControl.icon(): ImageVector = when (this) {
 @Composable
 private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames: List<String>, onControls: (List<String>) -> Unit,
     size: PanelSize, ccOptions: CcOptions, wide: Boolean, onClose: () -> Unit,
-    focusModes: List<FocusMode>, activeFocus: String?, onFocus: (String?) -> Unit, panelOpen: Boolean = true, pageBack: CcPageBack? = null, onSwitch: ((ShadePanel) -> Unit)? = null, reserveSwitchRow: Boolean = false, onSystem: () -> Unit) {
+    focusModes: List<FocusMode>, activeFocus: String?, onFocus: (String?) -> Unit, panelOpen: Boolean = true, pageBack: CcPageBack? = null, onSwitch: ((ShadePanel) -> Unit)? = null, reserveSwitchRow: Boolean = false, ccLayout: CcSavedLayout? = null, onCcLayout: (CcSavedLayout?) -> Unit = {}, onSystem: () -> Unit) {
     val context = LocalContext.current
     val controls = remember { DeviceControls(context) }
     DisposableEffect(controls) { controls.start(); onDispose { controls.stop() } }
@@ -1023,14 +1024,22 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         }
         // The pages share one height (the Controls page's rows), so the panel does not change size as you move between them.
         // While editing, the last Controls page also holds the gallery of controls to add back, so it counts for the page height.
+        // The Control Center editor (FeatureGate.CC_EDITOR): when every module and control fits on the one Controls page, the page is places on a grid
+        // that can be rearranged. Any other window keeps the ordered list, so nothing is lost where the grid has no room to work.
+        val editorOn = remember { FeatureGate.CC_EDITOR.isOpen(context) }
+        val slotMode = editorOn && extraPages.isEmpty() && plan.perPage.size == 1 && plan.focusOnFirst && plan.slidersOnFirst
+        val slots = remember(ccLayout, cols, chosen, focusOn) { ccLayoutFor(ccLayout, cols, chosen.map { it.name }, focusOn) }
+        val slotRowsFit = if (pagesAvailable == null) 12 else ccRowsThatFit(pagesAvailable.value, cell.value, gap.value)
+        val slotRows = if (slotMode) maxOf(ccRowsUsed(slots) + (if (edit.active) 1 else 0), ccRowsUsed(ccDefaultLayout(cols, chosen.map { it.name }, focusOn))).coerceAtLeast(1) else 0
+        val slotMoveRows = maxOf(slotRows, minOf(slotRowsFit, slotRows + 1))
         val galleryRows = if (edit.active) ccEditGalleryRows(CcControl.entries.count { it !in chosen && available(it) }, cols) else 0
-        fun controlsRows(index: Int) = ccPlanRows(plan, index, cols, focusOn) + if (index == plan.perPage.lastIndex) galleryRows else 0
+        fun controlsRows(index: Int) = (if (slotMode && index == 0) slotRows else ccPlanRows(plan, index, cols, focusOn)) + if (index == plan.perPage.lastIndex) galleryRows else 0
         val neededRows = maxOf(if (CcPage.MEDIA in extraPages) ccMediaRows(plan, focusOn) else 0, plan.perPage.indices.maxOf { controlsRows(it) })
         val wantedHeight = cell * neededRows + gap * (neededRows - 1)
         val pageHeight = if (pagesAvailable == null) wantedHeight else minOf(wantedHeight, pagesAvailable).coerceAtLeast(cell)
 
         // The sliders: beside the small controls with four columns, at the end of the top row with six or eight.
-        val sliders: @Composable (Dp) -> Unit = { height ->
+        val brightnessSlider: @Composable (Dp) -> Unit = { height ->
             TallSlider(if (controls.brightness < .35f) Icons.Rounded.BrightnessLow else Icons.Rounded.LightMode, stringResource(R.string.brightness), controls.brightness, cell, height,
                 onStart = { if (!android.provider.Settings.System.canWrite(context)) open(controls.writeSettingsIntent()) }, ticks = options.sliderTicks,
                 onHold = controls::holdBrightness,
@@ -1042,12 +1051,16 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                     }
                 } else null) { value ->
                 controls.changeBrightness(value) }
+        }
+        val volumeSlider: @Composable (Dp) -> Unit = { height ->
             TallSlider(when {
                 controls.volume <= .01f -> Icons.AutoMirrored.Rounded.VolumeOff
                 controls.volume < .5f -> Icons.AutoMirrored.Rounded.VolumeDown
                 else -> Icons.AutoMirrored.Rounded.VolumeUp
             }, stringResource(R.string.volume), controls.volume, cell, height, ticks = options.sliderTicks, onHold = controls::holdVolume) { controls.changeVolume(it) }
         }
+        val sliders: @Composable (Dp) -> Unit = { height -> brightnessSlider(height); volumeSlider(height) }
+
         val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
         val connectivity = listOf(
             ConnectivityItem(Icons.Rounded.AirplanemodeActive, stringResource(R.string.airplane_mode_2), status.airplane, AccentOrange) { open(Intent(Settings.ACTION_AIRPLANE_MODE_SETTINGS)) },
@@ -1062,10 +1075,10 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         val playing: () -> Unit = { media?.let { onClose(); IslandListenerService.open(context, it) } }
 
         // Focus, like iOS: the Focus that's on (or "Focus"); the icon toggles it, the rest opens the list. It stands under the modules on the first page, or on the Media page when the first has no row for it.
-        val focusModule: @Composable () -> Unit = {
+        val focusModuleAt: @Composable (Dp, Dp) -> Unit = { focusWidth, focusHeight ->
             var focusOpen by remember { mutableStateOf(false) }
             val current = focusModes.firstOrNull { it.id == activeFocus }
-            if (focusOpen) Module(Modifier.width(span(cols))) {
+            if (focusOpen) Module(Modifier.width(focusWidth)) {
                 Column(Modifier.fillMaxWidth().padding(vertical = FolioSpace.SMALL.dp)) {
                     focusModes.forEach { mode ->
                         val on = mode.id == activeFocus
@@ -1078,7 +1091,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                         }
                     }
                 }
-            } else Module(Modifier.width(span(cols)).height(cell).clickable(onClickLabel = stringResource(R.string.choose_a_focus)) { focusOpen = true }.testTag("cc-focus")) {
+            } else Module(Modifier.width(focusWidth).height(focusHeight).clickable(onClickLabel = stringResource(R.string.choose_a_focus)) { focusOpen = true }.testTag("cc-focus")) {
                 Row(Modifier.fillMaxSize().padding(horizontal = cell * .14f), verticalAlignment = Alignment.CenterVertically) {
                     val mode = current ?: focusModes.first()
                     RoundToggle(mode.icon(), mode.name, current != null, Color(mode.color), cell * .7f) {
@@ -1092,6 +1105,8 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                 }
             }
         }
+
+        val focusModule: @Composable () -> Unit = { focusModuleAt(span(cols), cell) }
 
         // One page's content. Pages scroll on their own when a window is too short for them.
         val pageContent: @Composable (CcPageSpec) -> Unit = { spec ->
@@ -1109,6 +1124,49 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                         val first = spec.index == 0
                         val before = plan.perPage.take(spec.index).sum()
                         val pageControls = chosen.subList(before, before + plan.perPage[spec.index])
+                        if (slotMode && first) {
+                            // The Control Center editor: every module and control at its own place (see CcSlotGrid).
+                            var slotConnectivityOpen by remember { mutableStateOf(false) }
+                            val labelOfSlot: @Composable (String) -> String = { id -> when (id) {
+                                CC_CONNECTIVITY -> stringResource(R.string.cc_page_connectivity); CC_MEDIA -> stringResource(R.string.now_playing)
+                                CC_BRIGHTNESS -> stringResource(R.string.brightness); CC_VOLUME -> stringResource(R.string.volume); CC_FOCUS -> stringResource(R.string.focus)
+                                else -> CcControl.entries.firstOrNull { it.name == id }?.let { stringResource(it.label) } ?: id } }
+                            CcSlotGrid(slots, cols, slotMoveRows, cell, gap, edit.active, raised = if (slotConnectivityOpen) CC_CONNECTIVITY else null,
+                                removable = { id -> CcControl.entries.any { it.name == id } }, labelOf = labelOfSlot,
+                                onChange = { next -> onCcLayout(CcSavedLayout(cols, next)) }, onRemove = { id -> onControls(controlNames - id) }) { slot ->
+                                when (slot.id) {
+                                    CC_CONNECTIVITY ->
+                                        if (slotConnectivityOpen && !edit.active) Module(Modifier.width(span(minOf(cols, 4))).wrapContentHeight(unbounded = true)
+                                            .combinedClickable(onClick = { slotConnectivityOpen = false }, onLongClick = { slotConnectivityOpen = false })) {
+                                            ConnectivityList(connectivity, Modifier.fillMaxWidth().padding(vertical = FolioSpace.SMALL.dp))
+                                        } else Module(Modifier.fillMaxSize().combinedClickable(onClick = {}, enabled = !edit.active, onLongClick = {
+                                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); slotConnectivityOpen = true
+                                        }, onLongClickLabel = stringResource(R.string.show_connectivity_details))) {
+                                            Column(Modifier.fillMaxSize().padding(cell * .16f), verticalArrangement = Arrangement.SpaceBetween) {
+                                                connectivity.chunked(2).forEach { pair ->
+                                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                                        pair.forEach { RoundToggle(it.icon, it.label, it.on, it.accent, cell * .7f) { if (!edit.active) it.onClick() } }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    CC_MEDIA -> MediaModule(media, Modifier.fillMaxSize(), cell, onOpen = { if (!edit.active) playing() }, slimWhenIdle = dedupe, slot = span(slot.h))
+                                    CC_BRIGHTNESS -> brightnessSlider(span(slot.h))
+                                    CC_VOLUME -> volumeSlider(span(slot.h))
+                                    CC_FOCUS -> focusModuleAt(span(slot.w), span(slot.h))
+                                    else -> CcControl.entries.firstOrNull { it.name == slot.id }?.let { c ->
+                                        if (slot.w == 1) SquareToggle(c.icon(), stringResource(c.label), isOn(c), accent(c), cell) { if (!edit.active) run(c) }
+                                        else Module(Modifier.fillMaxSize().clickable(enabled = !edit.active) { run(c) }) {
+                                            Row(Modifier.fillMaxSize().padding(horizontal = cell * .14f), verticalAlignment = Alignment.CenterVertically) {
+                                                RoundToggle(c.icon(), stringResource(c.label), isOn(c), accent(c), cell * .7f) { if (!edit.active) run(c) }
+                                                Spacer(Modifier.width(12.dp))
+                                                Text(stringResource(c.label), color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
                         // Row 1–2: connectivity (2×2, long-press to expand like iOS) and now playing; with six or eight columns the sliders end this row.
                         var connectivityOpen by remember { mutableStateOf(false) }
                         val topBlock: @Composable () -> Unit = {
@@ -1157,6 +1215,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                                 row.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }, reorder = reorder, onMove = moveControl, onNudge = { by -> onControls(ccMoveControlBy(controlNames, c.name, by)) },
                                     settleIndex = if (first) pageControls.indexOf(c) else -1, panelOpen = panelOpen) { run(c) } }
                             }
+                        }
                         }
                         // Edit mode: gallery of controls that aren't in Control Center yet
                         if (edit.active && spec.index == plan.perPage.lastIndex) {

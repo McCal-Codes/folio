@@ -8,7 +8,7 @@ package com.mccal.folio
  * Today the page is an ordered list laid out by [controlCenterGrid]; [ccDefaultLayout] gives the same page as slots, so a saved list
  * becomes slots without anything moving.
  */
-internal data class CcSlot(val id: String, val col: Int, val row: Int, val w: Int, val h: Int) {
+data class CcSlot(val id: String, val col: Int, val row: Int, val w: Int, val h: Int) {
     val right get() = col + w
     val bottom get() = row + h
 }
@@ -106,3 +106,50 @@ internal fun ccAdd(slots: List<CcSlot>, id: String, cols: Int, rows: Int): List<
 internal fun ccFreeCells(slots: List<CcSlot>, cols: Int, rows: Int): List<Pair<Int, Int>> =
     (0 until rows).flatMap { r -> (0 until cols).map { c -> c to r } }
         .filter { (c, r) -> slots.none { c >= it.col && c < it.right && r >= it.row && r < it.bottom } }
+
+/** The cap on rows when checking a saved layout: far more than any window shows, so a bad file cannot make a huge grid. */
+private const val CC_MAX_SAVED_ROWS = 40
+
+/** A layout the person made in the editor, for a grid [cols] wide. A grid of another width cannot use it (see [ccLayoutFor]). */
+data class CcSavedLayout(val cols: Int, val slots: List<CcSlot>)
+
+private fun ccKnownId(id: String): Boolean =
+    id in setOf(CC_CONNECTIVITY, CC_MEDIA, CC_BRIGHTNESS, CC_VOLUME, CC_FOCUS) || CcControl.entries.any { it.name == id }
+
+internal fun ccLayoutToJson(layout: CcSavedLayout): org.json.JSONObject = org.json.JSONObject()
+    .put("cols", layout.cols)
+    .put("slots", org.json.JSONArray(layout.slots.map { org.json.JSONObject().put("id", it.id).put("col", it.col).put("row", it.row).put("w", it.w).put("h", it.h) }))
+
+/**
+ * Reads a saved layout, or null when anything in it is wrong: a missing or unknown id, a repeated id, a size the control cannot take,
+ * a place outside the grid, or two controls on one place. A bad file never half-applies; the page falls back to its default.
+ */
+internal fun ccLayoutFromJson(json: org.json.JSONObject?): CcSavedLayout? {
+    if (json == null) return null
+    val cols = json.optInt("cols", 0)
+    val array = json.optJSONArray("slots") ?: return null
+    if (cols !in 1..16) return null
+    val slots = (0 until array.length()).map { i ->
+        val o = array.optJSONObject(i) ?: return null
+        val id = o.optString("id")
+        if (!o.has("col") || !o.has("row") || !o.has("w") || !o.has("h")) return null
+        CcSlot(id, o.optInt("col", -1), o.optInt("row", -1), o.optInt("w", 0), o.optInt("h", 0))
+    }
+    val ok = slots.map { it.id }.toSet().size == slots.size &&
+        slots.all { ccKnownId(it.id) && (it.w to it.h) in ccAllowedSizes(it.id, cols) && ccFits(slots, it, cols, CC_MAX_SAVED_ROWS) }
+    return if (ok) CcSavedLayout(cols, slots) else null
+}
+
+/**
+ * The places to draw on a grid [cols] wide: the saved layout when it was made for this width, otherwise the default page. Controls
+ * that left [controls] (turned off in Settings) are dropped from a saved layout, and ones newly turned on take the first free place,
+ * so the list in Settings and the editor never disagree.
+ */
+internal fun ccLayoutFor(saved: CcSavedLayout?, cols: Int, controls: List<String>, focus: Boolean): List<CcSlot> {
+    if (saved == null || saved.cols != cols) return ccDefaultLayout(cols, controls, focus)
+    var slots = saved.slots.filter { s -> s.id in controls || !CcControl.entries.any { it.name == s.id } }
+    if (!focus) slots = slots.filter { it.id != CC_FOCUS }
+    for (id in controls) if (slots.none { it.id == id }) slots = ccAdd(slots, id, cols, CC_MAX_SAVED_ROWS) ?: slots
+    if (focus && slots.none { it.id == CC_FOCUS }) slots = ccAdd(slots, CC_FOCUS, cols, CC_MAX_SAVED_ROWS) ?: slots
+    return slots
+}

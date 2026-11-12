@@ -2529,4 +2529,10 @@
     <string name="fit_more_dock_apps_note">程序坞的位置和图标会缩小，以便在较矮的屏幕上放下更多应用。位置会小于 Android 建议的 48 dp 触控尺寸，可能更难点按。</string>
     <string name="rollback_lookup_failed">无法查找旧版本。请检查网络连接。</string>
     <string name="rollback_try_again">重试</string>
+    <string name="cc_move_left">向左移动</string>
+    <string name="cc_move_right">向右移动</string>
+    <string name="cc_move_up">向上移动</string>
+    <string name="cc_move_down">向下移动</string>
+    <string name="cc_change_size">更改大小</string>
+    <string name="cc_remove">移除</string>
 </resources>

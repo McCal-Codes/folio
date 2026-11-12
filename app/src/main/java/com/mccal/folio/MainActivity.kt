@@ -478,7 +478,7 @@ class MainActivity : ComponentActivity() {
                 androidx.compose.runtime.CompositionLocalProvider(LocalShadeBackdropImage provides panelBackdrop) {
                 TopPanels(topPanel.value, { OverlayBack.shown(overlayProgress, OverlayBack.swipe.value) }, deviceStatus, onClose = { topPanel.value = null },
                     onSystemPanel = { openAndroidShade(it) }, showClock = state.notificationClock, grouped = state.groupNotifications, sections = state.notificationSections,
-                    ccControls = state.ccControls, onCcControls = model::setCcControls,
+                    ccControls = state.ccControls, onCcControls = model::setCcControls, ccLayout = state.ccLayout, onCcLayout = model::setCcLayout,
                     ccSize = state.ccSize, ccCentered = state.ccCentered, ncLayout = state.ncLayout, ccLook = state.ccLook, ccOptions = state.ccOptions,
                     focusModes = state.focusModes, activeFocus = state.activeFocus, onFocus = model::setFocus,
                     onSwitchPanel = { topPanel.value = it })
