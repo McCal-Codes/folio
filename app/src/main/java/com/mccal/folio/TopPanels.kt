@@ -1263,7 +1263,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                         // Edit mode: "Add a Control" under the grid opens the gallery (the + in the header does the same).
                         if (edit.active && spec.index == plan.perPage.lastIndex) {
                             Row(Modifier.width(gridWidth).clip(RoundedCornerShape(FolioRadius.CARD.dp)).then(if (galleryItems.isEmpty()) Modifier else Modifier.clickable(role = androidx.compose.ui.semantics.Role.Button) { galleryOpen = true })
-                                .padding(FolioSpace.SMALL.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                                .heightIn(min = FolioTouch.MIN.dp).padding(FolioSpace.SMALL.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                                 if (galleryItems.isNotEmpty()) Icon(Icons.Rounded.AddCircle, null, tint = Color.White, modifier = Modifier.size(18.dp).padding(end = FolioSpace.TINY.dp))
                                 Text(if (galleryItems.isEmpty()) stringResource(R.string.all_controls_added) else stringResource(R.string.add_a_control),
                                     color = if (galleryItems.isEmpty()) FolioGlass.secondary else Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)

@@ -16,7 +16,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -61,10 +63,10 @@ internal fun CcHoldCard(title: String, onDismiss: () -> Unit, content: @Composab
     LaunchedEffect(Unit) { entered = true }
     val progress by animateFloatAsState(if (entered) 1f else 0f, if (reduce) androidx.compose.animation.core.snap() else FolioMotion.spring(FolioMotion.Quick), label = "hold card")
     FolioDialog(onDismiss) {
-        Column(Modifier.width(300.dp).heightIn(max = 560.dp)
+        Column(Modifier.fillMaxWidth(.92f).widthIn(max = 320.dp).heightIn(max = 560.dp)
             .graphicsLayer { alpha = progress; val s = if (reduce) 1f else .94f + .06f * progress; scaleX = s; scaleY = s }
             .clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(FolioColors.SecondaryBackground.copy(alpha = .97f))
-            .padding(FolioSpace.LARGE.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
+            .verticalScroll(rememberScrollState()).padding(FolioSpace.LARGE.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
             Text(title, color = Color.White, fontSize = FolioType.CALLOUT.sp, fontWeight = FontWeight.SemiBold)
             content()
         }
@@ -107,7 +109,7 @@ internal fun CcHoldSlider(icon: ImageVector, label: String, value: Float, onStar
 @Composable
 internal fun CcHoldAction(text: String, onClick: () -> Unit) {
     Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(Color.White.copy(alpha = .12f)).clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onClick)
-        .padding(vertical = FolioSpace.MEDIUM.dp), contentAlignment = Alignment.Center) {
+        .heightIn(min = FolioTouch.MIN.dp).padding(vertical = FolioSpace.MEDIUM.dp), contentAlignment = Alignment.Center) {
         Text(text, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
     }
 }

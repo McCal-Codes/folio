@@ -30,6 +30,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
@@ -75,6 +77,9 @@ internal fun CcSlotGrid(
     content: @Composable BoxScope.(CcSlot) -> Unit,
 ) {
     val density = LocalDensity.current
+    // In a right-to-left layout the grid is mirrored, so a drag to the right goes toward lower columns.
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    val flip = if (rtl) -1f else 1f
     val step = cell + gap
     val stepPx = with(density) { step.toPx() }
     var dragging by remember { mutableStateOf<String?>(null) }
@@ -104,7 +109,7 @@ internal fun CcSlotGrid(
             val lifted = dragging == id
             val live = resizing == id
             // While the corner is dragged the control shows the size it will land on, so nothing is a surprise at the drop.
-            val landing = if (live) ccSnapSize(slots, id, ccDragSize(slot.w, slot.h, resize.x, resize.y, stepPx).first, ccDragSize(slot.w, slot.h, resize.x, resize.y, stepPx).second, cols, rows) else null
+            val landing = if (live) ccSnapSize(slots, id, ccDragSize(slot.w, slot.h, resize.x * flip, resize.y, stepPx).first, ccDragSize(slot.w, slot.h, resize.x * flip, resize.y, stepPx).second, cols, rows) else null
             val shown = landing?.let { slot.copy(w = it.first, h = it.second) } ?: slot
             val name = labelOf(id)
             Box(
@@ -142,7 +147,7 @@ internal fun CcSlotGrid(
                                 onDragEnd = {
                                     val now = latestSlots.firstOrNull { it.id == id }
                                     if (now != null) {
-                                        val (c, r) = ccDragTarget(now.col, now.row, drag.x, drag.y, latestStep)
+                                        val (c, r) = ccDragTarget(now.col, now.row, drag.x * flip, drag.y, latestStep)
                                         val moved = ccMove(latestSlots, id, c, r, cols, latestRows)
                                         if (moved != latestSlots) latestChange(moved)
                                     }
@@ -159,7 +164,7 @@ internal fun CcSlotGrid(
                             Box(Modifier.size(10.dp, 2.dp).background(Color.Black.copy(alpha = .75f)))
                         }
                     }
-                    if (ccAllowedSizes(id, cols).size > 1) Box(Modifier.align(Alignment.BottomEnd).offset(10.dp, 10.dp).size(44.dp)
+                    if (ccAllowedSizes(id, cols).size > 1) Box(Modifier.align(Alignment.BottomEnd).offset(10.dp, 10.dp).size(FolioTouch.MIN.dp)
                         .pointerInput(id) {
                             detectDragGestures(
                                 onDragStart = { resizing = id; resize = Offset.Zero },
@@ -167,7 +172,7 @@ internal fun CcSlotGrid(
                                 onDragEnd = {
                                     val now = latestSlots.firstOrNull { it.id == id }
                                     if (now != null) {
-                                        val (dw, dh) = ccDragSize(now.w, now.h, resize.x, resize.y, latestStep)
+                                        val (dw, dh) = ccDragSize(now.w, now.h, resize.x * flip, resize.y, latestStep)
                                         val target = ccSnapSize(latestSlots, id, dw, dh, cols, latestRows)
                                         if (target != null && target != (now.w to now.h)) latestChange(ccResize(latestSlots, id, target.first, target.second, cols, latestRows))
                                     }
@@ -180,7 +185,9 @@ internal fun CcSlotGrid(
                         Canvas(Modifier.size(30.dp)) {
                             val stroke = 4.dp.toPx()
                             val r = 26.dp.toPx()
-                            drawArc(Color.White.copy(alpha = if (live) 1f else .85f), startAngle = 0f, sweepAngle = 90f, useCenter = false,
+                            val color = Color.White.copy(alpha = if (live) 1f else .85f)
+                            if (rtl) drawArc(color, startAngle = 90f, sweepAngle = 90f, useCenter = false, topLeft = Offset(stroke, size.height - 2 * r - stroke), size = Size(2 * r, 2 * r), style = Stroke(stroke, cap = StrokeCap.Round))
+                            else drawArc(color, startAngle = 0f, sweepAngle = 90f, useCenter = false,
                                 topLeft = Offset(size.width - 2 * r - stroke, size.height - 2 * r - stroke), size = Size(2 * r, 2 * r), style = Stroke(stroke, cap = StrokeCap.Round))
                         }
                     }

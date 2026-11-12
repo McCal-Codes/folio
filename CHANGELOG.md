@@ -9,7 +9,7 @@ Folio shows the newest section on the phone after an update, and every version u
 
 ### Added
 - **Control Center editor (beta):** in Control Center's edit mode, press and hold a control to move it, drag its corner to resize it, and use the minus to take it off. Places and sizes are saved, and Reset puts the usual page back.
-- **Control Center, more to edit and hold (beta):** every module can be taken off and added back from a searchable Add a Control sheet, the edit handles follow each control's corner, and on a wide screen Control Center can sit on the right, in the middle, or on the left. Press and hold brightness or volume for a card with Auto brightness, or Media, Ring and Alarm sliders.
+- **Control Center hold cards (beta):** every module can be taken off and added back from a searchable Add a Control sheet, the edit handles follow each control's corner, and on a wide screen Control Center can sit on the right, in the middle, or on the left. Press and hold brightness or volume for a card with Auto brightness, or Media, Ring and Alarm sliders.
 - **Fit more dock apps:** an optional switch in Dock settings. On a short screen it lets dock places and icons shrink below the 48 dp touch size so more apps fit. Off by default.
 - **Dock places stay safe:** places beyond six are kept beside your layout, so going back to an older version leaves a whole six-place dock and bringing it forward again restores the rest. A shorter screen shows fewer places, never an overflowing dock.
 - **Go back to an older version:** Software Update lists older versions that were rebuilt to install over this one. Folio offers to save a backup first and keeps your apps and data. After going back, updates resume with the next feature release.
