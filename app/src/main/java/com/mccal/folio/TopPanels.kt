@@ -53,6 +53,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.Color
@@ -1077,7 +1078,8 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                 onHold = controls::holdBrightness,
                 // Dragging the slider turns Auto off; this says so and turns it back on (v2). It follows the phone's own mode, so it also
                 // changes when automatic brightness is switched somewhere else.
-                badge = if (v2 && controls.autoBrightnessKnown) { alpha ->
+                // Not while editing: tiles do nothing then, and the minus badge sits where the chip is.
+                badge = if (v2 && controls.autoBrightnessKnown && !edit.active) { alpha ->
                     AutoBrightnessChip(controls.brightnessAuto, cell, alpha) {
                         if (!android.provider.Settings.System.canWrite(context)) open(controls.writeSettingsIntent()) else controls.setBrightnessAuto(!controls.brightnessAuto)
                     }
@@ -1315,15 +1317,18 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                     val selected = current == index
                     val name = label(page)
                     val description = stringResource(R.string.cc_page_of, name, index + 1, pages.size)
-                    Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape).background(if (selected) Color.White else NotifGlass)
+                    // Minimal, as Apple draws them: a bare glyph, and only the page in view gets a soft round fill.
+                    val fill by androidx.compose.animation.core.animateFloatAsState(if (selected) .28f else 0f,
+                        if (reduceMotion) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(180), label = "cc page fill")
+                    Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape).background(Color.White.copy(alpha = fill))
                         .clickable(role = androidx.compose.ui.semantics.Role.Tab) { goTo(index) }
                         .semantics { contentDescription = description; this.selected = selected },
                         contentAlignment = Alignment.Center) {
                         // With more than one Controls page each says which it is, so the marks are never the same.
-                        if (page == CcPage.CONTROLS && controlsPages > 1) Text("${spec.index + 1}", color = if (selected) FolioColors.MenuSurface else Color.White,
+                        if (page == CcPage.CONTROLS && controlsPages > 1) Text("${spec.index + 1}", color = if (selected) Color.White else Color.White.copy(alpha = .65f),
                             fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.Bold)
                         else Icon(when (page) { CcPage.CONTROLS -> Icons.Rounded.Favorite; CcPage.MEDIA -> Icons.Rounded.MusicNote; CcPage.CONNECTIVITY -> Icons.Rounded.SettingsInputAntenna },
-                            null, tint = if (selected) FolioColors.MenuSurface else Color.White, modifier = Modifier.size((22 * ccIconScale(LocalDensity.current.fontScale)).dp))
+                            null, tint = if (selected) Color.White else Color.White.copy(alpha = .65f), modifier = Modifier.size((22 * ccIconScale(LocalDensity.current.fontScale)).dp))
                     }
                 }
             }
@@ -1338,13 +1343,26 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                     }
                 }
             }
-            else if (grid.stripAtEdge) Column(verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                // As beside the grid on the iPhone and the Duo: the battery first, then the pages. Only where the column has the height for it.
-                // A gap on top of the strip's own keeps the ring from reading as the first page dot.
-                if ((tall ?: Float.MAX_VALUE) >= 360f) Box(if (dedupe) Modifier.padding(bottom = CC_BATTERY_APART_DP.dp) else Modifier) { BatteryRing(status) }
-                // Under the ring, the connection marks the Duo's rail shows (Wi-Fi, then cellular), when the column is tall enough for them as well.
-                if ((tall ?: Float.MAX_VALUE) >= 520f) RailReadouts(status)
-                items()
+            else if (grid.stripAtEdge) {
+                val roomy = (tall ?: 0f) >= 560f
+                val top: @Composable () -> Unit = {
+                    // As beside the grid on the iPhone and the Duo: the battery first, then the pages. Only where the column has the height for it.
+                    // A gap on top of the strip's own keeps the ring from reading as the first page dot.
+                    if ((tall ?: Float.MAX_VALUE) >= 360f) Box(if (dedupe) Modifier.padding(bottom = CC_BATTERY_APART_DP.dp) else Modifier) { BatteryRing(status) }
+                    // Under the ring, the connection marks the Duo's rail shows (Wi-Fi, then cellular), when the column is tall enough for them as well.
+                    if ((tall ?: Float.MAX_VALUE) >= 520f) RailReadouts(status)
+                }
+                if (roomy) {
+                    // Tall enough: the status stays at the top and the page icons stand in the middle of the grid's height, as Apple places them.
+                    val railHeight = pageHeight + FolioTouch.MIN.dp + gap + (if (reserveSwitchRow) PANEL_SWITCH_ROW_DP.dp + gap else 0.dp)
+                    Box(Modifier.height(railHeight)) {
+                        Column(Modifier.align(Alignment.TopCenter), verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp), horizontalAlignment = Alignment.CenterHorizontally) { top() }
+                        Column(Modifier.align(Alignment.Center), verticalArrangement = Arrangement.spacedBy(FolioSpace.TINY.dp), horizontalAlignment = Alignment.CenterHorizontally) { items() }
+                    }
+                } else Column(verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    top()
+                    items()
+                }
             }
             else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FolioSpace.COMFY.dp, Alignment.CenterHorizontally)) { items() }
         }
@@ -1375,16 +1393,29 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                     }
                     // Pages are stacked and the next one comes down with a swipe down (reverseLayout: the first page is anchored, so a swipe up past it closes the panel), as the pages beside the grid read on the Duo. The settle is Folio's Sheet spring
                     // (a snap with Reduce Motion), and each page fades and shrinks a little as it leaves, read while drawing from where the finger has taken it.
-                    androidx.compose.foundation.pager.VerticalPager(pager, Modifier.fillMaxWidth().height(pageHeight).nestedScroll(swipeConnection), pageSpacing = gap, horizontalAlignment = Alignment.Start, userScrollEnabled = true,
+                    androidx.compose.foundation.pager.VerticalPager(pager, Modifier.fillMaxWidth().height(pageHeight)
+                        // The pages travel with the finger and leave through the bottom of the screen, as Apple's do, instead of being cut off at the
+                        // controls' own edge: the pager is laid out as tall as the room under the header, while the panel still reports the controls' height.
+                        .layout { measurable, constraints ->
+                            val shown = constraints.maxHeight
+                            val tall = maxOf(shown, pagesAvailable?.roundToPx() ?: shown)
+                            val placeable = measurable.measure(constraints.copy(minHeight = tall, maxHeight = tall))
+                            layout(placeable.width, shown) { placeable.place(0, 0) }
+                        }.nestedScroll(swipeConnection), pageSpacing = gap, horizontalAlignment = Alignment.Start, userScrollEnabled = true,
                         flingBehavior = androidx.compose.foundation.pager.PagerDefaults.flingBehavior(pager,
                             // A page is the whole panel tall, so the usual halfway rule asked for a drag across half the screen: a fifth of it is enough to turn the page, and a short swipe springs back.
                             snapPositionalThreshold = CC_PAGE_TURN,
                             snapAnimationSpec = if (reduceMotion) androidx.compose.animation.core.snap() else FolioMotion.spring(FolioMotion.Sheet))) { index ->
+                        // The pager is laid out taller than the controls (see above), so a tap under them lands on it, and the grid's own
+                        // handler swallows taps: a tap below the controls closes the panel here, as it did before the pages ran to the screen's edge.
+                        val shownPx = with(LocalDensity.current) { pageHeight.toPx() }
                         Box(Modifier.fillMaxSize().graphicsLayer {
                             val away = kotlin.math.abs((pager.currentPage - index) + pager.currentPageOffsetFraction).coerceIn(0f, 1f)
-                            alpha = 1f - CC_PAGE_FADE * away
+                            // The page slides with the finger (the pager does that) and thins out as it leaves, so the one coming in reads as the one in front.
+                            alpha = ccPageAlpha(away)
                             if (!reduceMotion) { val scale = 1f - CC_PAGE_SHRINK * away; scaleX = scale; scaleY = scale }
-                        }, contentAlignment = Alignment.TopStart) { pageContent(pages[firstIndex - index]) }
+                        }.pointerInput(shownPx) { detectTapGestures { at -> if (at.y > shownPx) closePanel() } },
+                            contentAlignment = Alignment.TopStart) { pageContent(pages[firstIndex - index]) }
                     }
                     if (!grid.stripAtEdge && !grid.stripInHeader) strip()
                 }
@@ -1633,8 +1664,8 @@ private fun Modifier.ccPress(pressed: Boolean): Modifier {
 
 private const val CC_PRESS_SCALE = .94f
 
-/** How far a page fades and shrinks as the finger takes it away (0 to 1 of the way out): enough to read as depth, little enough that a page half-way is still readable. */
-private const val CC_PAGE_FADE = .55f
+/** The leaving page thins out as it goes (a quarter of its weight left a whole page away), so a page half-way is still readable. */
+internal fun ccPageAlpha(away: Float): Float = 1f - .75f * away.coerceIn(0f, 1f)
 
 /** How far up the panel has to be pulled to close, and how fast a flick (px per second) closes it from less. */
 internal const val CC_SWIPE_AWAY_DP = 96f
@@ -2222,7 +2253,7 @@ private fun MusicWave(animate: Boolean, accent: Color) {
 }
 
 /** How far a drag has to take a Control Center page (as a fraction of its height) before letting go turns it. */
-private const val CC_PAGE_TURN = .2f
+private const val CC_PAGE_TURN = .12f
 
 /** How much Control Center's header and strip icons grow with the font size: never smaller than drawn, never past a third larger, so they stay inside their 48 dp targets. */
 internal fun ccIconScale(fontScale: Float): Float = fontScale.coerceIn(1f, 4f / 3f)

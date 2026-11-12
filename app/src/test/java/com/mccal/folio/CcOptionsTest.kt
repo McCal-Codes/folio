@@ -123,4 +123,13 @@ class CcOptionsTest {
         assertEquals(emptyList<CcPage>(), ccRailExtraPages(emptyList(), CcOptions(), rail = false))
         assertEquals(both, ccRailExtraPages(both, CcOptions(), rail = false))
     }
+
+    @Test fun `a page thins out as it leaves`() {
+        assertEquals(1f, ccPageAlpha(0f), 0f)
+        assertEquals(.25f, ccPageAlpha(1f), 0.001f)
+        assertEquals(.625f, ccPageAlpha(.5f), 0.001f)
+        // Never past the ends, whatever the pager reports.
+        assertEquals(.25f, ccPageAlpha(3f), 0.001f)
+        assertEquals(1f, ccPageAlpha(-1f), 0.001f)
+    }
 }
