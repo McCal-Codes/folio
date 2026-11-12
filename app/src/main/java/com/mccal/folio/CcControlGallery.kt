@@ -7,6 +7,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import kotlin.math.roundToInt
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -67,27 +75,88 @@ internal fun ccGalleryFilter(items: List<CcGalleryItem>, query: String): List<Cc
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun CcControlGallery(items: List<CcGalleryItem>, anchorCenterXPx: Float? = null, onAdd: (CcGalleryItem) -> Unit, onDismiss: () -> Unit) {
+internal fun CcControlGallery(items: List<CcGalleryItem>, panel: androidx.compose.ui.geometry.Rect? = null, onAdd: (CcGalleryItem) -> Unit, onDismiss: () -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
     val shown = ccGalleryFilter(items, query)
-    // On a wide window (the unfolded Fold, a tablet) it floats as a card on the right, as on an iPad; on a narrow one it stays a bottom sheet.
+    // On a wide window (the unfolded Fold, a tablet) it floats as a card, as on an iPad: beside the panel when there is room, else low under it. It can be dragged.
     val wide = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= CC_GALLERY_CARD_MIN_WIDTH_DP
     if (wide) androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
-        // Low on the screen, under the controls and centered on the panel, so it covers the empty slots and not the controls being edited.
-        val density = androidx.compose.ui.platform.LocalDensity.current
-        val windowWidth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
-        val windowHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp
-        val centerDp = anchorCenterXPx?.let { with(density) { it.toDp().value } } ?: (windowWidth / 2f)
-        val offsetX = (centerDp - windowWidth / 2f).coerceIn(-(windowWidth - CC_GALLERY_CARD_WIDTH_DP) / 2f, (windowWidth - CC_GALLERY_CARD_WIDTH_DP) / 2f)
-        Box(Modifier.fillMaxSize().clickable(interactionSource = null, indication = null, onClick = onDismiss).padding(FolioSpace.LARGE.dp), contentAlignment = Alignment.BottomCenter) {
-            Box(Modifier.offset(x = offsetX.dp).width(CC_GALLERY_CARD_WIDTH_DP.dp).heightIn(max = (windowHeight * .36f).dp).clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(FolioColors.MenuSurface)
-                .clickable(interactionSource = null, indication = null) {}.padding(FolioSpace.LARGE.dp)) {
-                GalleryBody(items, shown, query, { query = it }, onAdd)
-            }
-        }
+        FloatingGalleryCard(items, shown, query, { query = it }, panel, onAdd, onDismiss)
     } else ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(Modifier.navigationBarsPadding().padding(horizontal = FolioSpace.LARGE.dp).padding(bottom = FolioSpace.LARGE.dp)) {
             GalleryBody(items, shown, query, { query = it }, onAdd)
+        }
+    }
+}
+
+/** Where the card stands (top left, in px) and the most height it may take. */
+internal data class CcCardPlacement(val x: Float, val y: Float, val maxHeight: Float)
+
+/**
+ * Where the gallery card first stands, from the window, the Control Center [panel] (left, top, right, bottom) and the card's width and measured height ([cardH], 0 before it is measured),
+ * all in px with [margin] kept from every edge. Beside the panel when one side has room for the card, as on the iPad (the right side first, then the left), top aligned with the panel
+ * and as tall as the window allows; when neither does, low on the screen under the controls and centered on the panel, capped so it covers the empty slots, not the controls. Never off screen.
+ */
+internal fun ccGalleryCardPlacement(winW: Float, winH: Float, panel: FloatArray, cardW: Float, cardH: Float, margin: Float): CcCardPlacement {
+    val pl = panel[0]; val pt = panel[1]; val pr = panel[2]
+    val tall = (winH - 2 * margin).coerceAtLeast(0f)
+    fun beside(x: Float): CcCardPlacement { val y = pt.coerceIn(margin, maxOf(margin, winH - margin - minOf(cardH, tall))); return CcCardPlacement(x, y, minOf(tall, winH - y - margin)) }
+    return when {
+        winW - pr >= cardW + 2 * margin -> beside(pr + margin)
+        pl >= cardW + 2 * margin -> beside(pl - margin - cardW)
+        else -> {
+            val cap = winH * CC_GALLERY_LOW_CARD_HEIGHT
+            val x = ((pl + pr) / 2f - cardW / 2f).coerceIn(margin, maxOf(margin, winW - cardW - margin))
+            CcCardPlacement(x, (winH - margin - minOf(cardH, cap)).coerceAtLeast(margin), cap)
+        }
+    }
+}
+
+/** The share of the window's height the card takes when it stands low under the controls. */
+internal const val CC_GALLERY_LOW_CARD_HEIGHT = .46f
+/** How far one step of the move actions shifts the card, in dp. */
+internal const val CC_GALLERY_MOVE_STEP_DP = 48
+
+@Composable
+private fun FloatingGalleryCard(items: List<CcGalleryItem>, shown: List<CcGalleryItem>, query: String, onQuery: (String) -> Unit,
+    panel: androidx.compose.ui.geometry.Rect?, onAdd: (CcGalleryItem) -> Unit, onDismiss: () -> Unit) {
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val config = androidx.compose.ui.platform.LocalConfiguration.current
+    val winW = with(density) { config.screenWidthDp.dp.toPx() }
+    val winH = with(density) { config.screenHeightDp.dp.toPx() }
+    val margin = with(density) { FolioSpace.LARGE.dp.toPx() }
+    val cardW = with(density) { CC_GALLERY_CARD_WIDTH_DP.dp.toPx() }
+    val step = with(density) { CC_GALLERY_MOVE_STEP_DP.dp.toPx() }
+    var cardH by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    // What the person has dragged it by, kept through a rotation.
+    var shiftX by rememberSaveable { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    var shiftY by rememberSaveable { androidx.compose.runtime.mutableFloatStateOf(0f) }
+    val bounds = panel?.let { floatArrayOf(it.left, it.top, it.right, it.bottom) } ?: floatArrayOf(winW / 2f, margin, winW / 2f, winH)
+    val place = ccGalleryCardPlacement(winW, winH, bounds, cardW, cardH.toFloat(), margin)
+    val x = (place.x + shiftX).coerceIn(margin / 2f, maxOf(margin / 2f, winW - cardW - margin / 2f))
+    val y = (place.y + shiftY).coerceIn(margin / 2f, maxOf(margin / 2f, winH - cardH - margin / 2f))
+    fun nudge(dx: Float, dy: Float) { shiftX += dx; shiftY += dy }
+    val move = stringResource(R.string.cc_gallery_move)
+    val left = stringResource(R.string.cc_gallery_move_left)
+    val right = stringResource(R.string.cc_gallery_move_right)
+    val up = stringResource(R.string.cc_gallery_move_up)
+    val down = stringResource(R.string.cc_gallery_move_down)
+    Box(Modifier.fillMaxSize().clickable(interactionSource = null, indication = null, onClick = onDismiss)) {
+        Column(Modifier.offset { androidx.compose.ui.unit.IntOffset(x.roundToInt(), y.roundToInt()) }.width(CC_GALLERY_CARD_WIDTH_DP.dp)
+            .heightIn(max = with(density) { place.maxHeight.toDp() }).onSizeChanged { cardH = it.height }
+            .clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(FolioColors.MenuSurface).clickable(interactionSource = null, indication = null) {}
+            .padding(horizontal = FolioSpace.LARGE.dp).padding(bottom = FolioSpace.LARGE.dp)) {
+            // The grip: drag it anywhere; for TalkBack and a keyboard the same moves are actions.
+            Box(Modifier.fillMaxWidth().height(FolioTouch.MIN.dp).pointerInput(Unit) { detectDragGestures { change, drag -> change.consume(); shiftX += drag.x; shiftY += drag.y } }
+                .semantics {
+                    contentDescription = move
+                    customActions = listOf(
+                        CustomAccessibilityAction(left) { nudge(-step, 0f); true }, CustomAccessibilityAction(right) { nudge(step, 0f); true },
+                        CustomAccessibilityAction(up) { nudge(0f, -step); true }, CustomAccessibilityAction(down) { nudge(0f, step); true })
+                }, contentAlignment = Alignment.Center) {
+                Box(Modifier.size(width = 40.dp, height = 5.dp).clip(CircleShape).background(Color.White.copy(alpha = .35f)))
+            }
+            GalleryBody(items, shown, query, onQuery, onAdd)
         }
     }
 }

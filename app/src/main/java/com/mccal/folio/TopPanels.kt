@@ -964,8 +964,8 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         if (ccClosesAfterTap(control, options)) closeScope.launch { delay(CC_CLOSE_AFTER_MS); onClose() }
     }
 
-    var panelCenterX by remember { mutableStateOf<Float?>(null) }
-    BoxWithConstraints(modifier.testTag("control-center").onGloballyPositioned { panelCenterX = it.boundsInWindow().center.x }) {
+    var panelBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
+    BoxWithConstraints(modifier.testTag("control-center").onGloballyPositioned { panelBounds = it.boundsInWindow() }) {
         val sizeCell = size.cell + if (wide) 8.dp else 0.dp
         val tall = if (maxHeight == Dp.Infinity) null else maxHeight.value
         // Fills the window: 4, 6 or 8 columns by the width, cells near the size chosen; the page strip at the edge on a wide panel, under the grid on a narrow one.
@@ -1062,7 +1062,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                 CC_BRIGHTNESS -> Icons.Rounded.LightMode; CC_VOLUME -> Icons.AutoMirrored.Rounded.VolumeUp; else -> Icons.Rounded.DarkMode }, true) } +
                 CcControl.entries.filter { it !in chosen && available(it) }.map { c -> CcGalleryItem(c.name, stringResource(c.label), c.icon(), false) }
         }
-        if (galleryOpen && edit.active) CcControlGallery(galleryItems, anchorCenterXPx = panelCenterX, onDismiss = { galleryOpen = false }, onAdd = { item ->
+        if (galleryOpen && edit.active) CcControlGallery(galleryItems, panel = panelBounds, onDismiss = { galleryOpen = false }, onAdd = { item ->
             if (item.module) onCcLayout(CcSavedLayout(cols, ccAdd(slots, item.id, cols, slotMoveRows) ?: slots, focusOn)) else onControls(controlNames + item.id)
             if (galleryItems.size <= 1) galleryOpen = false
         })
