@@ -2572,4 +2572,5 @@
     <string name="cc_dark_theme">다크 테마</string>
     <string name="cc_compact_panel">넓은 화면에서 컴팩트 패널</string>
     <string name="cc_compact_note">꺼짐: 제어 센터가 넓은 창을 채우며 이동하지 않습니다. 켬: 더 작은 패널이 되고 오른쪽, 가운데, 왼쪽이 위쪽 모서리 아래에 배치합니다.</string>
+    <string name="cc_rail_mark">%1$s, %2$s</string>
 </resources>

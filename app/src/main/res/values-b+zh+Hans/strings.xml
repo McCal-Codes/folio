@@ -2550,4 +2550,5 @@
     <string name="cc_dark_theme">深色主题</string>
     <string name="cc_compact_panel">宽屏上使用紧凑面板</string>
     <string name="cc_compact_note">关闭时，控制中心会铺满宽屏窗口，无法移动。开启后它是较小的面板，右侧、居中和左侧会将其放在顶角下方。</string>
+    <string name="cc_rail_mark">%1$s，%2$s</string>
 </resources>

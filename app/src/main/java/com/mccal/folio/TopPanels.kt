@@ -1308,7 +1308,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                         // With more than one Controls page each says which it is, so the marks are never the same.
                         if (page == CcPage.CONTROLS && controlsPages > 1) Text("${spec.index + 1}", color = if (selected) FolioColors.MenuSurface else Color.White,
                             fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.Bold)
-                        else Icon(when (page) { CcPage.CONTROLS -> Icons.Rounded.Apps; CcPage.MEDIA -> Icons.Rounded.MusicNote; CcPage.CONNECTIVITY -> Icons.Rounded.Wifi },
+                        else Icon(when (page) { CcPage.CONTROLS -> Icons.Rounded.Favorite; CcPage.MEDIA -> Icons.Rounded.MusicNote; CcPage.CONNECTIVITY -> Icons.Rounded.Wifi },
                             null, tint = if (selected) FolioColors.MenuSurface else Color.White, modifier = Modifier.size((22 * ccIconScale(LocalDensity.current.fontScale)).dp))
                     }
                 }
@@ -1328,6 +1328,8 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                 // As beside the grid on the iPhone and the Duo: the battery first, then the pages. Only where the column has the height for it.
                 // A gap on top of the strip's own keeps the ring from reading as the first page dot.
                 if ((tall ?: Float.MAX_VALUE) >= 360f) Box(if (dedupe) Modifier.padding(bottom = CC_BATTERY_APART_DP.dp) else Modifier) { BatteryRing(status) }
+                // Under the ring, the connection marks the Duo's rail shows (Wi-Fi, then cellular), when the column is tall enough for them as well.
+                if ((tall ?: Float.MAX_VALUE) >= 520f) RailReadouts(status)
                 items()
             }
             else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FolioSpace.COMFY.dp, Alignment.CenterHorizontally)) { items() }
@@ -1402,6 +1404,22 @@ private fun BatteryRing(status: DeviceStatus) {
         // The number lives inside a fixed 38 dp ring, so it follows the font size only up to 1.3 times (at 2.0 the "100" was wider than the ring, and three digits still touched it at 1.3, so they are a little smaller); the words for TalkBack carry the full value.
         val ringFont = with(androidx.compose.ui.platform.LocalDensity.current) { (12f * minOf(fontScale, 1.3f) * (if ((level ?: 0) >= 100) .82f else 1f)).dp.toSp() }
         if (level != null) Text(level.toString(), color = Color.White, fontSize = ringFont, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+/**
+ * The two connection marks on the rail beside the grid, as the Duo draws Wi-Fi and signal under the battery: a mark dims when it has no
+ * signal, and TalkBack reads each as its name and state. They are read-only; the Connectivity page changes them.
+ */
+@Composable
+private fun RailReadouts(status: DeviceStatus) {
+    val wifiOn = status.wifiConnected && !status.airplane
+    val cellOn = !status.airplane && (status.cellularLevel ?: 0) > 0
+    val wifiWords = stringResource(R.string.cc_rail_mark, stringResource(R.string.wi_fi), stringResource(if (wifiOn) R.string.state_on else R.string.state_off))
+    val cellWords = if (status.cellularLevel == null) stringResource(R.string.cellular_signal_unavailable) else stringResource(R.string.cc_rail_mark, stringResource(R.string.cellular_data), stringResource(if (cellOn) R.string.state_on else R.string.state_off))
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.TINY.dp)) {
+        Icon(Icons.Rounded.Wifi, null, tint = Color.White.copy(alpha = if (wifiOn) 1f else .35f), modifier = Modifier.size(22.dp).semantics { contentDescription = wifiWords })
+        Icon(Icons.Rounded.SignalCellularAlt, null, tint = Color.White.copy(alpha = if (cellOn) 1f else .35f), modifier = Modifier.size(22.dp).semantics { contentDescription = cellWords })
     }
 }
 
