@@ -1352,7 +1352,9 @@ fun LauncherScreen(
                 // Unfolded, the bar sits in the free strip at the bottom of the Home half beside the page dots, so it neither
                 // covers the widget row nor pushes the grid; folded, it's at the top, clear of the Dynamic Island.
                 Modifier.align(when {
-                    geometry.expanded -> if (state.leftHanded) Alignment.BottomStart else Alignment.BottomEnd
+                    // The bar is as wide as the pager, which sits at the screen's leading edge (trailing when left-handed), so it
+                    // is placed there too: at the opposite edge it ended under the Side Bar's own Done button.
+                    geometry.expanded -> if (state.leftHanded) Alignment.BottomEnd else Alignment.BottomStart
                     state.leftHanded -> Alignment.TopEnd
                     else -> Alignment.TopStart
                 }).width(pagerWidth),
@@ -1363,7 +1365,9 @@ fun LauncherScreen(
                     horizontalArrangement = if (geometry.expanded) Arrangement.spacedBy(FolioSpace.SMALL.dp, Alignment.End) else Arrangement.Start,
                     verticalAlignment = Alignment.CenterVertically) {
                     val editPage = pager.currentPage.coerceIn(0, homePages - 1)
-                    JigglePill("", Icons.Rounded.Add, description = stringResource(R.string.add_widget)) {
+                    // The Side Bar already carries Add and Done in edit mode, so the unfolded bar keeps only Edit and stays clear of the page dots.
+                    val railHasControls = geometry.expanded && state.verticalStatus
+                    if (!railHasControls) JigglePill("", Icons.Rounded.Add, description = stringResource(R.string.add_widget)) {
                         picker.slot = model.nextWidgetSlot(); picker.targetIndex = homeCellIndex(editPage, 0); picker.anyApp(); picker.profileSerial = null; sheet = "widgets"
                     }
                     JigglePill(stringResource(R.string.edit), modifier = Modifier.onGloballyPositioned { editPillBounds = it.boundsInWindow().roundToIntRect() }) {
@@ -1371,7 +1375,7 @@ fun LauncherScreen(
                     }
                     // Unfolded, keep all three together at the top right instead of spread across two pages.
                     if (!geometry.expanded) Spacer(Modifier.weight(1f))
-                    JigglePill(stringResource(R.string.done), emphasized = true) { haptic.perform(FolioHaptic.Commit); homeEdit.stop() }
+                    if (!railHasControls) JigglePill(stringResource(R.string.done), emphasized = true) { haptic.perform(FolioHaptic.Commit); homeEdit.stop() }
                 }
             }
             if (!inLibrary && !drag.active) OwnMethod { Column(Modifier.align(railBottom(state.leftHanded)).railEdge(state.leftHanded, 12.dp + caseFitInset).padding(bottom = FolioSpace.SNUG.dp)
