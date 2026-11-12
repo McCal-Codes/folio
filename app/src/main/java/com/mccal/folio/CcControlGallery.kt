@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -66,14 +67,20 @@ internal fun ccGalleryFilter(items: List<CcGalleryItem>, query: String): List<Cc
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun CcControlGallery(items: List<CcGalleryItem>, onAdd: (CcGalleryItem) -> Unit, onDismiss: () -> Unit) {
+internal fun CcControlGallery(items: List<CcGalleryItem>, anchorCenterXPx: Float? = null, onAdd: (CcGalleryItem) -> Unit, onDismiss: () -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
     val shown = ccGalleryFilter(items, query)
     // On a wide window (the unfolded Fold, a tablet) it floats as a card on the right, as on an iPad; on a narrow one it stays a bottom sheet.
     val wide = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= CC_GALLERY_CARD_MIN_WIDTH_DP
     if (wide) androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
-        Box(Modifier.fillMaxSize().clickable(interactionSource = null, indication = null, onClick = onDismiss).padding(FolioSpace.LARGE.dp), contentAlignment = Alignment.CenterEnd) {
-            Box(Modifier.width(CC_GALLERY_CARD_WIDTH_DP.dp).clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(FolioColors.MenuSurface)
+        // Low on the screen, under the controls and centered on the panel, so it covers the empty slots and not the controls being edited.
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        val windowWidth = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
+        val windowHeight = androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp
+        val centerDp = anchorCenterXPx?.let { with(density) { it.toDp().value } } ?: (windowWidth / 2f)
+        val offsetX = (centerDp - windowWidth / 2f).coerceIn(-(windowWidth - CC_GALLERY_CARD_WIDTH_DP) / 2f, (windowWidth - CC_GALLERY_CARD_WIDTH_DP) / 2f)
+        Box(Modifier.fillMaxSize().clickable(interactionSource = null, indication = null, onClick = onDismiss).padding(FolioSpace.LARGE.dp), contentAlignment = Alignment.BottomCenter) {
+            Box(Modifier.offset(x = offsetX.dp).width(CC_GALLERY_CARD_WIDTH_DP.dp).heightIn(max = (windowHeight * .36f).dp).clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(FolioColors.MenuSurface)
                 .clickable(interactionSource = null, indication = null) {}.padding(FolioSpace.LARGE.dp)) {
                 GalleryBody(items, shown, query, { query = it }, onAdd)
             }
@@ -106,7 +113,7 @@ private fun GalleryBody(items: List<CcGalleryItem>, shown: List<CcGalleryItem>, 
             if (shown.isEmpty()) {
                 Text(stringResource(if (items.isEmpty()) R.string.all_controls_added else R.string.no_controls_found), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp,
                     modifier = Modifier.padding(vertical = FolioSpace.LARGE.dp))
-            } else LazyVerticalGrid(GridCells.Adaptive(88.dp), Modifier.heightIn(max = 520.dp).padding(top = FolioSpace.COMPACT.dp),
+            } else LazyVerticalGrid(GridCells.Adaptive(88.dp), Modifier.weight(1f, fill = false).heightIn(max = 520.dp).padding(top = FolioSpace.COMPACT.dp),
                 horizontalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
                 val modules = shown.filter { it.module }
                 val controls = shown.filter { !it.module }
