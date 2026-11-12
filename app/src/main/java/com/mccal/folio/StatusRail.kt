@@ -311,13 +311,22 @@ fun StatusRail(
                     }
                     StatusGlyph.PERCENT, StatusGlyph.STACK -> Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.SNUG.dp)) {
                     Box(Modifier.padding(top = FolioSpace.HAIR.dp).size(visualSize), contentAlignment = Alignment.Center) {
+                        // The ring glides to a new level and colour instead of jumping, and plugging in sends one soft swell around it
+                        // (the same one the Gauge has). Both stand still when motion is reduced.
+                        val ringLevel by animateFloatAsState((status.battery ?: 0).coerceIn(0, 100) / 100f,
+                            if (still) snap() else tween(FolioMotion.GAUGE_MS, easing = androidx.compose.animation.core.FastOutSlowInEasing), label = "ring level") // english-only
+                        val ringColor by animateColorAsState(batteryColor, if (still) snap() else tween(FolioMotion.GAUGE_MS), label = "ring color") // english-only
                         Canvas(Modifier.fillMaxSize()) {
                             val w = size.width
                             val radius = w * .44f
-                            drawCircle(ink.copy(alpha = faint(look.trackAlpha)), radius, Offset(w / 2, w / 2), style = Stroke(w * .07f * look.strokeScale))
-                            status.battery?.let { level ->
-                                drawArc(batteryColor, -90f, 360f * level / 100, false, Offset(w / 2 - radius, w / 2 - radius),
-                                    Size(radius * 2, radius * 2), style = Stroke(width = w * .07f * look.strokeScale, cap = StrokeCap.Round))
+                            val topLeft = Offset(w / 2 - radius, w / 2 - radius)
+                            val ringStroke = w * .07f * look.strokeScale
+                            drawCircle(ink.copy(alpha = faint(look.trackAlpha)), radius, Offset(w / 2, w / 2), style = Stroke(ringStroke))
+                            if (status.battery != null) {
+                                if (surgeVal > 0f) drawArc(ringColor.copy(alpha = .35f * surgeVal), -90f, 360f * ringLevel, false, topLeft,
+                                    Size(radius * 2, radius * 2), style = Stroke(width = ringStroke * (1f + .45f * surgeVal), cap = StrokeCap.Round))
+                                drawArc(ringColor, -90f, 360f * ringLevel, false, topLeft,
+                                    Size(radius * 2, radius * 2), style = Stroke(width = ringStroke, cap = StrokeCap.Round))
                             }
                         }
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
