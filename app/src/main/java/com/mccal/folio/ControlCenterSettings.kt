@@ -1,5 +1,24 @@
 package com.mccal.folio
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -18,6 +37,34 @@ import kotlinx.coroutines.delay
 internal enum class CcSide(val label: Int) { RIGHT(R.string.cc_side_right), MIDDLE(R.string.cc_side_middle), LEFT(R.string.cc_side_left) }
 
 internal fun ccSideOf(centered: Boolean, left: Boolean): CcSide = if (centered) CcSide.MIDDLE else if (left) CcSide.LEFT else CcSide.RIGHT
+
+/**
+ * The side choice as three small screens, each with the panel drawn where it would sit, so the difference is plain before it is picked.
+ * A tap applies it at once like every row here; TalkBack reads each as one choice in a group.
+ */
+@Composable
+internal fun CcSidePicker(selected: CcSide, onSelect: (CcSide) -> Unit) {
+    val ink = LocalContentColor.current
+    Column(Modifier.fillMaxWidth().padding(vertical = FolioSpace.SNUG.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
+        Text(stringResource(R.string.control_center_side), fontSize = FolioType.BODY.sp)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            CcSide.entries.forEach { side ->
+                val on = side == selected
+                val name = stringResource(side.label)
+                Column(Modifier.heightIn(min = FolioTouch.MIN.dp).selectable(on, role = androidx.compose.ui.semantics.Role.RadioButton) { onSelect(side) }
+                    .semantics(mergeDescendants = true) {}.padding(FolioSpace.TINY.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.TINY.dp)) {
+                    // A wide window, and the panel as the block under the top corner it opens from.
+                    Box(Modifier.size(88.dp, 64.dp).clip(RoundedCornerShape(10.dp)).background(ink.copy(alpha = .08f))
+                        .border(if (on) 2.dp else 1.dp, if (on) FolioColors.Blue else ink.copy(alpha = .2f), RoundedCornerShape(10.dp)).padding(6.dp),
+                        contentAlignment = when (side) { CcSide.RIGHT -> Alignment.TopEnd; CcSide.MIDDLE -> Alignment.TopCenter; CcSide.LEFT -> Alignment.TopStart }) {
+                        Box(Modifier.size(36.dp, 46.dp).clip(RoundedCornerShape(6.dp)).background(if (on) FolioColors.Blue else ink.copy(alpha = .45f)))
+                    }
+                    Text(name, fontSize = FolioType.FOOTNOTE.sp, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal)
+                }
+            }
+        }
+    }
+}
 
 private data class CcSettingsSnapshot(val left: Boolean, val size: PanelSize, val centered: Boolean, val look: CcLook, val options: CcOptions, val layout: CcSavedLayout?)
 
@@ -40,7 +87,7 @@ internal fun ControlCenterSettingsCards(state: LauncherState, model: LauncherMod
         IosMenuRow(stringResource(R.string.control_center_look), CcLook.entries.map { it to stringResource(it.label) }, state.ccLook, model::setCcLook, tag = "cc-look")
         CardNote(stringResource(R.string.cc_look_note))
         // Side by side puts Control Center on the right itself, and a card sits under its own corner, so only Full screen can centre it.
-        if (state.ncLayout == NcLayout.FULL_SCREEN) IosMenuRow(stringResource(R.string.control_center_side), CcSide.entries.map { it to stringResource(it.label) }, ccSideOf(state.ccCentered, state.ccLeft), model::setCcSide, tag = "cc-side")
+        if (state.ncLayout == NcLayout.FULL_SCREEN) CcSidePicker(ccSideOf(state.ccCentered, state.ccLeft), model::setCcSide)
         CardNote(stringResource(R.string.to_restyle_samsungs_own_pull_down_colors))
     }
     SettingsCard(stringResource(R.string.cc_pages_title)) {

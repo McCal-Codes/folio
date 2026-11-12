@@ -2613,4 +2613,5 @@
     <string name="cc_move_down">Move down</string>
     <string name="cc_change_size">Change size</string>
     <string name="cc_remove">Remove</string>
+    <string name="cc_dark_theme">Dark theme</string>
 </resources>

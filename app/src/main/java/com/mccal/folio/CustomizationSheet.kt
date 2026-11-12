@@ -487,7 +487,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         IosMenuRow(stringResource(R.string.control_center_look), CcLook.entries.map { it to stringResource(it.label) }, state.ccLook, model::setCcLook, tag = "cc-look")
                         CardNote(stringResource(R.string.cc_look_note))
                         // Side by side puts Control Center on the right itself, and a card sits under its own corner, so only Full screen can centre it.
-                        if (state.ncLayout == NcLayout.FULL_SCREEN) IosMenuRow(stringResource(R.string.control_center_side), CcSide.entries.map { it to stringResource(it.label) }, ccSideOf(state.ccCentered, state.ccLeft), model::setCcSide, tag = "cc-side")
+                        if (state.ncLayout == NcLayout.FULL_SCREEN) CcSidePicker(ccSideOf(state.ccCentered, state.ccLeft), model::setCcSide)
                         CardNote(stringResource(R.string.tip_tap_at_the_top_of_control_center_to))
                         CardNote(stringResource(R.string.to_restyle_samsungs_own_pull_down_colors))
                         }

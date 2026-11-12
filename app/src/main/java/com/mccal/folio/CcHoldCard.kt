@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,6 +13,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -123,5 +127,59 @@ internal fun CcHoldSwitch(label: String, checked: Boolean, onChecked: (Boolean) 
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, color = Color.White, fontSize = FolioType.SUBHEAD.sp, modifier = Modifier.weight(1f))
         androidx.compose.material3.Switch(checked, null)
+    }
+}
+
+/**
+ * The hold view of a slider that fills the screen the way iOS's does (Brightness): the page dims behind, the control stands tall in the
+ * middle with its icon above it, and round switches sit under it ([toggles]). A tap outside, or Back, closes it. Under Reduce Motion it
+ * appears at once; otherwise one soft fade, nothing pulses.
+ */
+@Composable
+internal fun CcHoldTall(icon: ImageVector, label: String, value: Float, onDismiss: () -> Unit, onStart: () -> Unit = {}, onHold: (Boolean) -> Unit = {},
+    toggles: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit = {}, onValue: (Float) -> Unit) {
+    val reduce = LocalReduceMotion.current
+    var entered by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { entered = true }
+    val progress by animateFloatAsState(if (entered) 1f else 0f, if (reduce) androidx.compose.animation.core.snap() else FolioMotion.spring(FolioMotion.Quick), label = "hold tall")
+    val shown by animateFloatAsState(value.coerceIn(0f, 1f), if (reduce) androidx.compose.animation.core.snap() else FolioMotion.spring(FolioMotion.Snap), label = label)
+    FolioDialog(onDismiss, androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+        FolioDialogWindow(dim = .45f, blurRadiusDp = 24)
+        Box(Modifier.fillMaxSize().clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null, onClick = onDismiss)
+            .systemBarsPadding().graphicsLayer { alpha = progress }, contentAlignment = Alignment.Center) {
+            Column(Modifier.heightIn(max = 640.dp).padding(FolioSpace.LARGE.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.LARGE.dp)) {
+                Icon(icon, null, tint = Color.White, modifier = Modifier.size(36.dp))
+                Box(Modifier.weight(1f, fill = false).width(132.dp).heightIn(min = 200.dp, max = 340.dp).fillMaxHeight(.5f)
+                    .clip(RoundedCornerShape(66.dp)).background(Color.White.copy(alpha = .22f))
+                    .pointerInput(Unit) { detectTapGestures { offset -> onStart(); onValue((1f - offset.y / size.height).coerceIn(0f, 1f)) } }
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures(onDragStart = { onStart(); onHold(true) }, onDragEnd = { onHold(false) }, onDragCancel = { onHold(false) }) { change, _ ->
+                            change.consume(); onValue((1f - change.position.y / size.height).coerceIn(0f, 1f))
+                        }
+                    }
+                    .semantics {
+                        contentDescription = label
+                        progressBarRangeInfo = ProgressBarRangeInfo(value, 0f..1f)
+                        setProgress { target -> onStart(); onValue(target.coerceIn(0f, 1f)); true }
+                    }) {
+                    Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(shown).background(Color.White))
+                }
+                Row(Modifier.padding(top = FolioSpace.SMALL.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.XL.dp), verticalAlignment = Alignment.Top, content = toggles)
+            }
+        }
+    }
+}
+
+/** A round switch with its name and state under it, for [CcHoldTall]. Tapping it does [onClick]; [on] fills it. */
+@Composable
+internal fun CcHoldToggle(icon: ImageVector, label: String, state: String, on: Boolean, onClick: () -> Unit) {
+    Column(Modifier.widthIn(min = 96.dp, max = 120.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp))
+        .toggleable(on, role = androidx.compose.ui.semantics.Role.Switch, onValueChange = { onClick() })
+        .semantics { contentDescription = "$label, $state" }.padding(FolioSpace.TINY.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.TINY.dp)) {
+        Box(Modifier.size(FolioTouch.MIN.dp + 8.dp).clip(androidx.compose.foundation.shape.CircleShape).background(if (on) Color.White else Color.White.copy(alpha = .22f)), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = if (on) FolioColors.MenuSurface else Color.White, modifier = Modifier.size(24.dp))
+        }
+        Text(label, color = Color.White, fontSize = FolioType.GROUP_LABEL.sp, fontWeight = FontWeight.SemiBold, textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 2)
+        Text(state, color = FolioGlass.secondary, fontSize = FolioType.GROUP_LABEL.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
     }
 }

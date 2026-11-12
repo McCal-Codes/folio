@@ -1082,13 +1082,16 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
 
         // The cards a press and hold on a slider opens (CcHoldCard): the same control wider, with what a tap leaves out.
         when (hold) {
-            CcHold.BRIGHTNESS -> CcHoldCard(stringResource(R.string.brightness), onDismiss = { hold = null }) {
-                CcHoldSlider(if (controls.brightness < .35f) Icons.Rounded.BrightnessLow else Icons.Rounded.LightMode, stringResource(R.string.brightness), controls.brightness,
-                    onStart = { if (!android.provider.Settings.System.canWrite(context)) open(controls.writeSettingsIntent()) }, onHold = controls::holdBrightness) { controls.changeBrightness(it) }
-                if (controls.autoBrightnessKnown) {
-                    CcHoldSwitch(stringResource(R.string.cc_auto_brightness), controls.brightnessAuto) { on ->
-                        if (!android.provider.Settings.System.canWrite(context)) open(controls.writeSettingsIntent()) else controls.setBrightnessAuto(on) }
-                }
+            CcHold.BRIGHTNESS -> {
+                val dark = (androidx.compose.ui.platform.LocalConfiguration.current.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+                CcHoldTall(if (controls.brightness < .35f) Icons.Rounded.BrightnessLow else Icons.Rounded.LightMode, stringResource(R.string.brightness), controls.brightness, onDismiss = { hold = null },
+                    onStart = { if (!android.provider.Settings.System.canWrite(context)) open(controls.writeSettingsIntent()) }, onHold = controls::holdBrightness,
+                    toggles = {
+                        if (controls.autoBrightnessKnown) CcHoldToggle(Icons.Rounded.BrightnessAuto, stringResource(R.string.cc_auto_brightness), stringResource(if (controls.brightnessAuto) R.string.state_on else R.string.state_off), controls.brightnessAuto) {
+                            if (!android.provider.Settings.System.canWrite(context)) open(controls.writeSettingsIntent()) else controls.setBrightnessAuto(!controls.brightnessAuto) }
+                        // Android keeps the system dark theme behind Settings, so this shows its state and opens Display settings.
+                        CcHoldToggle(Icons.Rounded.DarkMode, stringResource(R.string.cc_dark_theme), stringResource(if (dark) R.string.state_on else R.string.state_off), dark) { hold = null; open(Intent(Settings.ACTION_DISPLAY_SETTINGS)) }
+                    }) { controls.changeBrightness(it) }
             }
             CcHold.VOLUME -> CcHoldCard(stringResource(R.string.volume), onDismiss = { hold = null }) {
                 listOf(AudioManager.STREAM_MUSIC to R.string.cc_hold_media, AudioManager.STREAM_RING to R.string.cc_hold_ring, AudioManager.STREAM_ALARM to R.string.cc_hold_alarm).forEach { (stream, name) ->
