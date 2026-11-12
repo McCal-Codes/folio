@@ -108,8 +108,11 @@ private fun GalleryTile(item: CcGalleryItem, onAdd: (CcGalleryItem) -> Unit) {
     val add = stringResource(R.string.add_control, item.label)
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.CARD.dp)).clickable { onAdd(item) }.semantics { role = Role.Button; contentDescription = add }.padding(vertical = FolioSpace.TINY.dp),
         horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(64.dp).clip(CircleShape).background(Color.White.copy(alpha = .12f)), contentAlignment = Alignment.Center) {
-            Icon(item.icon, null, tint = Color.White, modifier = Modifier.size(28.dp))
+        // The badge sits on the circle's edge, outside its clip, so the plus is whole.
+        Box(Modifier.size(64.dp)) {
+            Box(Modifier.matchParentSize().clip(CircleShape).background(Color.White.copy(alpha = .12f)), contentAlignment = Alignment.Center) {
+                Icon(item.icon, null, tint = Color.White, modifier = Modifier.size(28.dp))
+            }
             Box(Modifier.align(Alignment.TopEnd).size(20.dp).clip(CircleShape).background(FolioColors.Green), contentAlignment = Alignment.Center) {
                 Icon(Icons.Rounded.Add, null, tint = Color.White, modifier = Modifier.size(14.dp))
             }

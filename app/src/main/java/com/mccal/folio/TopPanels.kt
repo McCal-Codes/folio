@@ -1043,7 +1043,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                 CC_CONNECTIVITY -> stringResource(R.string.cc_page_connectivity); CC_MEDIA -> stringResource(R.string.now_playing)
                 CC_BRIGHTNESS -> stringResource(R.string.brightness); CC_VOLUME -> stringResource(R.string.volume); else -> stringResource(R.string.focus) } }
             (if (slotMode) ccMissingModules(slots, focusOn) else emptyList()).map { id -> CcGalleryItem(id, moduleLabel(id), when (id) { CC_CONNECTIVITY -> Icons.Rounded.Wifi; CC_MEDIA -> Icons.Rounded.MusicNote
-                CC_BRIGHTNESS -> Icons.Rounded.LightMode; CC_VOLUME -> Icons.Rounded.Tune; else -> Icons.Rounded.DarkMode }, true) } +
+                CC_BRIGHTNESS -> Icons.Rounded.LightMode; CC_VOLUME -> Icons.AutoMirrored.Rounded.VolumeUp; else -> Icons.Rounded.DarkMode }, true) } +
                 CcControl.entries.filter { it !in chosen && available(it) }.map { c -> CcGalleryItem(c.name, stringResource(c.label), c.icon(), false) }
         }
         if (galleryOpen && edit.active) CcControlGallery(galleryItems, onDismiss = { galleryOpen = false }, onAdd = { item ->
@@ -1086,8 +1086,8 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                 CcHoldSlider(if (controls.brightness < .35f) Icons.Rounded.BrightnessLow else Icons.Rounded.LightMode, stringResource(R.string.brightness), controls.brightness,
                     onStart = { if (!android.provider.Settings.System.canWrite(context)) open(controls.writeSettingsIntent()) }, onHold = controls::holdBrightness) { controls.changeBrightness(it) }
                 if (controls.autoBrightnessKnown) {
-                    SettingsSwitch(stringResource(R.string.cc_auto_brightness), controls.brightnessAuto, { on ->
-                        if (!android.provider.Settings.System.canWrite(context)) open(controls.writeSettingsIntent()) else controls.setBrightnessAuto(on) }, "cc-hold-auto-brightness")
+                    CcHoldSwitch(stringResource(R.string.cc_auto_brightness), controls.brightnessAuto) { on ->
+                        if (!android.provider.Settings.System.canWrite(context)) open(controls.writeSettingsIntent()) else controls.setBrightnessAuto(on) }
                 }
             }
             CcHold.VOLUME -> CcHoldCard(stringResource(R.string.volume), onDismiss = { hold = null }) {
@@ -1193,7 +1193,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                                                 }
                                             }
                                         }
-                                    CC_MEDIA -> MediaModule(media, Modifier.fillMaxSize(), cell, onOpen = { if (!edit.active) playing() }, slimWhenIdle = dedupe, slot = span(slot.h))
+                                    CC_MEDIA -> MediaModule(media, Modifier.fillMaxSize(), cell, onOpen = { if (!edit.active) playing() }, slimWhenIdle = dedupe && !edit.active, slot = span(slot.h))
                                     CC_BRIGHTNESS -> brightnessSlider(span(slot.h))
                                     CC_VOLUME -> volumeSlider(span(slot.h))
                                     CC_FOCUS -> focusModuleAt(span(slot.w), span(slot.h))

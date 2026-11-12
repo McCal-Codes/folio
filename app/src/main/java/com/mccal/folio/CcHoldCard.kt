@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -111,5 +112,16 @@ internal fun CcHoldAction(text: String, onClick: () -> Unit) {
     Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(Color.White.copy(alpha = .12f)).clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onClick)
         .heightIn(min = FolioTouch.MIN.dp).padding(vertical = FolioSpace.MEDIUM.dp), contentAlignment = Alignment.Center) {
         Text(text, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+/** A switch row on a hold card, in the card's own light-on-dark colors (the Settings switch row draws dark text for a light sheet). */
+@Composable
+internal fun CcHoldSwitch(label: String, checked: Boolean, onChecked: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp)
+        .toggleable(checked, role = androidx.compose.ui.semantics.Role.Switch, onValueChange = onChecked),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, color = Color.White, fontSize = FolioType.SUBHEAD.sp, modifier = Modifier.weight(1f))
+        androidx.compose.material3.Switch(checked, null)
     }
 }
