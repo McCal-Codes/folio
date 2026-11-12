@@ -1184,7 +1184,9 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                     CcPage.CONTROLS -> {
                         val first = spec.index == 0
                         val before = plan.perPage.take(spec.index).sum()
-                        val pageControls = chosen.subList(before, before + plan.perPage[spec.index])
+                        val allPageControls = chosen.subList(before, before + plan.perPage[spec.index])
+                        val focusBesideCount = if (spec.index == 0 && focusOn && plan.focusOnFirst) minOf(2, allPageControls.size) else 0
+                        val pageControls = allPageControls.drop(focusBesideCount)
                         if (slotMode && first) {
                             // The Control Center editor: every module and control at its own place (see CcSlotGrid).
                             var slotConnectivityOpen by remember { mutableStateOf(false) }
@@ -1252,7 +1254,12 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                         }
                         if (first) { if (cols >= 6) Row(horizontalArrangement = Arrangement.spacedBy(gap)) { topBlock(); sliders(span(2)) } else topBlock() }
                         // Focus: see focusModule.
-                        if (first && focusOn && plan.focusOnFirst) focusModule()
+                        // A small bar, as in the editor: two cells wide, with the first two controls beside it.
+                        if (focusBesideCount > 0) Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                            focusModuleAt(span(2), cell)
+                            allPageControls.take(focusBesideCount).forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }, reorder = reorder, onMove = moveControl, onNudge = { by -> onControls(ccMoveControlBy(controlNames, c.name, by)) },
+                                settleIndex = if (first) allPageControls.indexOf(c) else -1, panelOpen = panelOpen) { run(c) } }
+                        } else if (first && focusOn && plan.focusOnFirst) focusModuleAt(span(2), cell)
                         // Row 3–4 with four columns: the first four small controls (2×2) and brightness + volume sliders
                         // (With the Media page off and no room on the first page, the same block leads the next Controls page; with no control to put beside them the sliders stand in the middle.)
                         if (cols == 4 && spec.index == plan.sliderPage) {
