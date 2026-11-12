@@ -983,7 +983,10 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         val plan = remember(cols, cell, gap, pagesAvailable, chosen.size, focusOn, options.mediaPage) { ccPlanControls(cols, cell.value, gap.value, pagesAvailable?.value, chosen.size, focusOn, options.mediaPage) }
         // A page is shown when the first cannot hold what it holds (the automatic hiding) and its switch is on.
         val neededPages = remember(plan, pagesAvailable, cell, gap, focusOn, dedupe) { ccExtraPages(plan, pagesAvailable?.value, cell.value, gap.value, focusOn, dedupe) }
-        val extraPages = remember(neededPages, options.mediaPage, options.connectivityPage) { ccShownExtraPages(neededPages, options) }
+        // Pages the first one has to give up (it ran out of room) and whose switch is on; the editor's grid needs those to be none.
+        val neededShown = remember(neededPages, options.mediaPage, options.connectivityPage) { ccShownExtraPages(neededPages, options) }
+        // Beside the grid the rail always lists the Media and Connectivity pages, as the Duo does.
+        val extraPages = remember(neededPages, options.mediaPage, options.connectivityPage, grid.stripAtEdge) { ccRailExtraPages(neededPages, options, grid.stripAtEdge) }
         val pages = remember(plan, extraPages) { ccPageSpecs(plan.perPage.size, extraPages) }
         // The pager runs forward but its pages are in reverse (Controls at the last index): the first page is anchored at the bottom, the next ones come down from above,
         // and a swipe up past the first page has nowhere to go, so it closes the panel. (reverseLayout stopped the drag from following the finger.)
@@ -1041,7 +1044,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         // The Control Center editor (FeatureGate.CC_EDITOR): when every module and control fits on the one Controls page, the page is places on a grid
         // that can be rearranged. Any other window keeps the ordered list, so nothing is lost where the grid has no room to work.
         val editorOn = remember { FeatureGate.CC_EDITOR.isOpen(context) }
-        val slotMode = editorOn && extraPages.isEmpty() && plan.perPage.size == 1 && plan.focusOnFirst && plan.slidersOnFirst
+        val slotMode = editorOn && neededShown.isEmpty() && plan.perPage.size == 1 && plan.focusOnFirst && plan.slidersOnFirst
         val slots = remember(ccLayout, cols, chosen, focusOn) { ccLayoutFor(ccLayout, cols, chosen.map { it.name }, focusOn) }
         val slotRowsFit = if (pagesAvailable == null) 12 else ccRowsThatFit(pagesAvailable.value, cell.value, gap.value)
         val slotRows = if (slotMode) maxOf(ccRowsUsed(slots) + (if (edit.active) 1 else 0), ccRowsUsed(ccDefaultLayout(cols, chosen.map { it.name }, focusOn))).coerceAtLeast(1) else 0
@@ -1319,7 +1322,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                         // With more than one Controls page each says which it is, so the marks are never the same.
                         if (page == CcPage.CONTROLS && controlsPages > 1) Text("${spec.index + 1}", color = if (selected) FolioColors.MenuSurface else Color.White,
                             fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.Bold)
-                        else Icon(when (page) { CcPage.CONTROLS -> Icons.Rounded.Favorite; CcPage.MEDIA -> Icons.Rounded.MusicNote; CcPage.CONNECTIVITY -> Icons.Rounded.Wifi },
+                        else Icon(when (page) { CcPage.CONTROLS -> Icons.Rounded.Favorite; CcPage.MEDIA -> Icons.Rounded.MusicNote; CcPage.CONNECTIVITY -> Icons.Rounded.SettingsInputAntenna },
                             null, tint = if (selected) FolioColors.MenuSurface else Color.White, modifier = Modifier.size((22 * ccIconScale(LocalDensity.current.fontScale)).dp))
                     }
                 }

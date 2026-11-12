@@ -58,6 +58,14 @@ internal fun ccShownExtraPages(needed: List<CcPage>, options: CcOptions): List<C
 }
 
 /**
+ * The pages the rail beside the grid shows (the Duo, the iPhone and the iPad keep it): Media and Connectivity are always there as
+ * page icons when their switch is on, not only when the first page runs out of room. Without the rail it is [ccShownExtraPages].
+ */
+internal fun ccRailExtraPages(needed: List<CcPage>, options: CcOptions, rail: Boolean): List<CcPage> =
+    if (!rail) ccShownExtraPages(needed, options)
+    else listOfNotNull(CcPage.MEDIA.takeIf { options.mediaPage }, CcPage.CONNECTIVITY.takeIf { options.connectivityPage })
+
+/**
  * The position, in the order of [pages] (0 is the first page), Control Center opens on. [CcOpenOn.LAST] returns to the page last used
  * when it is still there (the first Controls page for any Controls page), and otherwise the first page.
  */

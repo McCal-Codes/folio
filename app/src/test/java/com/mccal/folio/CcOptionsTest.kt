@@ -112,4 +112,15 @@ class CcOptionsTest {
         for (name in listOf("control_center_size", "control_center_look", "cc_look_note", "control_center_side", "to_restyle_samsungs_own_pull_down_colors"))
             assertTrue("$name is still on the page", "R.string.$name" in cards)
     }
+
+    @Test fun `the rail always lists the pages whose switch is on`() {
+        val both = listOf(CcPage.MEDIA, CcPage.CONNECTIVITY)
+        // Roomy first page: nothing is needed, but the rail still shows both.
+        assertEquals(both, ccRailExtraPages(emptyList(), CcOptions(), rail = true))
+        assertEquals(listOf(CcPage.CONNECTIVITY), ccRailExtraPages(emptyList(), CcOptions(mediaPage = false), rail = true))
+        assertEquals(emptyList<CcPage>(), ccRailExtraPages(both, CcOptions(mediaPage = false, connectivityPage = false), rail = true))
+        // No rail: only the pages the first one has to give up, as before.
+        assertEquals(emptyList<CcPage>(), ccRailExtraPages(emptyList(), CcOptions(), rail = false))
+        assertEquals(both, ccRailExtraPages(both, CcOptions(), rail = false))
+    }
 }
