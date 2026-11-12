@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -67,14 +69,36 @@ internal fun ccGalleryFilter(items: List<CcGalleryItem>, query: String): List<Cc
 internal fun CcControlGallery(items: List<CcGalleryItem>, onAdd: (CcGalleryItem) -> Unit, onDismiss: () -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
     val shown = ccGalleryFilter(items, query)
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+    // On a wide window (the unfolded Fold, a tablet) it floats as a card on the right, as on an iPad; on a narrow one it stays a bottom sheet.
+    val wide = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= CC_GALLERY_CARD_MIN_WIDTH_DP
+    if (wide) androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(Modifier.fillMaxSize().clickable(interactionSource = null, indication = null, onClick = onDismiss).padding(FolioSpace.LARGE.dp), contentAlignment = Alignment.CenterEnd) {
+            Box(Modifier.width(CC_GALLERY_CARD_WIDTH_DP.dp).clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(FolioColors.MenuSurface)
+                .clickable(interactionSource = null, indication = null) {}.padding(FolioSpace.LARGE.dp)) {
+                GalleryBody(items, shown, query, { query = it }, onAdd)
+            }
+        }
+    } else ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(Modifier.navigationBarsPadding().padding(horizontal = FolioSpace.LARGE.dp).padding(bottom = FolioSpace.LARGE.dp)) {
+            GalleryBody(items, shown, query, { query = it }, onAdd)
+        }
+    }
+}
+
+/** The window width from which the gallery floats as a card, and the card's width. */
+internal const val CC_GALLERY_CARD_MIN_WIDTH_DP = 600
+internal const val CC_GALLERY_CARD_WIDTH_DP = 360
+
+@Composable
+private fun GalleryBody(items: List<CcGalleryItem>, shown: List<CcGalleryItem>, query: String, onQuery: (String) -> Unit, onAdd: (CcGalleryItem) -> Unit) {
+    Column {
+        run {
             Row(Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(Color.White.copy(alpha = .1f)).padding(horizontal = FolioSpace.COMPACT.dp, vertical = FolioSpace.SNUG.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(FolioSpace.SNUG.dp)) {
                 Icon(Icons.Rounded.Search, null, tint = FolioGlass.secondary, modifier = Modifier.size(20.dp))
                 Box(Modifier.weight(1f)) {
                     if (query.isEmpty()) Text(stringResource(R.string.search_controls), color = FolioGlass.secondary, fontSize = FolioType.BODY.sp)
-                    BasicTextField(query, { query = it }, singleLine = true, cursorBrush = SolidColor(Color.White),
+                    BasicTextField(query, onQuery, singleLine = true, cursorBrush = SolidColor(Color.White),
                         textStyle = TextStyle(color = Color.White, fontSize = FolioType.BODY.sp), keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
                         modifier = Modifier.fillMaxWidth().semantics { contentDescription = "" })
                 }
