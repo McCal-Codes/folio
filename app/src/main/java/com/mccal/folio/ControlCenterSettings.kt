@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -67,6 +70,40 @@ internal fun CcSidePicker(selected: CcSide, enabled: Boolean = true, onSelect: (
 }
 
 /**
+ * The look choice as three small panels, each with four tiles drawn the way that look draws them over a colorful backdrop (Clear is see-through,
+ * Frosted smoky, Solid opaque), so the difference shows before it is picked. A tap applies it at once; TalkBack reads each as one choice.
+ */
+@Composable
+internal fun CcLookPicker(selected: CcLook, onSelect: (CcLook) -> Unit) {
+    val ink = LocalContentColor.current
+    Column(Modifier.fillMaxWidth().padding(vertical = FolioSpace.SNUG.dp).testTag("cc-look"), verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
+        Text(stringResource(R.string.control_center_look), fontSize = FolioType.BODY.sp)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            CcLook.entries.forEach { look ->
+                val on = look == selected
+                val tile = when (look) { CcLook.CLEAR -> Color.White.copy(alpha = .16f); CcLook.FROSTED -> FolioGlass.frostedTile; CcLook.SOLID -> FolioColors.MenuSurface }
+                val edge = if (look == CcLook.CLEAR) Color.White.copy(alpha = .5f) else Color.Transparent
+                Column(Modifier.heightIn(min = FolioTouch.MIN.dp).selectable(on, role = androidx.compose.ui.semantics.Role.RadioButton) { onSelect(look) }
+                    .semantics(mergeDescendants = true) {}.padding(FolioSpace.TINY.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.TINY.dp)) {
+                    Box(Modifier.size(88.dp, 64.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
+                        .background(Brush.linearGradient(listOf(FolioColors.Blue, FolioColors.Purple, FolioColors.Orange)))
+                        .border(if (on) 2.dp else 1.dp, if (on) FolioColors.Blue else ink.copy(alpha = .2f), RoundedCornerShape(FolioRadius.CONTROL.dp)).padding(8.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            repeat(2) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    repeat(2) { Box(Modifier.size(width = 32.dp, height = 18.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).background(tile).border(1.dp, edge, RoundedCornerShape(FolioRadius.CONTROL.dp))) }
+                                }
+                            }
+                        }
+                    }
+                    Text(stringResource(look.label), fontSize = FolioType.FOOTNOTE.sp, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal)
+                }
+            }
+        }
+    }
+}
+
+/**
  * "Compact panel on wide screens" and, under it, the side choice. On a wide window Control Center fills the window by default, so there
  * is nowhere to move it; compact makes it a panel of about 520 dp that Right, Middle and Left place under the top corner. The side choice
  * stays on screen but dimmed until compact is on, so what turns it on is plain.
@@ -98,7 +135,7 @@ internal fun ControlCenterSettingsCards(state: LauncherState, model: LauncherMod
     SettingsCard(stringResource(R.string.control_center)) {
         IosMenuRow(stringResource(R.string.control_center_size), PanelSize.entries.map { it to stringResource(it.label) }, state.ccSize, model::setCcSize, tag = "cc-size")
         CcSizeNote()
-        IosMenuRow(stringResource(R.string.control_center_look), CcLook.entries.map { it to stringResource(it.label) }, state.ccLook, model::setCcLook, tag = "cc-look")
+        CcLookPicker(state.ccLook, model::setCcLook)
         CardNote(stringResource(R.string.cc_look_note))
         // Side by side puts Control Center on the right itself, and a card sits under its own corner, so only Full screen can centre it.
         if (state.ncLayout == NcLayout.FULL_SCREEN) CcSideChoice(state, model)
