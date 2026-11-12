@@ -56,7 +56,7 @@ data class StatusStyle(
     val showTime: Boolean = true,
     val showDate: Boolean = true,
     val showBatteryPercent: Boolean = true,
-    val glyph: StatusGlyph = StatusGlyph.RING,
+    val glyph: StatusGlyph = StatusGlyph.STACK,
     val colorfulBattery: Boolean = true,
     /** Frost strength shared by the status, dock and island capsules (0 = clear, 1 = solid). */
     val railGlass: Float = .26f,
@@ -82,7 +82,7 @@ data class StatusStyle(
         fun fromJson(j: org.json.JSONObject?): StatusStyle = if (j == null) StatusStyle() else StatusStyle(
             showTime = j.optBoolean("showTime", true), showDate = j.optBoolean("showDate", true),
             showBatteryPercent = j.optBoolean("showBatteryPercent", true),
-            glyph = runCatching { StatusGlyph.valueOf(j.optString("glyph")) }.getOrDefault(StatusGlyph.RING),
+            glyph = runCatching { StatusGlyph.valueOf(j.optString("glyph")) }.getOrDefault(StatusGlyph.STACK),
             colorfulBattery = j.optBoolean("colorfulBattery", true),
             railGlass = j.optDouble("railGlass", .26).toFloat().coerceIn(0f, 1f),
             showSilent = j.optBoolean("showSilent", true),

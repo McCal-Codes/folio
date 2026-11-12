@@ -16,7 +16,7 @@
     "showTime": true,
     "showDate": true,
     "showBatteryPercent": true,
-    "glyph": "RING",
+    "glyph": "STACK",
     "colorfulBattery": true,
     "railGlass": 0.38
   }
