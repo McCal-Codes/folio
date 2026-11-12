@@ -308,7 +308,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
 
     private data class ShadeConfig(val overApps: Boolean, val panels: Boolean, val clock: Boolean, val grouped: Boolean,
         val controls: List<String>, val size: PanelSize, val centered: Boolean, val layout: NcLayout, val sections: Boolean = false, val left: Boolean = false,
-        val look: CcLook = CcLook.CLEAR, val options: CcOptions = CcOptions())
+        val look: CcLook = CcLook.CLEAR, val options: CcOptions = CcOptions(), val ccLayout: CcSavedLayout? = null)
 
     private fun readShadeConfig(): ShadeConfig = runCatching {
         val j = JSONObject(prefs.getString(SettingKeys.STATE, "{}") ?: "{}")
@@ -319,7 +319,9 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
             runCatching { PanelSize.valueOf(j.optString("ccSize")) }.getOrDefault(PanelSize.STANDARD), j.optBoolean("ccCentered", false),
             ncLayoutFrom(j.optString("ncLayout").ifEmpty { null }, if (j.has("ncSplit")) j.optBoolean("ncSplit") else null),
             j.optBoolean("notificationSections", false), j.optBoolean("ccLeft", false),
-            runCatching { CcLook.valueOf(j.optString("ccLook")) }.getOrDefault(CcLook.CLEAR), CcOptions.read(j))
+            runCatching { CcLook.valueOf(j.optString("ccLook")) }.getOrDefault(CcLook.CLEAR), CcOptions.read(j),
+            // The layout made in the editor, so over an app Control Center is arranged as it is on Home.
+            ccLayoutFromJson(j.optJSONObject("ccLayout")))
     }.getOrDefault(ShadeConfig(false, true, true, true, CcControl.DEFAULTS, PanelSize.STANDARD, false, NcLayout.FULL_SCREEN))
 
     private var shade: ComposeView? = null
@@ -379,7 +381,7 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                             // "Android notifications" and the like ask for the phone's own shade: ours closes while it opens.
                             onSystemPanel = { p -> closeShade(); SystemShadeAccessibilityService.open(service, p) },
                             showClock = config.clock, grouped = config.grouped, sections = config.sections, ccControls = config.controls,
-                            ccSize = config.size, ccCentered = config.centered, ccLeft = config.left, ncLayout = config.layout, ccLook = config.look, ccOptions = config.options,
+                            ccSize = config.size, ccCentered = config.centered, ccLeft = config.left, ncLayout = config.layout, ccLook = config.look, ccOptions = config.options, ccLayout = config.ccLayout,
                             onSwitchPanel = { p -> shadePanel.value = p })
                     }
                 }
