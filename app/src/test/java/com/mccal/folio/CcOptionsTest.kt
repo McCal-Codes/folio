@@ -18,6 +18,7 @@ class CcOptionsTest {
         assertTrue(o.mediaPage); assertTrue(o.connectivityPage)
         assertEquals(CcOpenOn.CONTROLS, o.openOn)
         assertTrue("slider ticks stay on", o.sliderTicks)
+        assertFalse("Control Center fills a wide window until compact is chosen", o.compact)
         assertFalse("closing after a tap is off", o.closeAfterToggle)
     }
 
@@ -29,7 +30,7 @@ class CcOptionsTest {
     }
 
     @Test fun `options survive being written and read`() {
-        val o = CcOptions(mediaPage = false, connectivityPage = false, openOn = CcOpenOn.LAST, sliderTicks = false, closeAfterToggle = true)
+        val o = CcOptions(mediaPage = false, connectivityPage = false, openOn = CcOpenOn.LAST, sliderTicks = false, closeAfterToggle = true, compact = true)
         assertEquals(o, CcOptions.read(o.writeTo(JSONObject())))
     }
 

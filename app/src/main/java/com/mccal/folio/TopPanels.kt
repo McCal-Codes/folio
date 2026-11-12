@@ -201,11 +201,11 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
                 detail && which == ShadePanel.NOTIFICATIONS -> LIST_DETAIL_MAX_DP.dp
                 shape == ShadeShape.CARD && which == ShadePanel.NOTIFICATIONS -> 420.dp
                 shape == ShadeShape.BOTH -> 440.dp
-                which == ShadePanel.QUICK_SETTINGS && shape == ShadeShape.SINGLE_TOP -> Dp.Infinity // Control Center fills the window; its grid sets its own width
+                which == ShadePanel.QUICK_SETTINGS && shape == ShadeShape.SINGLE_TOP -> if (ccOptions.compact && wide) CC_COMPACT_WIDTH_DP.dp else Dp.Infinity // Control Center fills the window; its grid sets its own width
                 wide -> 460.dp
                 else -> 560.dp
             })
-            .then(if ((which == ShadePanel.NOTIFICATIONS && shape != ShadeShape.BOTH) || (which == ShadePanel.QUICK_SETTINGS && shape == ShadeShape.SINGLE_TOP)) Modifier.fillMaxWidth() else Modifier)
+            .then(if ((which == ShadePanel.NOTIFICATIONS && shape != ShadeShape.BOTH) || (which == ShadePanel.QUICK_SETTINGS && shape == ShadeShape.SINGLE_TOP && !(ccOptions.compact && wide))) Modifier.fillMaxWidth() else Modifier)
             .then(if (tall) Modifier.fillMaxHeight() else Modifier)
             // Taps on gaps inside the panel must not fall through to the scrim and close it. Control Center's own margins (beside and around the grid) are
             // the exception: a tap there closes it, as a tap outside does; the grid and the page strip take their own taps (see ControlCenter).

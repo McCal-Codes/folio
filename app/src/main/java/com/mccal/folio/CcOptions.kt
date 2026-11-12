@@ -20,9 +20,11 @@ data class CcOptions(
     val sliderTicks: Boolean = true,
     /** Close Control Center after a tap on a one-shot tile (see [ccClosesAfterTap]). */
     val closeAfterToggle: Boolean = false,
+    /** On a wide window Control Center is a compact panel (about the width of an iPad's) that the side choice can move; off, it fills the window. */
+    val compact: Boolean = false,
 ) {
     fun writeTo(json: JSONObject): JSONObject = json.put(MEDIA_PAGE, mediaPage).put(CONNECTIVITY_PAGE, connectivityPage)
-        .put(OPEN_ON, openOn.name).put(SLIDER_TICKS, sliderTicks).put(CLOSE_AFTER, closeAfterToggle)
+        .put(OPEN_ON, openOn.name).put(SLIDER_TICKS, sliderTicks).put(CLOSE_AFTER, closeAfterToggle).put(COMPACT, compact)
 
     companion object {
         private const val MEDIA_PAGE = "ccMediaPage"
@@ -30,6 +32,7 @@ data class CcOptions(
         private const val OPEN_ON = "ccOpenOn"
         private const val SLIDER_TICKS = "ccSliderTicks"
         private const val CLOSE_AFTER = "ccCloseAfterToggle"
+        private const val COMPACT = "ccCompact"
 
         fun read(json: JSONObject): CcOptions = CcOptions(
             mediaPage = json.optBoolean(MEDIA_PAGE, true),
@@ -37,6 +40,7 @@ data class CcOptions(
             openOn = runCatching { CcOpenOn.valueOf(json.optString(OPEN_ON)) }.getOrDefault(CcOpenOn.CONTROLS),
             sliderTicks = json.optBoolean(SLIDER_TICKS, true),
             closeAfterToggle = json.optBoolean(CLOSE_AFTER, false),
+            compact = json.optBoolean(COMPACT, false),
         )
     }
 }
@@ -98,3 +102,6 @@ internal object CcEditRequest {
         return fresh
     }
 }
+
+/** The width of Control Center's compact panel on a wide window (about an iPad's, so the grid is four columns). */
+internal const val CC_COMPACT_WIDTH_DP = 520

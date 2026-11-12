@@ -43,15 +43,15 @@ internal fun ccSideOf(centered: Boolean, left: Boolean): CcSide = if (centered) 
  * A tap applies it at once like every row here; TalkBack reads each as one choice in a group.
  */
 @Composable
-internal fun CcSidePicker(selected: CcSide, onSelect: (CcSide) -> Unit) {
-    val ink = LocalContentColor.current
+internal fun CcSidePicker(selected: CcSide, enabled: Boolean = true, onSelect: (CcSide) -> Unit) {
+    val ink = LocalContentColor.current.copy(alpha = if (enabled) LocalContentColor.current.alpha else .4f)
     Column(Modifier.fillMaxWidth().padding(vertical = FolioSpace.SNUG.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
         Text(stringResource(R.string.control_center_side), fontSize = FolioType.BODY.sp)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
             CcSide.entries.forEach { side ->
                 val on = side == selected
                 val name = stringResource(side.label)
-                Column(Modifier.heightIn(min = FolioTouch.MIN.dp).selectable(on, role = androidx.compose.ui.semantics.Role.RadioButton) { onSelect(side) }
+                Column(Modifier.heightIn(min = FolioTouch.MIN.dp).selectable(on, enabled = enabled, role = androidx.compose.ui.semantics.Role.RadioButton) { onSelect(side) }
                     .semantics(mergeDescendants = true) {}.padding(FolioSpace.TINY.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.TINY.dp)) {
                     // A wide window, and the panel as the block under the top corner it opens from.
                     Box(Modifier.size(88.dp, 64.dp).clip(RoundedCornerShape(10.dp)).background(ink.copy(alpha = .08f))
@@ -64,6 +64,18 @@ internal fun CcSidePicker(selected: CcSide, onSelect: (CcSide) -> Unit) {
             }
         }
     }
+}
+
+/**
+ * "Compact panel on wide screens" and, under it, the side choice. On a wide window Control Center fills the window by default, so there
+ * is nowhere to move it; compact makes it a panel of about 520 dp that Right, Middle and Left place under the top corner. The side choice
+ * stays on screen but dimmed until compact is on, so what turns it on is plain.
+ */
+@Composable
+internal fun CcSideChoice(state: LauncherState, model: LauncherModel) {
+    SettingsSwitch(stringResource(R.string.cc_compact_panel), state.ccOptions.compact, { model.setCcOptions(state.ccOptions.copy(compact = it)) }, "cc-compact-switch")
+    CardNote(stringResource(R.string.cc_compact_note))
+    CcSidePicker(ccSideOf(state.ccCentered, state.ccLeft), enabled = state.ccOptions.compact, onSelect = model::setCcSide)
 }
 
 private data class CcSettingsSnapshot(val left: Boolean, val size: PanelSize, val centered: Boolean, val look: CcLook, val options: CcOptions, val layout: CcSavedLayout?)
@@ -87,7 +99,7 @@ internal fun ControlCenterSettingsCards(state: LauncherState, model: LauncherMod
         IosMenuRow(stringResource(R.string.control_center_look), CcLook.entries.map { it to stringResource(it.label) }, state.ccLook, model::setCcLook, tag = "cc-look")
         CardNote(stringResource(R.string.cc_look_note))
         // Side by side puts Control Center on the right itself, and a card sits under its own corner, so only Full screen can centre it.
-        if (state.ncLayout == NcLayout.FULL_SCREEN) CcSidePicker(ccSideOf(state.ccCentered, state.ccLeft), model::setCcSide)
+        if (state.ncLayout == NcLayout.FULL_SCREEN) CcSideChoice(state, model)
         CardNote(stringResource(R.string.to_restyle_samsungs_own_pull_down_colors))
     }
     SettingsCard(stringResource(R.string.cc_pages_title)) {
