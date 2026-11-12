@@ -2617,6 +2617,8 @@
     <string name="cc_compact_panel">Compact panel on wide screens</string>
     <string name="cc_rail">Page rail beside the controls</string>
     <string name="cc_rail_note">Off, like an iPhone: swipe between pages, with dots under the controls. On, a rail with the battery, Wi-Fi and a page icon for each page stands beside them.</string>
+    <string name="status_stack">Ring, Wi-Fi and signal</string>
+    <string name="status_sos">SOS</string>
     <string name="cc_gallery_move">Move this card</string>
     <string name="cc_gallery_move_left">Move left</string>
     <string name="cc_gallery_move_right">Move right</string>

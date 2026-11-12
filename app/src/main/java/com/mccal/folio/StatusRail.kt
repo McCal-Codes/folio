@@ -100,6 +100,8 @@ enum class StatusGlyph(@androidx.annotation.StringRes val label: Int) {
     RINGS(R.string.rings),
     /** The battery ring with the percentage inside, like iPhone's Batteries widget. */
     PERCENT(R.string.ring_with_percentage),
+    /** The Duo's stack: the ring with the percentage inside, then the Wi-Fi and cellular marks under it, with SOS when there is no signal. */
+    STACK(R.string.status_stack),
     /** One mark: the connection inside a battery arc, with the percentage above the arc's opening. */
     GAUGE(R.string.gauge),
     ICONS(R.string.icons), MINIMAL(R.string.battery_only), NONE(R.string.hidden),
@@ -307,7 +309,8 @@ fun StatusRail(
                         }
                         if (status.airplane) Icon(Icons.Rounded.AirplanemodeActive, stringResource(R.string.airplane_mode_2), tint = ink, modifier = Modifier.size(visualSize * .2f))
                     }
-                    StatusGlyph.PERCENT -> Box(Modifier.padding(top = FolioSpace.HAIR.dp).size(visualSize), contentAlignment = Alignment.Center) {
+                    StatusGlyph.PERCENT, StatusGlyph.STACK -> Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.SNUG.dp)) {
+                    Box(Modifier.padding(top = FolioSpace.HAIR.dp).size(visualSize), contentAlignment = Alignment.Center) {
                         Canvas(Modifier.fillMaxSize()) {
                             val w = size.width
                             val radius = w * .44f
@@ -325,6 +328,22 @@ fun StatusRail(
                                 fontSize = (visualSize.value * (if (status.charging) .28f else .34f) / fontScale).sp, fontWeight = FontWeight.SemiBold,
                                 style = TextStyle(fontFeatureSettings = "tnum"), maxLines = 1, softWrap = false)
                         }
+                    }
+                    if (style.glyph == StatusGlyph.STACK) {
+                        // The connection marks: Wi-Fi when joined (an airplane in Airplane Mode), then the cellular bars, or SOS with no signal at all.
+                        if (wifiVisual is WifiSignalVisual.Connected) Canvas(Modifier.size(width = 22.dp, height = 16.dp)) { drawWifiFan(size.width, wifiVisual, centered = true, ink = ink, onLight = onLight) }
+                        else if (status.airplane) Icon(Icons.Rounded.AirplanemodeActive, stringResource(R.string.airplane_mode_2), tint = ink, modifier = Modifier.size(16.dp))
+                        if (!status.airplane && status.cellularLevel == 0) Text(stringResource(R.string.status_sos), color = ink, fontSize = detailSize, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
+                        else if (cellularVisual is CellularSignalVisual.Available) Canvas(Modifier.size(width = 22.dp, height = 14.dp)) {
+                            val bar = size.width / 7
+                            for (i in 0 until 5) {
+                                val h = size.height * (.3f + .7f * i / 4)
+                                drawRoundRect(ink.copy(alpha = if (i < activeDots) 1f else faint(.28f)),
+                                    Offset(i * bar * 1.5f, size.height - h), Size(bar, h),
+                                    androidx.compose.ui.geometry.CornerRadius(bar / 2))
+                            }
+                        }
+                    }
                     }
                     StatusGlyph.RING, StatusGlyph.MINIMAL -> Box(Modifier.padding(top = FolioSpace.HAIR.dp).size(visualSize), contentAlignment = Alignment.Center) {
                         // Inside the battery ring, like iPhone's status bar: Wi-Fi when joined; otherwise cellular bars,
@@ -487,7 +506,7 @@ fun StatusRail(
                 }
                 // The percentage is already inside the ring in that style.
                 // Glyphs that carry the number themselves don't need it repeated underneath.
-                if (!compact && style.showBatteryPercent && style.glyph != StatusGlyph.PERCENT && style.glyph != StatusGlyph.GAUGE) {
+                if (!compact && style.showBatteryPercent && style.glyph != StatusGlyph.PERCENT && style.glyph != StatusGlyph.STACK && style.glyph != StatusGlyph.GAUGE) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
                         if (status.charging) {
                             Icon(Icons.Rounded.Bolt, null, tint = if (style.colorfulBattery) charging else ink, modifier = Modifier.size(10.dp))

@@ -1472,9 +1472,19 @@ private fun RailReadouts(status: DeviceStatus) {
     val cellOn = !status.airplane && (status.cellularLevel ?: 0) > 0
     val wifiWords = stringResource(R.string.cc_rail_mark, stringResource(R.string.wi_fi), stringResource(if (wifiOn) R.string.state_on else R.string.state_off))
     val cellWords = if (status.cellularLevel == null) stringResource(R.string.cellular_signal_unavailable) else stringResource(R.string.cc_rail_mark, stringResource(R.string.cellular_data), stringResource(if (cellOn) R.string.state_on else R.string.state_off))
-    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.TINY.dp)) {
+    // Words under the marks, as on the Duo: the network's name when Android gives it (else "Wi-Fi"), and SOS when the phone has no signal at all.
+    val noService = !status.airplane && status.cellularLevel == 0
+    val wordSize = FolioType.GROUP_LABEL.sp
+    Column(Modifier.widthIn(max = 56.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.TINY.dp)) {
         Icon(Icons.Rounded.Wifi, null, tint = Color.White.copy(alpha = if (wifiOn) 1f else .35f), modifier = Modifier.size(22.dp).semantics { contentDescription = wifiWords })
+        if (wifiOn) Text(status.wifiName ?: stringResource(R.string.wi_fi), color = Color.White, fontSize = wordSize, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.clearAndSetSemantics {})
         Icon(Icons.Rounded.SignalCellularAlt, null, tint = Color.White.copy(alpha = if (cellOn) 1f else .35f), modifier = Modifier.size(22.dp).semantics { contentDescription = cellWords })
+        // No service: SOS. Otherwise the network the phone is on.
+        if (noService) Text(stringResource(R.string.status_sos), color = Color.White, fontSize = wordSize, fontWeight = FontWeight.SemiBold, maxLines = 1,
+            modifier = Modifier.clearAndSetSemantics {})
+        else if (cellOn && status.carrierName != null) Text(status.carrierName!!, color = Color.White, fontSize = wordSize, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.clearAndSetSemantics {})
     }
 }
 

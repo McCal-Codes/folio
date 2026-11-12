@@ -30,11 +30,19 @@ data class DeviceStatus(
     val chargeOnHold: Boolean = false,
     val wifiConnected: Boolean = false,
     val wifiLevel: Int? = null,
+    /** The joined network's name, when Android hands it over (it needs the location permission, which Folio does not ask for); null otherwise. */
+    val wifiName: String? = null,
     val cellularLevel: Int? = null,
+    /** The network the phone is on (its carrier), when there is service; null otherwise. Needs no permission. */
+    val carrierName: String? = null,
     val airplane: Boolean = false,
     /** Ringer on silent or vibrate. */
     val silent: Boolean = false,
 )
+
+/** A network name from [WifiInfo.getSsid] without its quotes, or null for a blank one or the placeholder Android gives when the name is hidden. */
+internal fun wifiNameOrNull(raw: String?): String? =
+    raw?.trim()?.removeSurrounding("\"")?.trim()?.takeIf { it.isNotEmpty() && it != WifiManager.UNKNOWN_SSID }
 
 /**
  * Charging as Home shows it: on the cable. At a charge limit, like Samsung's battery protection holding at 80%, Android
@@ -68,9 +76,10 @@ class DeviceStatusMonitor(private val context: Context) : DefaultLifecycleObserv
         override fun onLost(network: Network) = updateConnection()
         override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) = updateConnection()
     }
+    private fun carrierOrNull(): String? = runCatching { phone.networkOperatorName }.getOrNull()?.trim()?.takeIf { it.isNotEmpty() }
     private val phoneCallback = object : TelephonyCallback(), TelephonyCallback.SignalStrengthsListener {
         override fun onSignalStrengthsChanged(signalStrength: SignalStrength) {
-            mutable.update { it.copy(cellularLevel = signalStrength.level.coerceIn(0, 4)) }
+            mutable.update { it.copy(cellularLevel = signalStrength.level.coerceIn(0, 4), carrierName = carrierOrNull()) }
         }
     }
     private val receiver = object : BroadcastReceiver() {
@@ -110,7 +119,7 @@ class DeviceStatusMonitor(private val context: Context) : DefaultLifecycleObserv
         }
         networkRegistered = runCatching { connection.registerDefaultNetworkCallback(networkCallback); true }.getOrDefault(false)
         phoneRegistered = runCatching { phone.registerTelephonyCallback(context.mainExecutor, phoneCallback); true }.getOrDefault(false)
-        mutable.update { it.copy(cellularLevel = runCatching { phone.signalStrength?.level }.getOrNull()) }
+        mutable.update { it.copy(cellularLevel = runCatching { phone.signalStrength?.level }.getOrNull(), carrierName = carrierOrNull()) }
         updateConnection()
     }
 
@@ -123,7 +132,7 @@ class DeviceStatusMonitor(private val context: Context) : DefaultLifecycleObserv
         val airplane = Settings.Global.getInt(context.contentResolver, Settings.Global.AIRPLANE_MODE_ON, 0) == 1
         val silent = runCatching { context.getSystemService(android.media.AudioManager::class.java).ringerMode != android.media.AudioManager.RINGER_MODE_NORMAL }
             .getOrDefault(false)
-        mutable.update { it.copy(wifiConnected = connected, wifiLevel = level, airplane = airplane, silent = silent) }
+        mutable.update { it.copy(wifiConnected = connected, wifiLevel = level, wifiName = if (connected) wifiNameOrNull(info?.ssid) else null, airplane = airplane, silent = silent) }
     }
 
     override fun onStop(owner: LifecycleOwner) {

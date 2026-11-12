@@ -2573,6 +2573,8 @@
     <string name="cc_compact_panel">넓은 화면에서 컴팩트 패널</string>
     <string name="cc_rail">컨트롤 옆 페이지 레일</string>
     <string name="cc_rail_note">끄면 iPhone처럼 페이지를 넘기며 컨트롤 아래에 점이 표시됩니다. 켜면 배터리, Wi-Fi, 페이지 아이콘이 있는 레일이 옆에 표시됩니다.</string>
+    <string name="status_stack">링, Wi-Fi 및 신호</string>
+    <string name="status_sos">SOS</string>
     <string name="cc_gallery_move">이 카드 이동</string>
     <string name="cc_gallery_move_left">왼쪽으로 이동</string>
     <string name="cc_gallery_move_right">오른쪽으로 이동</string>

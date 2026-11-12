@@ -2551,6 +2551,8 @@
     <string name="cc_compact_panel">宽屏上使用紧凑面板</string>
     <string name="cc_rail">控件旁的页面侧栏</string>
     <string name="cc_rail_note">关闭时与 iPhone 一样：滑动切换页面，控件下方显示圆点。开启后，控件旁会显示带电量、Wi-Fi 和各页图标的侧栏。</string>
+    <string name="status_stack">圆环、Wi-Fi 和信号</string>
+    <string name="status_sos">SOS</string>
     <string name="cc_gallery_move">移动此卡片</string>
     <string name="cc_gallery_move_left">向左移动</string>
     <string name="cc_gallery_move_right">向右移动</string>
