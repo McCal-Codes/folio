@@ -968,7 +968,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         val sizeCell = size.cell + if (wide) 8.dp else 0.dp
         val tall = if (maxHeight == Dp.Infinity) null else maxHeight.value
         // Fills the window: 4, 6 or 8 columns by the width, cells near the size chosen; the page strip at the edge on a wide panel, under the grid on a narrow one.
-        val grid = controlCenterGrid(maxWidth.value, tall, chosen.size, focusModes.isNotEmpty(), sizeCell.value, FolioTouch.MIN.toFloat(), (FolioSpace.LARGE * 2).toFloat())
+        val grid = controlCenterGrid(maxWidth.value, tall, chosen.size, focusModes.isNotEmpty(), sizeCell.value, FolioTouch.MIN.toFloat(), (FolioSpace.LARGE * 2).toFloat(), options.rail)
         val gap = grid.gapDp.dp
         val cols = grid.columns
         val cell = grid.cellDp.dp
@@ -1304,6 +1304,8 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                             MediaModule(media, Modifier.size(span(if (slidersHere) cols - 2 else cols), span(3)), cell, onOpen = playing, slimWhenIdle = dedupe, slot = span(3))
                             if (slidersHere) sliders(span(3))
                         }
+                        // The sliders stand on the first page, so the volume has its own bar here, like the Music page of an iPhone.
+                        if (!slidersHere) MediaVolumeBar(controls.volume, span(cols), cell, options.sliderTicks, !edit.active) { controls.changeVolume(it) }
                         if (focusOn && !plan.focusOnFirst) focusModule()
                     }
                     // Connectivity: each connection as a full row, with its state.
@@ -1424,7 +1426,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                         }.pointerInput(shownPx) { detectTapGestures { at -> if (at.y > shownPx) closePanel() } },
                             contentAlignment = Alignment.TopStart) { pageContent(pages[firstIndex - index]) }
                     }
-                    if (!grid.stripAtEdge && !grid.stripInHeader) strip()
+                    if (!grid.stripAtEdge && !grid.stripInHeader && pages.size > 1) strip()
                 }
                 if (grid.stripAtEdge) Box(Modifier.pointerInput(Unit) { detectTapGestures() }) { strip() }
             }
@@ -1704,6 +1706,44 @@ private fun SquareToggle(icon: ImageVector, label: String, on: Boolean, accent: 
         .clickable(interactionSource = source, indication = androidx.compose.foundation.LocalIndication.current, role = androidx.compose.ui.semantics.Role.Button) { haptic.toggle(!on); onClick() }
         .semantics { contentDescription = label; stateDescription = state }, contentAlignment = Alignment.Center) {
         Icon(icon, null, tint = if (on && accent == Color.White) Color.Black else Color.White, modifier = Modifier.size(size * .4f))
+    }
+}
+
+/** The volume as a wide bar under Now Playing: a speaker icon, a fill that follows a drag or tap along it, and the percent. */
+@Composable
+private fun MediaVolumeBar(value: Float, width: Dp, cell: Dp, ticks: Boolean, enabled: Boolean, onValue: (Float) -> Unit) {
+    val shown by androidx.compose.animation.core.animateFloatAsState(value.coerceIn(0f, 1f),
+        if (LocalReduceMotion.current) androidx.compose.animation.core.snap() else FolioMotion.spring(FolioMotion.Snap), label = "media volume")
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val label = stringResource(R.string.volume)
+    val icon = when {
+        shown <= .01f -> Icons.AutoMirrored.Rounded.VolumeOff
+        shown < .5f -> Icons.AutoMirrored.Rounded.VolumeDown
+        else -> Icons.AutoMirrored.Rounded.VolumeUp
+    }
+    val height = maxOf(cell * .5f, FolioTouch.MIN.dp)
+    Box(Modifier.size(width, height).clip(RoundedCornerShape(height / 2)).background(LocalCcLook.current.tile)
+        .then(if (!enabled) Modifier else Modifier
+            .pointerInput(Unit) { detectTapGestures { at -> onValue((at.x / size.width).coerceIn(0f, 1f)) } }
+            .pointerInput(Unit) {
+                var last = -1f
+                detectHorizontalDragGestures(onDragStart = { last = -1f }) { change, _ ->
+                    change.consume()
+                    val v = (change.position.x / size.width).coerceIn(0f, 1f)
+                    if (ticks && (v == 0f || v == 1f) && v != last) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.SegmentFrequentTick)
+                    last = v
+                    onValue(v)
+                }
+            })
+        .semantics {
+            contentDescription = label
+            progressBarRangeInfo = androidx.compose.ui.semantics.ProgressBarRangeInfo(value, 0f..1f)
+            if (enabled) setProgress { target -> onValue(target.coerceIn(0f, 1f)); true }
+        }) {
+        Box(Modifier.align(Alignment.CenterStart).fillMaxHeight().fillMaxWidth(shown).background(Color.White))
+        Icon(icon, null, tint = if (shown > .1f) FolioColors.MenuSurface else Color.White, modifier = Modifier.align(Alignment.CenterStart).padding(start = height * .28f).size(height * .44f))
+        Text((shown * 100).toInt().toString() + "%", color = if (shown > .9f) FolioColors.MenuSurface else Color.White, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.align(Alignment.CenterEnd).padding(end = height * .3f).clearAndSetSemantics {})
     }
 }
 

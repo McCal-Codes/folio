@@ -2615,6 +2615,8 @@
     <string name="cc_remove">Remove</string>
     <string name="cc_dark_theme">Dark theme</string>
     <string name="cc_compact_panel">Compact panel on wide screens</string>
+    <string name="cc_rail">Page rail beside the controls</string>
+    <string name="cc_rail_note">Off, like an iPhone: swipe between pages, with dots under the controls. On, a rail with the battery, Wi-Fi and a page icon for each page stands beside them.</string>
     <string name="cc_compact_note">Off, Control Center fills a wide window and cannot move. On, it is a smaller panel and Right, Middle and Left place it under the top corner.</string>
     <string name="cc_rail_mark">%1$s, %2$s</string>
 </resources>

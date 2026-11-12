@@ -22,9 +22,11 @@ data class CcOptions(
     val closeAfterToggle: Boolean = false,
     /** On a wide window Control Center is a compact panel (about the width of an iPad's) that the side choice can move; off, it fills the window. */
     val compact: Boolean = false,
+    /** The page rail (battery ring, Wi-Fi, page icons) beside the grid on a wide window. Off by default: like an iPhone, pages are swiped and dots lie under the grid. */
+    val rail: Boolean = false,
 ) {
     fun writeTo(json: JSONObject): JSONObject = json.put(MEDIA_PAGE, mediaPage).put(CONNECTIVITY_PAGE, connectivityPage)
-        .put(OPEN_ON, openOn.name).put(SLIDER_TICKS, sliderTicks).put(CLOSE_AFTER, closeAfterToggle).put(COMPACT, compact)
+        .put(OPEN_ON, openOn.name).put(SLIDER_TICKS, sliderTicks).put(CLOSE_AFTER, closeAfterToggle).put(COMPACT, compact).put(RAIL, rail)
 
     companion object {
         private const val MEDIA_PAGE = "ccMediaPage"
@@ -33,6 +35,7 @@ data class CcOptions(
         private const val SLIDER_TICKS = "ccSliderTicks"
         private const val CLOSE_AFTER = "ccCloseAfterToggle"
         private const val COMPACT = "ccCompact"
+        private const val RAIL = "ccRail"
 
         fun read(json: JSONObject): CcOptions = CcOptions(
             mediaPage = json.optBoolean(MEDIA_PAGE, true),
@@ -41,6 +44,7 @@ data class CcOptions(
             sliderTicks = json.optBoolean(SLIDER_TICKS, true),
             closeAfterToggle = json.optBoolean(CLOSE_AFTER, false),
             compact = json.optBoolean(COMPACT, false),
+            rail = json.optBoolean(RAIL, false),
         )
     }
 }

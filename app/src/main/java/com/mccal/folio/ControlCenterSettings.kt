@@ -73,6 +73,8 @@ internal fun CcSidePicker(selected: CcSide, enabled: Boolean = true, onSelect: (
  */
 @Composable
 internal fun CcSideChoice(state: LauncherState, model: LauncherModel) {
+    SettingsSwitch(stringResource(R.string.cc_rail), state.ccOptions.rail, { model.setCcOptions(state.ccOptions.copy(rail = it)) }, "cc-rail-switch")
+    CardNote(stringResource(R.string.cc_rail_note))
     SettingsSwitch(stringResource(R.string.cc_compact_panel), state.ccOptions.compact, { model.setCcOptions(state.ccOptions.copy(compact = it)) }, "cc-compact-switch")
     CardNote(stringResource(R.string.cc_compact_note))
     CcSidePicker(ccSideOf(state.ccCentered, state.ccLeft), enabled = state.ccOptions.compact, onSelect = model::setCcSide)
