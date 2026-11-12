@@ -196,6 +196,12 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
         }) {
         // Notification Center uses the width; Control Center is a compact fixed grid (like iPad) so it isn't oversized.
         // Beside the clock the list takes at most 60 percent of the width, so the clock (40 percent) is never drawn under it.
+        // A compact Control Center slides in from the side it sits on and back to it when it closes (the same progress runs both ways); in the
+        // middle, or without the compact panel, it grows from its corner as before. Reduce Motion keeps the corner's fade alone.
+        val slideReduce = LocalReduceMotion.current
+        val slideRtl = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl
+        val slideSign = (if (ccCentered) 0f else if (ccLeft) -1f else 1f) * (if (slideRtl) -1f else 1f)
+        val slideCompact = ccOptions.compact && wide && shape == ShadeShape.SINGLE_TOP && !slideReduce && slideSign != 0f
         fun panelModifier(which: ShadePanel) = (if (split) Modifier.fillMaxWidth(.6f) else Modifier).widthIn(max = when {
                 split -> 540.dp
                 detail && which == ShadePanel.NOTIFICATIONS -> LIST_DETAIL_MAX_DP.dp
@@ -223,9 +229,14 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
                 } else {
                     // Control Center grows out of the corner it was pulled from; it fades only as it closes, not in a back preview.
                     alpha = OverlayBack.unpreviewed(p) * PanelPull.fade(pulled, size.height)
-                    translationY = -lift * (1f - p) + pulled
-                    scaleX = .92f + .08f * p; scaleY = scaleX
-                    transformOrigin = TransformOrigin(1f, 0f)
+                    if (slideCompact) {
+                        translationX = slideSign * (size.width + 48.dp.toPx()) * (1f - p)
+                        translationY = pulled
+                    } else {
+                        translationY = -lift * (1f - p) + pulled
+                        scaleX = .92f + .08f * p; scaleY = scaleX
+                        transformOrigin = TransformOrigin(1f, 0f)
+                    }
                 }
             }
         if (split) {
