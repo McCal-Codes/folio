@@ -1357,16 +1357,23 @@ fun LauncherScreen(
                     }
                 }
             }
+            // Unfolded, a camera off the middle puts the island pill over the far page's edit pills: the bar then steps below it.
+            var jiggleBarRightPx by remember { mutableFloatStateOf(0f) }
+            val barLeftPx = (editPillBounds?.left ?: 0) - with(density) { 96.dp.toPx() }
+            val barUnderIsland = geometry.expanded && state.island && homeEdit.active && IslandFootprint.overlapsAcross(barLeftPx, jiggleBarRightPx)
+            SideEffect { JiggleBarSpace.loweredBottomDp = if (barUnderIsland) IslandFootprint.bottomDp + JIGGLE_BAR_UNDER_ISLAND_GAP.value + JIGGLE_BAR_PILL_DRAWN.value else 0f }
             androidx.compose.animation.AnimatedVisibility(homeEdit.active && sheet.isEmpty(),
                 // At the top in every posture, as on iOS, clear of the Dynamic Island. Unfolded it used to sit at the bottom beside
                 // the page dots and the Library button, where Edit, Undo and Redo crowded them. Unfolded, the pills gather at the
                 // pager's far end, away from the island at the middle of the top edge.
                 Modifier.align(if (state.leftHanded) Alignment.TopEnd else Alignment.TopStart).width(pagerWidth)
-                    .then(if (geometry.expanded) Modifier.offset(y = -JIGGLE_BAR_LIFT) else Modifier),
+                    .then(if (geometry.expanded && !barUnderIsland) Modifier.offset(y = -JIGGLE_BAR_LIFT) else Modifier),
                 enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { -it / 2 },
                 exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { -it / 2 }) {
-                Row(Modifier.fillMaxWidth().padding(start = FolioSpace.COMFY.dp, end = FolioSpace.COMFY.dp,
-                    top = if (state.island && !geometry.expanded) JIGGLE_BAR_ISLAND_GAP else FolioSpace.HAIR.dp).testTag("jiggle-bar"),
+                Row(Modifier.fillMaxWidth().onGloballyPositioned { jiggleBarRightPx = it.boundsInWindow().right }
+                    .padding(start = FolioSpace.COMFY.dp, end = FolioSpace.COMFY.dp,
+                    top = if (barUnderIsland) IslandFootprint.bottomDp.dp + JIGGLE_BAR_UNDER_ISLAND_GAP
+                        else if (state.island && !geometry.expanded) JIGGLE_BAR_ISLAND_GAP else FolioSpace.HAIR.dp).testTag("jiggle-bar"),
                     horizontalArrangement = if (geometry.expanded) Arrangement.spacedBy(FolioSpace.SMALL.dp, Alignment.End) else Arrangement.Start,
                     verticalAlignment = Alignment.CenterVertically) {
                     val editPage = pager.currentPage.coerceIn(0, homePages - 1)

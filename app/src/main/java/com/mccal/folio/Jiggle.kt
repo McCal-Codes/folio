@@ -147,3 +147,14 @@ internal val JIGGLE_BAR_LIFT = 26.dp
  * 48 dp touch box is 16 dp taller than the pill) has to clear the first row: 2 dp top + 48 dp box - 8 dp of unused touch height + 2 dp air.
  */
 internal val JIGGLE_BAR_BOTTOM_UNFOLDED = 44.dp - JIGGLE_BAR_LIFT
+
+/**
+ * Where the unfolded edit bar's bottom falls (dp) while it has stepped below the island pill, else 0. Home reads it so the grid
+ * leaves room for the lowered bar (see [IslandFootprint]).
+ */
+internal object JiggleBarSpace {
+    var loweredBottomDp by androidx.compose.runtime.mutableFloatStateOf(0f)
+}
+/** The air kept between the island pill and a bar lowered under it, and the drawn height of a pill below its top inset (the 48 dp box less 8 dp and 2 dp of air). */
+internal val JIGGLE_BAR_UNDER_ISLAND_GAP = 4.dp
+internal val JIGGLE_BAR_PILL_DRAWN = 42.dp

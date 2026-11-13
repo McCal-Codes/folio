@@ -235,6 +235,9 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
             else islandLeftPx(centerX, width.toPx(), windowWidth, density.density)
         // No floor here: the edge gap is the shared placement's call, so Home and the island over apps match (#394).
         val top = geometry.top.dp
+        // Home reads where the pill sits, so its edit bar can step below it instead of under it.
+        SideEffect { IslandFootprint.set(left, left + width.toPx(), (top + pillH).value, density.density) }
+        DisposableEffect(Unit) { onDispose { IslandFootprint.clear() } }
 
         val toggles = message == null && live != null
         // Said from what is really showing: a ringing call or a notice opens the card by itself and has nothing to toggle.
@@ -585,6 +588,23 @@ internal data class IslandGeometry(val camW: Float, val camH: Float, val centerX
 }
 
 internal fun Rect.ltrb(): IntArray = intArrayOf(left, top, right, bottom)
+
+/**
+ * Where the island pill is drawn on Home, in window px across and dp down: Home's edit bar reads it to step below the pill where the
+ * two would overlap (a camera off the middle, as on the Fold's inner screen, puts the pill over the far page's pills).
+ */
+internal object IslandFootprint {
+    var leftPx by mutableFloatStateOf(0f); private set
+    var rightPx by mutableFloatStateOf(0f); private set
+    var bottomDp by mutableFloatStateOf(0f); private set
+    var shown by mutableStateOf(false); private set
+    fun set(left: Float, right: Float, bottomDp: Float, density: Float) {
+        if (!shown || leftPx != left || rightPx != right || this.bottomDp != bottomDp) { leftPx = left; rightPx = right; this.bottomDp = bottomDp; shown = true }
+    }
+    fun clear() { shown = false }
+    /** Whether a bar spanning [leftPx]..[rightPx] across the window runs under the pill. */
+    fun overlapsAcross(left: Float, right: Float): Boolean = shown && rightPx > left && leftPx < right
+}
 
 /** The camera the island wraps on this window: the reported cutout ([cameraRect]), else a known hidden camera. */
 internal fun islandCamera(cutout: android.view.DisplayCutout?, display: android.view.Display?, density: Float): Rect? =
