@@ -89,7 +89,7 @@ class HomeFitTest {
     /** Where the page ends in edit mode: the usual rows pushed down by the room the edit bar asks for (what HomePagePane does). */
     private fun editEnd(g: HomeGeometry, w: Float, fontScale: Float, p: Placed): Pair<Float, Boolean> {
         val beside = jiggleBarBesideGrid(g.horizontalDock, g.dockBesideRail, g.homeWidth, g.gridWidth, fontScale)
-        return p.end + jiggleBarRoom(JIGGLE_BAR_BOTTOM.value, g.contentTop, beside) to beside
+        return p.end + jiggleBarRoom((if (g.expanded) JIGGLE_BAR_BOTTOM_UNFOLDED else JIGGLE_BAR_BOTTOM).value, g.contentTop, beside) to beside
     }
 
     @Test fun `edit mode does not push a row under the dock where the bar sits beside the page`() {

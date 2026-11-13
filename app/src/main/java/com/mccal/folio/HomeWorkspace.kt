@@ -332,9 +332,10 @@ internal fun HomePagePane(
         if (!drag.active) roomWanted = edit.active
         // Only as much room as the Edit bar actually needs above this page's first row; pushing the whole grid down by a
         // fixed amount cut off the bottom row's labels on screens that already had space at the top.
+        // Unfolded, the bar is at the top too and the grid gives way by the little the pills need beyond the free strip.
         // The upright unfolded window keeps its grid clear of the bar's corners, so there the bar needs no room at all.
         val besideGrid = jiggleBarBesideGrid(geometry.horizontalDock, geometry.dockBesideRail, geometry.homeWidth, geometry.gridWidth, LocalDensity.current.fontScale)
-        val editRoom by animateDpAsState(if (roomWanted) jiggleBarRoom(JIGGLE_BAR_BOTTOM.value, geometry.contentTop, besideGrid).dp else 0.dp, label = "jiggle room")
+        val editRoom by animateDpAsState(if (roomWanted) jiggleBarRoom((if (geometry.expanded) JIGGLE_BAR_BOTTOM_UNFOLDED else JIGGLE_BAR_BOTTOM).value, geometry.contentTop, besideGrid).dp else 0.dp, label = "jiggle room")
         Column(Modifier.offset(x = 16.dp).width(geometry.gridWidth.dp).fillMaxHeight()
             .verticalScroll(homeScroll).padding(top = geometry.contentTop.dp + editRoom, bottom = FolioSpace.SMALL.dp)) {
             val (pageIcon, pageLabels) = (state.pageStyles[page] ?: PageStyle()).apply(geometry, state.labels)
