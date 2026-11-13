@@ -1991,6 +1991,8 @@
     <string name="settings_keywords_tips">tips whats new new features what is new guide how to version history</string>
     <string name="tips_none">No tips yet.</string>
     <string name="tips_footer">New features appear here as Folio gets them.</string>
+    <string name="tips_new_in">New in %1$s</string>
+    <string name="tips_more_in">More in %1$s</string>
     <string name="roadmap_updated">Updated %1$s</string>
     <string name="roadmap_saved_copy">Saved copy from %1$s</string>
     <string name="supporter_expired_beta_note">Your supporter code ran out on %1$s, which is why Folio only finds public releases now. Renew on Ko-fi for a new code, then redeem it in Settings › Supporter.</string>

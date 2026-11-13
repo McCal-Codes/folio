@@ -1938,6 +1938,8 @@
     <string name="settings_keywords_tips">提示 新功能 新增内容 指南 使用方法 版本历史</string>
     <string name="tips_none">暂无提示。</string>
     <string name="tips_footer">Folio 有新功能时会显示在这里。</string>
+    <string name="tips_new_in">%1$s 新功能</string>
+    <string name="tips_more_in">%1$s 更多功能</string>
     <string name="roadmap_updated">%1$s更新</string>
     <string name="roadmap_saved_copy">保存于%1$s的副本</string>
     <string name="supporter_expired_beta_note">你的支持者代码已于 %1$s 到期，所以 Folio 现在只能找到公开版本。请在 Ko-fi 续期获取新代码，然后在“设置 › 支持者”中兑换。</string>
