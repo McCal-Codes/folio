@@ -2909,7 +2909,7 @@ private fun StandByVisualSettings(state: LauncherState, model: LauncherModel) {
         ) {
             STANDBY_CLOCK_COLORS.forEach { swatch ->
                 val isSelected = swatch.id.equals(currentColorStr, ignoreCase = true)
-                val dotScale by animateFloatAsState(if (isSelected) 1.25f else 1.0f, label = "swatchScale")
+                val dotScale by animateFloatAsState(if (isSelected) 1.25f else 1.0f, if (LocalReduceMotion.current) androidx.compose.animation.core.snap() else FolioMotion.spring(FolioMotion.Appear), label = "swatchScale")
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(4.dp),

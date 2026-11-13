@@ -195,6 +195,7 @@ internal const val CC_GALLERY_CARD_WIDTH_DP = 360
 
 @Composable
 private fun GalleryBody(items: List<CcGalleryItem>, shown: List<CcGalleryItem>, query: String, onQuery: (String) -> Unit, onAdd: (CcGalleryItem) -> Unit) {
+    val searchLabel = stringResource(R.string.search_controls)
     Column {
         run {
             Row(Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(Color.White.copy(alpha = .1f)).padding(horizontal = FolioSpace.COMPACT.dp, vertical = FolioSpace.SNUG.dp),
@@ -204,7 +205,7 @@ private fun GalleryBody(items: List<CcGalleryItem>, shown: List<CcGalleryItem>, 
                     if (query.isEmpty()) Text(stringResource(R.string.search_controls), color = FolioGlass.secondary, fontSize = FolioType.BODY.sp)
                     BasicTextField(query, onQuery, singleLine = true, cursorBrush = SolidColor(Color.White),
                         textStyle = TextStyle(color = Color.White, fontSize = FolioType.BODY.sp), keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
-                        modifier = Modifier.fillMaxWidth().semantics { contentDescription = "" })
+                        modifier = Modifier.fillMaxWidth().semantics { contentDescription = searchLabel })
                 }
             }
             if (shown.isEmpty()) {
