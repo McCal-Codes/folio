@@ -6,7 +6,7 @@ Optional. Each "- " line becomes a checkbox on Folio Dev's "New build" page (Set
 - Photos menu: hold the widget. Customize opens its options and Remove this photo takes the showing photo out.
 - Widget menu: hold any widget. Remove sits at the bottom, and More options holds custom size and pages.
 - Edit bar: hold Home, unfolded and on the cover screen. Add, Edit, Undo, Redo and Done should sit at the top with nothing overlapping, and the dock handle under the dock stays clear.
-- Blue dot: watch the top right for the location dot. Folio reads the Wi-Fi name about every 20 seconds, which may light it. A fix is planned: read the name once per network.
+- Blue dot: Folio now reads the Wi-Fi name once per network. Watch the top right: the location dot should stay off, and the name should still show on the status rail and in Control Center. Join another Wi-Fi and check the new name appears.
 - Undo and redo: move an icon, then tap Undo in the top bar, then Redo.
 - Control Center edit: open Control Center, tap Edit, hold a tile to move it, drag a corner to resize it.
 - Add a Control: tap Add in Control Center's edit mode. Search, and check the sections.
