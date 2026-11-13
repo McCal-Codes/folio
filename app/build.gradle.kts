@@ -100,7 +100,7 @@ abstract class DevBuildInfoTask @Inject constructor(private val exec: ExecOperat
             append("\"branch\":").append(q(git("rev-parse", "--abbrev-ref", "HEAD").ifEmpty { "unknown" })).append(",")
             append("\"sha\":").append(q(git("rev-parse", "--short=8", "HEAD").ifEmpty { "unknown" })).append(",")
             append("\"build\":").append(git("rev-list", "--count", "HEAD").toIntOrNull() ?: 0).append(",")
-            append("\"dirty\":").append(git("status", "--porcelain").isNotEmpty()).append(",")
+            append("\"dirty\":").append(git("status", "--porcelain", "--untracked-files=no").isNotEmpty()).append(",")
             append("\"builtAt\":").append(q(OffsetDateTime.now().toString())).append(",")
             append("\"commits\":[").append(commits.joinToString(",") { "{\"sha\":${q(it.first)},\"subject\":${q(it.second)}}" }).append("],")
             append("\"notes\":[").append(notes.joinToString(",") { q(it) }).append("]")
