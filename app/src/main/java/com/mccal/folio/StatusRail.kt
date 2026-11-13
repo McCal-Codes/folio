@@ -61,6 +61,8 @@ data class StatusStyle(
     val showBatteryPercent: Boolean = true,
     val glyph: StatusGlyph = StatusGlyph.GAUGE,
     val colorfulBattery: Boolean = true,
+    /** A small bolt beside the percentage while charging. Off leaves the green colour and the moving light to say it. */
+    val chargingBolt: Boolean = true,
     /** Frost strength shared by the status, dock and island capsules (0 = clear, 1 = solid). */
     val railGlass: Float = .26f,
     /** A bell with a slash while the ringer is on silent or vibrate, like iPhone's status bar. */
@@ -75,7 +77,7 @@ data class StatusStyle(
     /** At or near Compact, text lines pack tight too, as the old Compact choice did. */
     val tight get() = spacing < (COMPACT_SPACING + STANDARD_SPACING) / 2f
     fun toJson(): org.json.JSONObject = org.json.JSONObject().put("showTime", showTime).put("showDate", showDate)
-        .put("showBatteryPercent", showBatteryPercent).put("glyph", glyph.name).put("colorfulBattery", colorfulBattery)
+        .put("showBatteryPercent", showBatteryPercent).put("glyph", glyph.name).put("colorfulBattery", colorfulBattery).put("chargingBolt", chargingBolt)
         .put("railGlass", railGlass.toDouble()).put("showSilent", showSilent)
         .put("background", background).put("spacing", spacing.toDouble()).put("strongRings", strongRings)
 
@@ -87,6 +89,7 @@ data class StatusStyle(
             showBatteryPercent = j.optBoolean("showBatteryPercent", true),
             glyph = runCatching { StatusGlyph.valueOf(j.optString("glyph")) }.getOrDefault(StatusGlyph.GAUGE),
             colorfulBattery = j.optBoolean("colorfulBattery", true),
+            chargingBolt = j.optBoolean("chargingBolt", true),
             railGlass = j.optDouble("railGlass", .26).toFloat().coerceIn(0f, 1f),
             showSilent = j.optBoolean("showSilent", true),
             background = j.optBoolean("background", true),
@@ -379,7 +382,7 @@ fun StatusRail(
                             }
                         }
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                            if (status.charging && !fullCheck) {
+                            if (status.charging && style.chargingBolt && !fullCheck) {
                                 Icon(Icons.Rounded.Bolt, null, tint = if (style.colorfulBattery) charging else ink, modifier = Modifier.size((visualSize.value * .26f / fontScale).dp))
                             }
                             androidx.compose.animation.AnimatedContent(fullCheck, label = "ring check", // english-only
@@ -452,10 +455,7 @@ fun StatusRail(
                         // Dots only when there is cellular strength to show, and the reading only when it's on: the
                         // mark reserves room for what it draws and nothing else, at any rail size.
                         val showsDots = !status.airplane && cellularVisual is CellularSignalVisual.Available
-                        // On the cable the bolt stands centred above the number, as on Apple's; the mark grows a little to hold it and settles back when unplugged.
-                        val boltRoom by animateFloatAsState(if (showsReading && status.charging) GAUGE_BOLT_ROOM else 0f,
-                            if (still) snap() else FolioMotion.spring<Float>(FolioMotion.Glide), label = "bolt room") // english-only
-                        val headroom = (if (showsReading) GAUGE_CENTER - GAUGE_RADIUS else .06f) + boltRoom
+                        val headroom = if (showsReading) GAUGE_CENTER - GAUGE_RADIUS else .06f
                         val ringCenter = headroom + GAUGE_RADIUS
                         val reading = status.battery?.toString() ?: "\u2014"
                         val readingSize = gaugeReadingSize(reading.length)
@@ -535,13 +535,18 @@ fun StatusRail(
                                 ink.copy(alpha = if (i < activeDots) 1f else faint(.28f)), w * GAUGE_DOT_RADIUS,
                                 Offset(center.x + (i - 2) * w * GAUGE_DOT_PITCH, w * dotsY))
                         }
-                        if (showsReading && boltRoom > 0f) Icon(Icons.Rounded.Bolt, null, tint = if (style.colorfulBattery) charging else ink,
-                            modifier = Modifier.size(visualSize * GAUGE_BOLT_ROOM * .95f).graphicsLayer { alpha = (boltRoom / GAUGE_BOLT_ROOM).coerceIn(0f, 1f) })
                         if (showsReading) Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier.padding(top = visualSize *
                                 ((ringCenter - GAUGE_RADIUS) - readingSize * .97f).coerceAtLeast(0f))
                         ) {
+                            // The number stays exactly on the ring's centre line; the bolt hangs off its left side instead of sharing the row,
+                            // so nothing grows and nothing shifts when it comes and goes.
+                            if (status.charging && style.chargingBolt && !fullCheck) {
+                                val bolt = (visualSize.value * readingSize * .85f / fontScale).dp
+                                Icon(Icons.Rounded.Bolt, null, tint = if (style.colorfulBattery) charging else ink,
+                                    modifier = Modifier.align(Alignment.CenterStart).offset(x = -bolt).size(bolt))
+                            }
                             androidx.compose.animation.AnimatedContent(fullCheck, label = "gauge check", // english-only
                                 transitionSpec = {
                                     if (still) androidx.compose.animation.EnterTransition.None togetherWith androidx.compose.animation.ExitTransition.None
@@ -597,7 +602,7 @@ fun StatusRail(
                 // Glyphs that carry the number themselves don't need it repeated underneath.
                 if (!compact && style.showBatteryPercent && style.glyph != StatusGlyph.PERCENT && style.glyph != StatusGlyph.STACK && style.glyph != StatusGlyph.GAUGE) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                        if (status.charging) {
+                        if (status.charging && style.chargingBolt) {
                             Icon(Icons.Rounded.Bolt, null, tint = if (style.colorfulBattery) charging else ink, modifier = Modifier.size(10.dp))
                         }
                         val captionColor = if (status.charging && style.colorfulBattery) charging else ink
@@ -750,5 +755,3 @@ private fun rememberRingMotion(charging: Boolean, level: Int?, still: Boolean): 
     return RingMotion(breath, drift)
 }
 
-/** Height, as a fraction of the glyph width, the Gauge adds above its number to hold the charging bolt. */
-internal const val GAUGE_BOLT_ROOM = .17f

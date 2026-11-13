@@ -48,6 +48,7 @@ default for that field.
 | `statusStyle.showBatteryPercent` | `true`, `false` | `true` |
 | `statusStyle.glyph` | `RING`, `ICONS`, `MINIMAL`, `NONE` | `RING` |
 | `statusStyle.colorfulBattery` | `true`, `false` | `true` |
+| `statusStyle.chargingBolt` | `true`, `false` | `true` |
 | `statusStyle.railGlass` | `0` (clear) to `1` (solid) | `0.26` |
 
 [`dark-example.json`](dark-example.json) is Folio's built-in Dark theme, for reference.

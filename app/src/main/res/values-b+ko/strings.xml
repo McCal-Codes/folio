@@ -131,6 +131,7 @@
     <string name="date">날짜</string>
     <string name="battery_percentage">배터리 잔량 표시</string>
     <string name="color_battery_when_charging_or_low">상태 색상</string>
+    <string name="charging_bolt">충전 번개</string>
     <string name="in_every_app">모든 앱에서</string>
     <string name="dock_handle_on_the_rail_edge">사이드바 가장자리에 Dock 핸들 표시</string>
     <string name="dynamic_island">Dynamic Island</string>

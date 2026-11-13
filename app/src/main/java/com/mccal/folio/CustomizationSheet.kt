@@ -661,6 +661,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                             SettingsSwitch(stringResource(R.string.status_bar_background), st.background, { model.setStatusStyle(st.copy(background = it)) }, "status-background")
                             SettingsSwitch(stringResource(R.string.silent_mode_icon), st.showSilent, { model.setStatusStyle(st.copy(showSilent = it)) }, "status-silent")
                             SettingsSwitch(stringResource(R.string.color_battery_when_charging_or_low), st.colorfulBattery, { model.setStatusStyle(st.copy(colorfulBattery = it)) }, "status-color")
+                            SettingsSwitch(stringResource(R.string.charging_bolt), st.chargingBolt, { model.setStatusStyle(st.copy(chargingBolt = it)) }, "status-bolt")
                             CardNote(stringResource(R.string.status_colors_green_while_charging_orang))
                         }
                     }
@@ -1562,6 +1563,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.clear_badges_when_opened to CustomizationPage.STATUS,
     R.string.clock_calendar to CustomizationPage.STATUS,
     R.string.color_battery_when_charging_or_low to CustomizationPage.STATUS,
+    R.string.charging_bolt to CustomizationPage.STATUS,
     R.string.left_handed_layout_rail_on_the_left to CustomizationPage.STATUS,
     R.string.show_app_names to CustomizationPage.STATUS,
     R.string.show_status_in_the_rail to CustomizationPage.STATUS,

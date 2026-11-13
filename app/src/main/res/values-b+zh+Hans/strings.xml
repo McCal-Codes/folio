@@ -133,6 +133,7 @@
     <string name="date">日期</string>
     <string name="battery_percentage">电池百分比</string>
     <string name="color_battery_when_charging_or_low">状态颜色</string>
+    <string name="charging_bolt">充电闪电</string>
     <string name="in_every_app">在所有 App 中</string>
     <string name="dock_handle_on_the_rail_edge">侧边栏边缘的程序坞把手</string>
     <string name="dynamic_island">灵动岛</string>

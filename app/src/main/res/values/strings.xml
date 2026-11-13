@@ -126,6 +126,7 @@
     <string name="date">Date</string>
     <string name="battery_percentage">Battery percentage</string>
     <string name="color_battery_when_charging_or_low">Status colors</string>
+    <string name="charging_bolt">Charging bolt</string>
     <string name="in_every_app">In every app</string>
     <string name="dock_handle_on_the_rail_edge">Dock handle on the side bar edge</string>
     <string name="dynamic_island">Dynamic Island</string>
