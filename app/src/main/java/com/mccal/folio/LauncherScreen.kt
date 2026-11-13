@@ -1365,8 +1365,9 @@ fun LauncherScreen(
                     horizontalArrangement = if (geometry.expanded) Arrangement.spacedBy(FolioSpace.SMALL.dp, Alignment.End) else Arrangement.Start,
                     verticalAlignment = Alignment.CenterVertically) {
                     val editPage = pager.currentPage.coerceIn(0, homePages - 1)
-                    // The Side Bar already carries Add and Done in edit mode, so the unfolded bar keeps only Edit and stays clear of the page dots.
-                    val railHasControls = geometry.expanded && state.verticalStatus
+                    // The Side Bar already carries Add and Done in edit mode (whenever the status rail is on, folded or not), so the bar keeps only Edit
+                    // rather than showing each of them twice, and stays clear of the page dots.
+                    val railHasControls = state.verticalStatus
                     if (!railHasControls) JigglePill("", Icons.Rounded.Add, description = stringResource(R.string.add_widget)) {
                         picker.slot = model.nextWidgetSlot(); picker.targetIndex = homeCellIndex(editPage, 0); picker.anyApp(); picker.profileSerial = null; sheet = "widgets"
                     }
