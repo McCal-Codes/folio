@@ -251,6 +251,18 @@ fun StatusRail(
     val fullSwell = remember { Animatable(0f) }
     var fullCheck by remember { mutableStateOf(false) }
     val isFull = status.charging && (status.battery ?: 0) >= 100
+    // Android 15+ files a layer with no motion hint as "normal", which many phones run at 60 Hz. The ring's one-off moves (the glide, the digit
+    // roll, the swell, the check) ask for the display's top rate for the second or so they take, then hand the choice back. The slow loops
+    // (the comet, the breathing) don't: at five and three seconds a turn they look the same at 60 Hz and cost far less.
+    var burst by remember { mutableStateOf(false) }
+    LaunchedEffect(status.battery, status.charging, fullCheck) {
+        if (!still) {
+            burst = true
+            delay(1_400)
+            burst = false
+        }
+    }
+    RequestFastFrames(burst)
     LaunchedEffect(isFull) {
         if (isFull) {
             fullCheck = true
@@ -331,7 +343,7 @@ fun StatusRail(
                         // The ring glides to a new level and colour instead of jumping, and plugging in sends one soft swell around it
                         // (the same one the Gauge has). Both stand still when motion is reduced.
                         val ringLevel by animateFloatAsState((status.battery ?: 0).coerceIn(0, 100) / 100f,
-                            if (still) snap() else tween(FolioMotion.GAUGE_MS, easing = androidx.compose.animation.core.FastOutSlowInEasing), label = "ring level") // english-only
+                            if (still) snap() else FolioMotion.spring<Float>(FolioMotion.Glide), label = "ring level") // english-only
                         val ringColor by animateColorAsState(batteryColor, if (still) snap() else tween(FolioMotion.GAUGE_MS), label = "ring color") // english-only
                         // Under 10% and unplugged the ring breathes: one slow fade, about three seconds a cycle, never a flash.
                         val critical = !status.charging && (status.battery ?: 100) < 10 && !still
@@ -674,4 +686,23 @@ private fun RollingNumber(value: Int?, color: Color, fontSize: androidx.compose.
             }
         }
     }
+}
+
+/** Asks the window for the display's top refresh rate while [active] (Android 15+), and hands the choice back when it ends. */
+@Composable
+private fun RequestFastFrames(active: Boolean) {
+    val view = androidx.compose.ui.platform.LocalView.current
+    androidx.compose.runtime.DisposableEffect(view, active) {
+        var asked = false
+        if (active && android.os.Build.VERSION.SDK_INT >= 35) {
+            val fastest = view.display?.supportedModes?.maxOfOrNull { it.refreshRate } ?: 0f
+            if (fastest > 0f) { setFrameRate(view, fastest); asked = true }
+        }
+        onDispose { if (asked && android.os.Build.VERSION.SDK_INT >= 35) setFrameRate(view, null) }
+    }
+}
+
+@androidx.annotation.RequiresApi(35)
+private fun setFrameRate(view: android.view.View, rate: Float?) {
+    view.requestedFrameRate = rate ?: android.view.View.REQUESTED_FRAME_RATE_CATEGORY_DEFAULT
 }
