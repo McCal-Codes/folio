@@ -722,6 +722,11 @@
     <string name="change_photos">사진 변경</string>
     <string name="play_slideshow">슬라이드쇼 재생</string>
     <string name="pause_slideshow">슬라이드쇼 일시 정지</string>
+    <string name="photo_options">사진 옵션</string>
+    <string name="photo_show_date">날짜 표시</string>
+    <string name="photo_shuffle">셔플</string>
+    <string name="photo_interval">슬라이드쇼 속도</string>
+    <string name="photo_seconds">%1$d초</string>
     <string name="now_playing">지금 재생 중</string>
     <string name="playing">재생 중</string>
     <string name="paused">일시 정지됨</string>

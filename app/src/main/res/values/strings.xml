@@ -717,6 +717,11 @@
     <string name="change_photos">Change photos</string>
     <string name="play_slideshow">Play slideshow</string>
     <string name="pause_slideshow">Pause slideshow</string>
+    <string name="photo_options">Photos options</string>
+    <string name="photo_show_date">Show the date</string>
+    <string name="photo_shuffle">Shuffle</string>
+    <string name="photo_interval">Slideshow speed</string>
+    <string name="photo_seconds">%1$d seconds</string>
     <string name="now_playing">Now Playing</string>
     <string name="playing">Playing</string>
     <string name="paused">Paused</string>

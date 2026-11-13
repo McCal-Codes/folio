@@ -19,7 +19,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -81,6 +87,37 @@ private fun photoDateLine(context: Context, uri: Uri): String? = runCatching {
 private fun canRead(context: Context, uri: String): Boolean =
     runCatching { context.contentResolver.openInputStream(Uri.parse(uri))?.close() != null }.getOrDefault(false)
 
+/** Photos options: change the photos, the date caption, shuffle and the slideshow speed (5, 10 or 30 seconds). */
+@Composable
+private fun PhotoOptionsDialog(state: PhotoWidgetState, onChange: (PhotoWidgetState) -> Unit, onChangePhotos: () -> Unit, onDismiss: () -> Unit) {
+    androidx.compose.material3.AlertDialog(onDismissRequest = onDismiss, modifier = Modifier.testTag("photo-options"),
+        title = { Text(stringResource(R.string.photo_options)) },
+        text = {
+            Column {
+                androidx.compose.material3.TextButton(onChangePhotos, Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp)) {
+                    Text(stringResource(R.string.change_photos))
+                }
+                @Composable fun switchRow(label: String, on: Boolean, set: (Boolean) -> Unit) = Row(
+                    Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp).toggleable(on, role = Role.Switch, onValueChange = set),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(label, Modifier.weight(1f)); androidx.compose.material3.Switch(on, null)
+                }
+                switchRow(stringResource(R.string.photo_show_date), state.showCaption) { onChange(state.copy(showCaption = it)) }
+                switchRow(stringResource(R.string.photo_shuffle), state.shuffle) { onChange(state.copy(shuffle = it)) }
+                Text(stringResource(R.string.photo_interval), Modifier.padding(top = 8.dp), fontSize = FolioType.FOOTNOTE.sp)
+                PHOTO_INTERVALS.forEach { s ->
+                    Row(Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp)
+                        .selectable(state.intervalSeconds == s, role = Role.RadioButton) { onChange(state.copy(intervalSeconds = s)) },
+                        verticalAlignment = Alignment.CenterVertically) {
+                        androidx.compose.material3.RadioButton(state.intervalSeconds == s, null)
+                        Text(stringResource(R.string.photo_seconds, s), Modifier.padding(start = 12.dp))
+                    }
+                }
+            }
+        },
+        confirmButton = { androidx.compose.material3.TextButton(onDismiss) { Text(stringResource(R.string.done)) } })
+}
+
 /**
  * The Memories-style photo card: one picked photo, center-cropped, with a caption on a dark scrim and a play/pause
  * control that starts a slow cross-fade slideshow. The slideshow changes at most once every
@@ -91,6 +128,7 @@ internal fun PhotoWidgetCard(onEdit: () -> Unit) {
     val context = LocalContext.current
     var state by remember { mutableStateOf(PhotoWidgetStore.load(context).withoutLost { canRead(context, it) }) }
     var playing by remember { mutableStateOf(false) }
+    var showOptions by remember { mutableStateOf(false) }
     val reduce = LocalReduceMotion.current
     fun update(next: PhotoWidgetState) { state = next; PhotoWidgetStore.save(context, next) }
 
@@ -128,7 +166,10 @@ internal fun PhotoWidgetCard(onEdit: () -> Unit) {
     val caption = if (state.showCaption) produceState<String?>(null, uri) { value = withContext(Dispatchers.IO) { photoDateLine(context, uri) } }.value else null
     val description = photoDescription(caption, state.index, count) { n, c -> context.getString(R.string.photo_n_of, n, c) }
 
-    Box(Modifier.fillMaxSize().clip(shape).background(FolioGlass.module).clickable(onClick = onEdit)
+    // Tapping opens the options; while editing Home a tap is the usual widget-options tap instead.
+    val editing = LocalHomeEdit.current.active
+    if (showOptions) PhotoOptionsDialog(state, onChange = ::update, onChangePhotos = { showOptions = false; pick() }, onDismiss = { showOptions = false })
+    Box(Modifier.fillMaxSize().clip(shape).background(FolioGlass.module).clickable { if (editing) onEdit() else showOptions = true }
         .semantics(mergeDescendants = true) { contentDescription = description }) {
         Crossfade(uri, animationSpec = if (reduce) snap() else tween(1200), label = "photoFade") { u ->
             val bitmap = produceState<Bitmap?>(null, u) { value = withContext(Dispatchers.IO) { decodePhoto(context, u) } }.value
