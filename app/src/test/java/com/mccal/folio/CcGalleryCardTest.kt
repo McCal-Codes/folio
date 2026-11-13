@@ -26,6 +26,18 @@ class CcGalleryCardTest {
         assertEquals(1000f - m - 1000f * CC_GALLERY_LOW_CARD_HEIGHT, p.y, 0f)
     }
 
+    @Test fun `the panel shrinks just enough to clear a low card, and no further than the least that is usable`() {
+        assertEquals(1f, ccGalleryFit(100f, 800f, 1000f, m), 0f)
+        assertEquals((1000f - m - 100f) / 1200f, ccGalleryFit(100f, 1200f, 1000f, m), 0f)
+        assertEquals(CC_GALLERY_MIN_FIT, ccGalleryFit(100f, 4000f, 500f, m), 0f)
+        assertEquals(1f, ccGalleryFit(100f, 0f, 500f, m), 0f)
+    }
+
+    @Test fun `only the low placement asks the panel to rise`() {
+        assertTrue(ccGalleryCardPlacement(900f, 1000f, floatArrayOf(200f, 100f, 700f, 600f), w, 800f, m).low)
+        assertTrue(!ccGalleryCardPlacement(1600f, 1000f, floatArrayOf(100f, 80f, 700f, 600f), w, 500f, m).low)
+    }
+
     @Test fun `it never leaves the window`() {
         for (panel in listOf(floatArrayOf(0f, 0f, 200f, 300f), floatArrayOf(700f, 900f, 900f, 1000f), floatArrayOf(300f, 0f, 600f, 1000f))) {
             val p = ccGalleryCardPlacement(900f, 1000f, panel, w, 400f, m)
