@@ -83,6 +83,12 @@
     <string name="market_no_packages_match">No packages match your search.</string>
     <string name="cc_gallery_modules">Modules</string>
     <string name="cc_gallery_controls">Controls</string>
+    <string name="cc_group_connectivity">Connectivity</string>
+    <string name="cc_group_display">Display and sound</string>
+    <string name="cc_group_tools">Tools</string>
+    <string name="cc_group_security">Wallet and security</string>
+    <string name="cc_group_accessibility">Accessibility</string>
+    <string name="cc_group_system">System</string>
     <string name="no_controls_found">No controls found</string>
     <string name="cc_show_options">Show options</string>
     <string name="cc_hold_media">Media</string>

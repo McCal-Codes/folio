@@ -62,6 +62,19 @@ import androidx.compose.ui.unit.sp
 /** One thing the gallery can add to Control Center: a control, or a module (connectivity, Now Playing, a slider, Focus) that was taken off. */
 internal data class CcGalleryItem(val id: String, val label: String, val icon: ImageVector, val module: Boolean)
 
+/** The sections the gallery lists controls under (as iOS's Add a Control), in the order shown. */
+internal enum class CcGalleryGroup(@androidx.annotation.StringRes val label: Int, val ids: Set<String>) {
+    CONNECTIVITY(R.string.cc_group_connectivity, setOf("HOTSPOT", "CAST", "VPN", "LOCATION")),
+    DISPLAY(R.string.cc_group_display, setOf("DISPLAY", "ROTATION", "DND", "BATTERY_SAVER")),
+    TOOLS(R.string.cc_group_tools, setOf("FLASHLIGHT", "CAMERA", "TIMER", "ALARM", "CALCULATOR", "SCREENSHOT", "RECORDER", "NOTES")),
+    SECURITY(R.string.cc_group_security, setOf("WALLET", "LOCK")),
+    ACCESSIBILITY(R.string.cc_group_accessibility, setOf("ACCESSIBILITY")),
+    SYSTEM(R.string.cc_group_system, setOf("SETTINGS", "SYSTEM"));
+}
+
+/** The section a control belongs to; null for one that is in none (it is listed last, under "Controls"). */
+internal fun ccGalleryGroup(id: String): CcGalleryGroup? = CcGalleryGroup.entries.firstOrNull { id in it.ids }
+
 /** The items whose name has [query] in it, ignoring case and the spaces around it; every item for a blank query. */
 internal fun ccGalleryFilter(items: List<CcGalleryItem>, query: String): List<CcGalleryItem> {
     val q = query.trim()
@@ -205,9 +218,17 @@ private fun GalleryBody(items: List<CcGalleryItem>, shown: List<CcGalleryItem>, 
                     item(span = { GridItemSpan(maxLineSpan) }) { GalleryHeading(stringResource(R.string.cc_gallery_modules)) }
                     items(modules, key = { it.id }) { GalleryTile(it, onAdd) }
                 }
-                if (controls.isNotEmpty()) {
+                CcGalleryGroup.entries.forEach { group ->
+                    val inGroup = controls.filter { ccGalleryGroup(it.id) == group }
+                    if (inGroup.isNotEmpty()) {
+                        item(span = { GridItemSpan(maxLineSpan) }) { GalleryHeading(stringResource(group.label)) }
+                        items(inGroup, key = { it.id }) { GalleryTile(it, onAdd) }
+                    }
+                }
+                val rest = controls.filter { ccGalleryGroup(it.id) == null }
+                if (rest.isNotEmpty()) {
                     item(span = { GridItemSpan(maxLineSpan) }) { GalleryHeading(stringResource(R.string.cc_gallery_controls)) }
-                    items(controls, key = { it.id }) { GalleryTile(it, onAdd) }
+                    items(rest, key = { it.id }) { GalleryTile(it, onAdd) }
                 }
             }
         }

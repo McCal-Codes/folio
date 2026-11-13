@@ -90,6 +90,12 @@
     <string name="search_controls">搜索控制项</string>
     <string name="cc_gallery_modules">模块</string>
     <string name="cc_gallery_controls">控制项</string>
+    <string name="cc_group_connectivity">连接</string>
+    <string name="cc_group_display">显示与声音</string>
+    <string name="cc_group_tools">工具</string>
+    <string name="cc_group_security">钱包与安全</string>
+    <string name="cc_group_accessibility">辅助功能</string>
+    <string name="cc_group_system">系统</string>
     <string name="no_controls_found">未找到控制项</string>
     <string name="cc_show_options">显示选项</string>
     <string name="cc_hold_media">媒体</string>
