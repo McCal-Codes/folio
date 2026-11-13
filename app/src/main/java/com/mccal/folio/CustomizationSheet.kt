@@ -1643,6 +1643,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.cc_open_on to CustomizationPage.NOTIFICATIONS,
     R.string.cc_slider_ticks to CustomizationPage.NOTIFICATIONS,
     R.string.cc_close_after to CustomizationPage.NOTIFICATIONS,
+    R.string.cc_wifi_name to CustomizationPage.NOTIFICATIONS,
     R.string.edit_controls to CustomizationPage.NOTIFICATIONS,
     R.string.cc_reset to CustomizationPage.NOTIFICATIONS,
     R.string.hide_in_full_screen to CustomizationPage.ISLAND,
@@ -1734,7 +1735,7 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
  */
 /** The rows that exist only while [FeatureGate.CC_SETTINGS_V2] is open; search skips them until then. */
 internal val CC_SETTINGS_V2_ROWS: Set<Int> = setOf(R.string.cc_media_page, R.string.cc_connectivity_page, R.string.cc_open_on, R.string.cc_slider_ticks,
-    R.string.cc_close_after, R.string.edit_controls, R.string.cc_reset)
+    R.string.cc_close_after, R.string.cc_wifi_name, R.string.edit_controls, R.string.cc_reset)
 
 internal fun isRowEntry(title: Int, keywords: Int?): Boolean = keywords == null || SettingsRows.any { it.first == title }
 

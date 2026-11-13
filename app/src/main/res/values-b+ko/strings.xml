@@ -2362,6 +2362,8 @@
     <string name="cc_sliders_note">밝기와 볼륨은 드래그하는 동안 퍼센트를 표시합니다. 밝기를 드래그하면 자동 밝기가 꺼지며, 슬라이더의 자동 칩으로 다시 켤 수 있습니다.</string>
     <string name="cc_controls_count">%2$d개 중 %1$d개</string>
     <string name="cc_close_after">토글 후 닫기</string>
+    <string name="cc_wifi_name">Wi-Fi 네트워크 이름 표시</string>
+    <string name="cc_wifi_name_note">Android는 정확한 위치가 허용된 앱에만 네트워크 이름을 알려 줍니다. Folio는 Wi-Fi 표시 아래와 연결 페이지에 보여 줄 이름만 읽으며 위치는 사용하지 않습니다.</string>
     <string name="cc_close_after_note">손전등, 카메라, 계산기, 스크린샷, 화면 잠금, Wallet, 메모, 설정 또는 다른 페이지를 여는 타일을 탭하면 제어 센터를 닫습니다. 방해 금지 같은 스위치는 열린 상태로 유지됩니다.</string>
     <string name="cc_edit_controls_note">제어 센터를 열어 제어 항목을 추가, 제거, 이동할 수 있습니다.</string>
     <string name="cc_reset">제어 센터 재설정</string>

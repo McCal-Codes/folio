@@ -2401,6 +2401,8 @@
     <string name="cc_sliders_note">Brightness and volume show their percent while you drag. Dragging brightness turns Auto brightness off; the Auto chip on the slider turns it back on.</string>
     <string name="cc_controls_count">%1$d of %2$d</string>
     <string name="cc_close_after">Close after a toggle</string>
+    <string name="cc_wifi_name">Show Wi-Fi network name</string>
+    <string name="cc_wifi_name_note">Android only shares the name of the network with apps allowed precise location. Folio reads just the name, to show under the Wi-Fi mark and in Connectivity, and never your position.</string>
     <string name="cc_close_after_note">Closes Control Center after a tap on flashlight, camera, calculator, screenshot, lock screen, wallet, notes, settings or a tile that opens another page. Switches such as Do Not Disturb stay open.</string>
     <string name="cc_edit_controls_note">Opens Control Center so you can add, remove and move controls.</string>
     <string name="cc_reset">Reset Control Center</string>

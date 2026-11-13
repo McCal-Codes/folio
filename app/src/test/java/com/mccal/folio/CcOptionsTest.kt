@@ -99,7 +99,7 @@ class CcOptionsTest {
 
     @Test fun `every row on the page can be found in Settings search while its gate is open`() {
         val titles = listOf(R.string.cc_media_page, R.string.cc_connectivity_page, R.string.cc_open_on, R.string.cc_slider_ticks,
-            R.string.cc_close_after, R.string.edit_controls, R.string.cc_reset)
+            R.string.cc_close_after, R.string.cc_wifi_name, R.string.edit_controls, R.string.cc_reset)
         val entries = SettingsEntries.filter { it.third == CustomizationPage.NOTIFICATIONS }.map { it.first }
         titles.forEach { assertTrue("a Settings search entry for ${EnglishStrings.get(it)}", it in entries) }
         assertEquals(titles.toSet(), CC_SETTINGS_V2_ROWS)

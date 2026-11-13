@@ -149,6 +149,14 @@ internal fun ControlCenterSettingsCards(state: LauncherState, model: LauncherMod
             options.openOn, { set(options.copy(openOn = it)) }, tag = "cc-open-on")
         CardNote(stringResource(R.string.cc_pages_note))
     }
+    // The network's name needs precise location from Android (it can reveal where the phone is); Folio only reads the name for the rail and the Connectivity page.
+    val nameContext = androidx.compose.ui.platform.LocalContext.current
+    var nameAllowed by remember { mutableStateOf(androidx.core.content.ContextCompat.checkSelfPermission(nameContext, android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED) }
+    val askName = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { nameAllowed = it }
+    if (!nameAllowed) SettingsCard(null) {
+        IosActionRow(stringResource(R.string.cc_wifi_name), "cc-wifi-name") { runCatching { askName.launch(android.Manifest.permission.ACCESS_FINE_LOCATION) } }
+        CardNote(stringResource(R.string.cc_wifi_name_note))
+    }
     SettingsCard(stringResource(R.string.cc_sliders_title)) {
         SettingsSwitch(stringResource(R.string.cc_slider_ticks), options.sliderTicks, { set(options.copy(sliderTicks = it)) }, "cc-slider-ticks-switch")
         CardNote(stringResource(R.string.cc_sliders_note))
