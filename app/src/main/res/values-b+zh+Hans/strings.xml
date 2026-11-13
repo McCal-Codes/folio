@@ -2339,7 +2339,7 @@
     <string name="cc_sliders_note">拖动时，亮度和音量会显示百分比。拖动亮度会关闭自动亮度；滑块上的“自动”标签可再次开启。</string>
     <string name="cc_controls_count">%1$d / %2$d</string>
     <string name="cc_close_after">轻点后关闭</string>
-    <string name="cc_close_after_note">轻点手电筒、相机、计算器、截屏、锁定屏幕、钱包、备忘录或设置后关闭控制中心。“勿扰模式”等开关保持打开。</string>
+    <string name="cc_close_after_note">轻点手电筒、相机、计算器、截屏、锁定屏幕、钱包、备忘录、设置或打开其他页面的图块后关闭控制中心。“勿扰模式”等开关保持打开。</string>
     <string name="cc_edit_controls_note">打开控制中心，以添加、移除和移动控制。</string>
     <string name="cc_reset">重置控制中心</string>
     <string name="cc_reset_note">将此页面上的大小、样式、页面和选项恢复为初始状态。你选择的控制保持不变。</string>

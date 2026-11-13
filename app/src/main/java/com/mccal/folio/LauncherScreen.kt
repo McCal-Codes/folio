@@ -1324,7 +1324,9 @@ fun LauncherScreen(
             } }
             androidx.compose.animation.AnimatedVisibility(
                 visible = state.canUndoEdit && sheet.isEmpty() && !drag.active,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottomControlsHeight + FolioSpace.COMFY.dp),
+                // Above the dock when it runs along the bottom, not on top of its icons.
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottomControlsHeight + FolioSpace.COMFY.dp +
+                    (if (geometry.horizontalDock && !geometry.dockBesideRail) (geometry.dockBarHeight + 8f).dp else 0.dp)),
                 enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { it / 2 },
                 exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { it / 2 }
             ) {
