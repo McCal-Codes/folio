@@ -345,15 +345,11 @@ fun StatusRail(
                         val ringLevel by animateFloatAsState((status.battery ?: 0).coerceIn(0, 100) / 100f,
                             if (still) snap() else FolioMotion.spring<Float>(FolioMotion.Glide), label = "ring level") // english-only
                         val ringColor by animateColorAsState(batteryColor, if (still) snap() else tween(FolioMotion.GAUGE_MS), label = "ring color") // english-only
-                        // Under 10% and unplugged the ring breathes: one slow fade, about three seconds a cycle, never a flash.
-                        val critical = !status.charging && (status.battery ?: 100) < 10 && !still
-                        val breath = if (critical) rememberInfiniteTransition(label = "low breath")
-                            .animateFloat(.5f, 1f, infiniteRepeatable(tween(1_600, easing = androidx.compose.animation.core.FastOutSlowInEasing), androidx.compose.animation.core.RepeatMode.Reverse), label = "breath").value else 1f // english-only
-                        // On the cable a soft light drifts along the filled arc, one turn every five seconds.
-                        val drift = if (status.charging && !still) rememberInfiniteTransition(label = "charge drift")
-                            .animateFloat(0f, 1f, infiniteRepeatable(tween(5_000, easing = LinearEasing)), label = "drift").value else -1f // english-only
-                        val swell = maxOf(surgeVal, fullSwell.value)
+                        val motion = rememberRingMotion(status.charging, status.battery, still)
                         Canvas(Modifier.fillMaxSize()) {
+                            val swell = maxOf(surgeVal, fullSwell.value)
+                            val breath = motion.breath?.value ?: 1f
+                            val drift = motion.drift?.value ?: -1f
                             val w = size.width
                             val radius = w * .44f
                             val topLeft = Offset(w / 2 - radius, w / 2 - radius)
@@ -466,8 +462,9 @@ fun StatusRail(
                         val rawLevel = ((status.battery ?: 0).coerceIn(0, 100)) / 100f
                         val effectiveTarget = if (surgeVal > 0f) maxOf(rawLevel, rawLevel + (1f - rawLevel) * .45f * surgeVal) else rawLevel
                         val level by animateFloatAsState(effectiveTarget,
-                            if (still) snap() else tween(FolioMotion.GAUGE_MS, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+                            if (still) snap() else FolioMotion.spring<Float>(FolioMotion.Glide),
                             label = "gauge level") // english-only
+                        val motion = rememberRingMotion(status.charging, status.battery, still)
                         val arcColor by animateColorAsState(batteryColor,
                             if (still) snap() else tween(FolioMotion.GAUGE_MS), label = "gauge color") // english-only
                         val searching = !status.wifiConnected && cellularVisual !is CellularSignalVisual.Available && !status.airplane
@@ -487,16 +484,33 @@ fun StatusRail(
                             } else drawArc(track, ring.leftStart, ring.side * 2f, false, corner, box, style = stroke)
                             if (status.battery != null) {
                                 val (left, right) = gaugeSweeps(level, ring.side)
-                                if (surgeVal > 0f) {
-                                    val glowStroke = Stroke(width = stroke.width * (1f + .45f * surgeVal), cap = StrokeCap.Round)
-                                    val glowColor = arcColor.copy(alpha = .35f * surgeVal)
+                                val swell = maxOf(surgeVal, fullSwell.value)
+                                val breath = motion.breath?.value ?: 1f
+                                val drift = motion.drift?.value ?: -1f
+                                if (swell > 0f) {
+                                    val glowStroke = Stroke(width = stroke.width * (1f + .45f * swell), cap = StrokeCap.Round)
+                                    val glowColor = arcColor.copy(alpha = .35f * swell)
                                     if (left > 0f) drawArc(glowColor, ring.leftStart + ring.side, -left, false, corner, box, style = glowStroke)
                                     if (right > 0f) drawArc(glowColor, ring.rightStart + ring.side, -right, false, corner, box, style = glowStroke)
                                 }
                                 // Both halves fill towards the top: the left from the top down, the right from the
                                 // bottom up, so the ring closes as the battery fills.
-                                if (left > 0f) drawArc(arcColor, ring.leftStart + ring.side, -left, false, corner, box, style = stroke)
-                                if (right > 0f) drawArc(arcColor, ring.rightStart + ring.side, -right, false, corner, box, style = stroke)
+                                if (left > 0f) drawArc(arcColor.copy(alpha = breath), ring.leftStart + ring.side, -left, false, corner, box, style = stroke)
+                                if (right > 0f) drawArc(arcColor.copy(alpha = breath), ring.rightStart + ring.side, -right, false, corner, box, style = stroke)
+                                if (drift >= 0f) {
+                                    // The comet runs down each half in step: a bright head with a fading tail, fading in and out at the ends.
+                                    val fade = kotlin.math.sin(Math.PI * drift).toFloat()
+                                    val cometStroke = Stroke(width = stroke.width * .8f, cap = StrokeCap.Butt)
+                                    for ((begin, filled) in listOf(ring.leftStart + ring.side to left, ring.rightStart + ring.side to right)) {
+                                        if (filled < 12f) continue
+                                        val travelled = filled * drift
+                                        for (k in 0 until 5) {
+                                            val back = (k + 1) * 5f
+                                            if (back > travelled) break
+                                            drawArc(Color.White.copy(alpha = .85f * fade * (1f - k / 5f)), begin - travelled + back, -5.6f, false, corner, box, style = cometStroke)
+                                        }
+                                    }
+                                }
                             }
                             // Each of these draws around its own origin: the Wi-Fi fan's apex and the cell bars' middle
                             // both sit at 56% of the width, the searching fan's apex at 60%. Shifting them all by the
@@ -520,14 +534,19 @@ fun StatusRail(
                             modifier = Modifier.padding(top = visualSize *
                                 ((ringCenter - GAUGE_RADIUS) - readingSize * .97f).coerceAtLeast(0f))
                         ) {
-                            if (status.charging) {
+                            if (status.charging && !fullCheck) {
                                 Icon(Icons.Rounded.Bolt, null, tint = if (style.colorfulBattery) charging else ink, modifier = Modifier.size((visualSize.value * readingSize * .85f / fontScale).dp))
                             }
-                            Text(reading, color = if (status.charging && style.colorfulBattery) charging else ink,
-                                fontSize = (visualSize.value * readingSize / fontScale).sp,
-                                fontWeight = FontWeight.Bold,
-                                style = TextStyle(fontFeatureSettings = "tnum"),
-                                maxLines = 1, softWrap = false)
+                            androidx.compose.animation.AnimatedContent(fullCheck, label = "gauge check", // english-only
+                                transitionSpec = {
+                                    if (still) androidx.compose.animation.EnterTransition.None togetherWith androidx.compose.animation.ExitTransition.None
+                                    else (androidx.compose.animation.fadeIn(tween(260, delayMillis = 100)) + androidx.compose.animation.scaleIn(tween(360, easing = androidx.compose.animation.core.FastOutSlowInEasing), initialScale = .6f)) togetherWith
+                                        androidx.compose.animation.fadeOut(tween(160))
+                                }) { showCheck ->
+                                if (showCheck) Icon(Icons.Rounded.Check, null, tint = if (style.colorfulBattery) charging else ink, modifier = Modifier.size((visualSize.value * readingSize * 1.1f / fontScale).dp))
+                                else RollingNumber(status.battery, if (status.charging && style.colorfulBattery) charging else ink,
+                                    (visualSize.value * readingSize / fontScale).sp, still, FontWeight.Bold)
+                            }
                         }
                         if (status.airplane && !status.wifiConnected)
                             Icon(Icons.Rounded.AirplanemodeActive, null, tint = ink,
@@ -659,10 +678,10 @@ private fun signalAlpha(emphasis: SignalElementEmphasis, onLight: Boolean = fals
  * downward when it falls, clipped to the number's own box. Stands still when motion is reduced.
  */
 @Composable
-private fun RollingNumber(value: Int?, color: Color, fontSize: androidx.compose.ui.unit.TextUnit, still: Boolean) {
+private fun RollingNumber(value: Int?, color: Color, fontSize: androidx.compose.ui.unit.TextUnit, still: Boolean, weight: FontWeight = FontWeight.SemiBold) {
     val textStyle = TextStyle(fontFeatureSettings = "tnum")
     if (value == null) {
-        Text("—", color = color, fontSize = fontSize, fontWeight = FontWeight.SemiBold, style = textStyle, maxLines = 1, softWrap = false)
+        Text("—", color = color, fontSize = fontSize, fontWeight = weight, style = textStyle, maxLines = 1, softWrap = false)
         return
     }
     var previous by remember { mutableIntStateOf(value) }
@@ -681,7 +700,7 @@ private fun RollingNumber(value: Int?, color: Color, fontSize: androidx.compose.
                                 (androidx.compose.animation.slideOutVertically(tween(320, easing = ease)) { if (rising) -it else it } + androidx.compose.animation.fadeOut(tween(140)))
                         }
                     }) { d ->
-                    Text(d.toString(), color = color, fontSize = fontSize, fontWeight = FontWeight.SemiBold, style = textStyle, maxLines = 1, softWrap = false)
+                    Text(d.toString(), color = color, fontSize = fontSize, fontWeight = weight, style = textStyle, maxLines = 1, softWrap = false)
                 }
             }
         }
@@ -705,4 +724,19 @@ private fun RequestFastFrames(active: Boolean) {
 @androidx.annotation.RequiresApi(35)
 private fun setFrameRate(view: android.view.View, rate: Float?) {
     view.requestedFrameRate = rate ?: android.view.View.REQUESTED_FRAME_RATE_CATEGORY_DEFAULT
+}
+
+/**
+ * The ring's two slow loops, as states to be read while drawing (so nothing recomposes each frame): a breath under 10% unplugged, one slow
+ * fade about three seconds a cycle, and a drift while charging, one turn every five seconds. Either is null when it isn't running or motion is reduced.
+ */
+private class RingMotion(val breath: State<Float>?, val drift: State<Float>?)
+
+@Composable
+private fun rememberRingMotion(charging: Boolean, level: Int?, still: Boolean): RingMotion {
+    val breath = if (!charging && (level ?: 100) < 10 && !still) rememberInfiniteTransition(label = "low breath")
+        .animateFloat(.5f, 1f, infiniteRepeatable(tween(1_600, easing = androidx.compose.animation.core.FastOutSlowInEasing), androidx.compose.animation.core.RepeatMode.Reverse), label = "breath") else null // english-only
+    val drift = if (charging && !still) rememberInfiniteTransition(label = "charge drift")
+        .animateFloat(0f, 1f, infiniteRepeatable(tween(5_000, easing = LinearEasing)), label = "drift") else null // english-only
+    return RingMotion(breath, drift)
 }
