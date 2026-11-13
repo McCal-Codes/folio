@@ -336,7 +336,7 @@ fun StatusRail(
                         // Under 10% and unplugged the ring breathes: one slow fade, about three seconds a cycle, never a flash.
                         val critical = !status.charging && (status.battery ?: 100) < 10 && !still
                         val breath = if (critical) rememberInfiniteTransition(label = "low breath")
-                            .animateFloat(.62f, 1f, infiniteRepeatable(tween(1_500, easing = androidx.compose.animation.core.FastOutSlowInEasing), androidx.compose.animation.core.RepeatMode.Reverse), label = "breath").value else 1f // english-only
+                            .animateFloat(.5f, 1f, infiniteRepeatable(tween(1_600, easing = androidx.compose.animation.core.FastOutSlowInEasing), androidx.compose.animation.core.RepeatMode.Reverse), label = "breath").value else 1f // english-only
                         // On the cable a soft light drifts along the filled arc, one turn every five seconds.
                         val drift = if (status.charging && !still) rememberInfiniteTransition(label = "charge drift")
                             .animateFloat(0f, 1f, infiniteRepeatable(tween(5_000, easing = LinearEasing)), label = "drift").value else -1f // english-only
@@ -354,29 +354,31 @@ fun StatusRail(
                                     Size(radius * 2, radius * 2), style = Stroke(width = ringStroke, cap = StrokeCap.Round))
                                 val filled = 360f * ringLevel
                                 if (drift >= 0f && filled > 40f) {
-                                    val span = 28f
-                                    drawArc(Color.White.copy(alpha = .5f), -90f + (filled - span) * drift, span, false, topLeft,
-                                        Size(radius * 2, radius * 2), style = Stroke(width = ringStroke * .8f, cap = StrokeCap.Round))
+                                    // A comet: a bright head and a tail of fainter pieces behind it, fading in and out at the ends of the arc.
+                                    val head = -90f + filled * drift
+                                    val fade = kotlin.math.sin(Math.PI * drift).toFloat()
+                                    for (k in 0 until 6) {
+                                        val start = head - (k + 1) * 6f
+                                        if (start < -90f) break
+                                        drawArc(Color.White.copy(alpha = .85f * fade * (1f - k / 6f)), start, 6.6f, false, topLeft,
+                                            Size(radius * 2, radius * 2), style = Stroke(width = ringStroke * .8f, cap = StrokeCap.Butt))
+                                    }
                                 }
                             }
                         }
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                            if (status.charging) {
+                            if (status.charging && !fullCheck) {
                                 Icon(Icons.Rounded.Bolt, null, tint = if (style.colorfulBattery) charging else ink, modifier = Modifier.size((visualSize.value * .26f / fontScale).dp))
                             }
-                            if (fullCheck) Icon(Icons.Rounded.Check, null, tint = if (style.colorfulBattery) charging else ink, modifier = Modifier.size((visualSize.value * .42f / fontScale).dp))
-                            else androidx.compose.animation.AnimatedContent(status.battery, label = "ring number", // english-only
+                            androidx.compose.animation.AnimatedContent(fullCheck, label = "ring check", // english-only
                                 transitionSpec = {
                                     if (still) androidx.compose.animation.EnterTransition.None togetherWith androidx.compose.animation.ExitTransition.None
-                                    else {
-                                        val down = (targetState ?: 0) < (initialState ?: 0)
-                                        (androidx.compose.animation.slideInVertically(tween(380)) { if (down) -it / 2 else it / 2 } + androidx.compose.animation.fadeIn(tween(380))) togetherWith
-                                            (androidx.compose.animation.slideOutVertically(tween(380)) { if (down) it / 2 else -it / 2 } + androidx.compose.animation.fadeOut(tween(260)))
-                                    }
-                                }) { level ->
-                                Text(level?.toString() ?: "—", color = if (status.charging && style.colorfulBattery) charging else ink,
-                                    fontSize = (visualSize.value * (if (status.charging) .28f else .34f) / fontScale).sp, fontWeight = FontWeight.SemiBold,
-                                    style = TextStyle(fontFeatureSettings = "tnum"), maxLines = 1, softWrap = false)
+                                    else (androidx.compose.animation.fadeIn(tween(260, delayMillis = 100)) + androidx.compose.animation.scaleIn(tween(360, easing = androidx.compose.animation.core.FastOutSlowInEasing), initialScale = .6f)) togetherWith
+                                        androidx.compose.animation.fadeOut(tween(160))
+                                }) { showCheck ->
+                                if (showCheck) Icon(Icons.Rounded.Check, null, tint = if (style.colorfulBattery) charging else ink, modifier = Modifier.size((visualSize.value * .42f / fontScale).dp))
+                                else RollingNumber(status.battery, if (status.charging && style.colorfulBattery) charging else ink,
+                                    (visualSize.value * (if (status.charging) .28f else .34f) / fontScale).sp, still)
                             }
                         }
                     }
@@ -638,4 +640,38 @@ private fun signalAlpha(emphasis: SignalElementEmphasis, onLight: Boolean = fals
     SignalElementEmphasis.DIM -> if (onLight) .45f else .3f
     SignalElementEmphasis.NEUTRAL -> if (onLight) .75f else .62f
     SignalElementEmphasis.LIT -> 1f
+}
+
+/**
+ * The ring's number, with each digit rolling on its own: only the digits that changed move, upward when the charge rises and
+ * downward when it falls, clipped to the number's own box. Stands still when motion is reduced.
+ */
+@Composable
+private fun RollingNumber(value: Int?, color: Color, fontSize: androidx.compose.ui.unit.TextUnit, still: Boolean) {
+    val textStyle = TextStyle(fontFeatureSettings = "tnum")
+    if (value == null) {
+        Text("—", color = color, fontSize = fontSize, fontWeight = FontWeight.SemiBold, style = textStyle, maxLines = 1, softWrap = false)
+        return
+    }
+    var previous by remember { mutableIntStateOf(value) }
+    val rising = value >= previous
+    SideEffect { previous = value }
+    val text = value.toString()
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        text.forEachIndexed { index, digit ->
+            key(text.length - 1 - index) {
+                androidx.compose.animation.AnimatedContent(digit, label = "ring digit", // english-only
+                    transitionSpec = {
+                        if (still) androidx.compose.animation.EnterTransition.None togetherWith androidx.compose.animation.ExitTransition.None
+                        else {
+                            val ease = androidx.compose.animation.core.FastOutSlowInEasing
+                            (androidx.compose.animation.slideInVertically(tween(320, easing = ease)) { if (rising) it else -it } + androidx.compose.animation.fadeIn(tween(200))) togetherWith
+                                (androidx.compose.animation.slideOutVertically(tween(320, easing = ease)) { if (rising) -it else it } + androidx.compose.animation.fadeOut(tween(140)))
+                        }
+                    }) { d ->
+                    Text(d.toString(), color = color, fontSize = fontSize, fontWeight = FontWeight.SemiBold, style = textStyle, maxLines = 1, softWrap = false)
+                }
+            }
+        }
+    }
 }
