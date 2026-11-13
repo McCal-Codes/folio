@@ -436,6 +436,8 @@ internal fun WidgetActions(
      * through [onConfigure] instead - that gate only ever fires for a real `AppWidgetProviderInfo`, which a
      * built-in widget's negative id never has, so this is a separate entry rather than folded into it. */
     onCustomize: (() -> Unit)? = null,
+    /** Photos widget only: takes the photo showing out of the widget. */
+    onRemovePhoto: (() -> Unit)? = null,
     onPlace: (() -> Unit)? = null,
     onExpand: (() -> Unit)? = null,
     stackCards: List<Int> = emptyList(),
@@ -533,6 +535,7 @@ internal fun WidgetActions(
         SheetGroup {
             if (canConfigure) { MenuRow(stringResource(R.string.edit_widget), Icons.Rounded.Settings) { onConfigure() }; MenuDivider() }
             if (onCustomize != null) { MenuRow(stringResource(R.string.customize), Icons.Rounded.Palette) { onCustomize() }; MenuDivider() }
+            if (onRemovePhoto != null) { MenuRow(stringResource(R.string.remove_this_photo), Icons.Rounded.HideImage) { onRemovePhoto() }; MenuDivider() }
             if (onPlace != null) { MenuRow(stringResource(R.string.place_freely), Icons.Rounded.OpenWith) { onPlace() }; MenuDivider() }
             if (onExpand != null) { MenuRow(stringResource(R.string.expand_widget_temporarily), Icons.Rounded.OpenInFull) { onExpand() }; MenuDivider() }
             MenuRow(stringResource(R.string.replace_widget), Icons.Rounded.FindReplace) { onReplace() }

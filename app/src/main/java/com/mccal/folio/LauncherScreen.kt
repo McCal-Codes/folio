@@ -1541,7 +1541,9 @@ fun LauncherScreen(
                                 },
                                 onRemove = { widgets.remove(picker.slot); sheet = "" },
                                 onClose = { sheet = "" },
-                                onCustomize = if (placement.id == BIG_CLOCK_WIDGET && clockCustomize) {{ clockEditSlot = placement.slot; sheet = "" }} else null,
+                                onCustomize = if (placement.id == BIG_CLOCK_WIDGET && clockCustomize) {{ clockEditSlot = placement.slot; sheet = "" }}
+                                    else if (placement.id == PHOTO_WIDGET) {{ PhotoWidgetBus.requestOptions(); sheet = "" }} else null,
+                                onRemovePhoto = if (placement.id == PHOTO_WIDGET && PhotoWidgetStore.load(launcherActivity).uris.isNotEmpty()) {{ PhotoWidgetBus.removeCurrent(launcherActivity); sheet = "" }} else null,
                                 onPlace = if (placement.id == BIG_CLOCK_WIDGET && clockCustomize && !geometry.splitColumns && !(hinge?.let { it.active && !it.vertical } ?: false)) {{ placeSlot = placement.slot; sheet = "" }} else null,
                                 onExpand = if (placement.id in BACKUP_BUILTIN_WIDGETS || placement.id < 0) {{ sheet = "expandedWidget" }} else null)
                         }

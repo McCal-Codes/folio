@@ -48,6 +48,28 @@ internal fun PhotoWidgetState.withoutLost(isReadable: (String) -> Boolean): Phot
     return copy(uris = kept, index = if (kept.isEmpty()) 0 else index.coerceIn(0, kept.size - 1))
 }
 
+/** Takes the photo showing out of the widget (the picked file itself is never touched); the index stays on a valid photo. */
+internal fun PhotoWidgetState.withoutCurrent(): PhotoWidgetState {
+    if (uris.isEmpty()) return this
+    val at = index.coerceIn(0, uris.size - 1)
+    val kept = uris.filterIndexed { i, _ -> i != at }
+    return copy(uris = kept, index = if (kept.isEmpty()) 0 else at.coerceAtMost(kept.size - 1))
+}
+
+/**
+ * How the widget's long-press menu reaches the card: a counter the card watches, so the menu never needs the card's
+ * state. [optionsRequests] opens the options dialog; [changes] makes the card reload what is stored.
+ */
+internal object PhotoWidgetBus {
+    val optionsRequests = kotlinx.coroutines.flow.MutableStateFlow(0)
+    val changes = kotlinx.coroutines.flow.MutableStateFlow(0)
+    fun requestOptions() { optionsRequests.value += 1 }
+    fun removeCurrent(context: Context) {
+        PhotoWidgetStore.save(context, PhotoWidgetStore.load(context).withoutCurrent())
+        changes.value += 1
+    }
+}
+
 /** Screen-reader text: the caption when there is one, else "Photo 2 of 6" (1-based). */
 internal fun photoDescription(caption: String?, index: Int, count: Int, template: (Int, Int) -> String): String =
     caption?.takeIf { it.isNotBlank() } ?: template(index + 1, count)

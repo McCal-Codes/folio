@@ -724,6 +724,7 @@
     <string name="play_slideshow">播放幻灯片</string>
     <string name="pause_slideshow">暂停幻灯片</string>
     <string name="tall">高</string>
+    <string name="remove_this_photo">移除这张照片</string>
     <string name="photo_options">照片选项</string>
     <string name="photo_show_date">显示日期</string>
     <string name="photo_shuffle">随机播放</string>

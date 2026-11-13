@@ -37,6 +37,17 @@ class PhotoWidgetModelTest {
         assertEquals(0, PhotoWidgetState(uris = listOf("a"), index = 0).withoutLost { false }.index)
     }
 
+    @Test fun removingTheShowingPhotoKeepsAValidIndex() {
+        assertEquals(listOf("a", "c"), PhotoWidgetState(uris = listOf("a", "b", "c"), index = 1).withoutCurrent().uris)
+        val last = PhotoWidgetState(uris = listOf("a", "b", "c"), index = 2).withoutCurrent()
+        assertEquals(listOf("a", "b"), last.uris)
+        assertEquals(1, last.index)
+        val none = PhotoWidgetState(uris = listOf("a"), index = 0).withoutCurrent()
+        assertEquals(emptyList<String>(), none.uris)
+        assertEquals(0, none.index)
+        assertEquals(PhotoWidgetState(), PhotoWidgetState().withoutCurrent())
+    }
+
     @Test fun descriptionPrefersCaption() {
         val t = { n: Int, c: Int -> "Photo $n of $c" }
         assertEquals("Calabasas", photoDescription("Calabasas", 1, 6, t))
