@@ -13,6 +13,8 @@ import androidx.compose.material.icons.rounded.LocationOn
 import androidx.compose.material.icons.rounded.AirplanemodeActive
 import androidx.compose.material.icons.rounded.NotificationsOff
 import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.animation.togetherWith
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -245,6 +247,21 @@ fun StatusRail(
         }
     }
     val surgeVal = chargingSurge.value
+    // Reaching a full charge on the cable: one swell round the ring, and a check where the number is for a moment.
+    val fullSwell = remember { Animatable(0f) }
+    var fullCheck by remember { mutableStateOf(false) }
+    val isFull = status.charging && (status.battery ?: 0) >= 100
+    LaunchedEffect(isFull) {
+        if (isFull) {
+            fullCheck = true
+            if (!still) {
+                fullSwell.animateTo(1f, tween(500, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                fullSwell.animateTo(0f, tween(900, easing = androidx.compose.animation.core.LinearOutSlowInEasing))
+            }
+            delay(2_200)
+            fullCheck = false
+        } else fullCheck = false
+    }
     BoxWithConstraints(modifier.testTag("status-rail")
         .then(if (onOpen != null) Modifier.clip(capsule).clickable(interactionSource = press, indication = null, onClickLabel = openLabel, role = androidx.compose.ui.semantics.Role.Button, onClick = onOpen) else Modifier)
         .semantics(mergeDescendants = true) { contentDescription = description }) {
@@ -316,6 +333,14 @@ fun StatusRail(
                         val ringLevel by animateFloatAsState((status.battery ?: 0).coerceIn(0, 100) / 100f,
                             if (still) snap() else tween(FolioMotion.GAUGE_MS, easing = androidx.compose.animation.core.FastOutSlowInEasing), label = "ring level") // english-only
                         val ringColor by animateColorAsState(batteryColor, if (still) snap() else tween(FolioMotion.GAUGE_MS), label = "ring color") // english-only
+                        // Under 10% and unplugged the ring breathes: one slow fade, about three seconds a cycle, never a flash.
+                        val critical = !status.charging && (status.battery ?: 100) < 10 && !still
+                        val breath = if (critical) rememberInfiniteTransition(label = "low breath")
+                            .animateFloat(.62f, 1f, infiniteRepeatable(tween(1_500, easing = androidx.compose.animation.core.FastOutSlowInEasing), androidx.compose.animation.core.RepeatMode.Reverse), label = "breath").value else 1f // english-only
+                        // On the cable a soft light drifts along the filled arc, one turn every five seconds.
+                        val drift = if (status.charging && !still) rememberInfiniteTransition(label = "charge drift")
+                            .animateFloat(0f, 1f, infiniteRepeatable(tween(5_000, easing = LinearEasing)), label = "drift").value else -1f // english-only
+                        val swell = maxOf(surgeVal, fullSwell.value)
                         Canvas(Modifier.fillMaxSize()) {
                             val w = size.width
                             val radius = w * .44f
@@ -323,19 +348,36 @@ fun StatusRail(
                             val ringStroke = w * .07f * look.strokeScale
                             drawCircle(ink.copy(alpha = faint(look.trackAlpha)), radius, Offset(w / 2, w / 2), style = Stroke(ringStroke))
                             if (status.battery != null) {
-                                if (surgeVal > 0f) drawArc(ringColor.copy(alpha = .35f * surgeVal), -90f, 360f * ringLevel, false, topLeft,
-                                    Size(radius * 2, radius * 2), style = Stroke(width = ringStroke * (1f + .45f * surgeVal), cap = StrokeCap.Round))
-                                drawArc(ringColor, -90f, 360f * ringLevel, false, topLeft,
+                                if (swell > 0f) drawArc(ringColor.copy(alpha = .35f * swell), -90f, 360f * ringLevel, false, topLeft,
+                                    Size(radius * 2, radius * 2), style = Stroke(width = ringStroke * (1f + .45f * swell), cap = StrokeCap.Round))
+                                drawArc(ringColor.copy(alpha = breath), -90f, 360f * ringLevel, false, topLeft,
                                     Size(radius * 2, radius * 2), style = Stroke(width = ringStroke, cap = StrokeCap.Round))
+                                val filled = 360f * ringLevel
+                                if (drift >= 0f && filled > 40f) {
+                                    val span = 28f
+                                    drawArc(Color.White.copy(alpha = .5f), -90f + (filled - span) * drift, span, false, topLeft,
+                                        Size(radius * 2, radius * 2), style = Stroke(width = ringStroke * .8f, cap = StrokeCap.Round))
+                                }
                             }
                         }
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
                             if (status.charging) {
                                 Icon(Icons.Rounded.Bolt, null, tint = if (style.colorfulBattery) charging else ink, modifier = Modifier.size((visualSize.value * .26f / fontScale).dp))
                             }
-                            Text(status.battery?.toString() ?: "—", color = if (status.charging && style.colorfulBattery) charging else ink,
-                                fontSize = (visualSize.value * (if (status.charging) .28f else .34f) / fontScale).sp, fontWeight = FontWeight.SemiBold,
-                                style = TextStyle(fontFeatureSettings = "tnum"), maxLines = 1, softWrap = false)
+                            if (fullCheck) Icon(Icons.Rounded.Check, null, tint = if (style.colorfulBattery) charging else ink, modifier = Modifier.size((visualSize.value * .42f / fontScale).dp))
+                            else androidx.compose.animation.AnimatedContent(status.battery, label = "ring number", // english-only
+                                transitionSpec = {
+                                    if (still) androidx.compose.animation.EnterTransition.None togetherWith androidx.compose.animation.ExitTransition.None
+                                    else {
+                                        val down = (targetState ?: 0) < (initialState ?: 0)
+                                        (androidx.compose.animation.slideInVertically(tween(380)) { if (down) -it / 2 else it / 2 } + androidx.compose.animation.fadeIn(tween(380))) togetherWith
+                                            (androidx.compose.animation.slideOutVertically(tween(380)) { if (down) it / 2 else -it / 2 } + androidx.compose.animation.fadeOut(tween(260)))
+                                    }
+                                }) { level ->
+                                Text(level?.toString() ?: "—", color = if (status.charging && style.colorfulBattery) charging else ink,
+                                    fontSize = (visualSize.value * (if (status.charging) .28f else .34f) / fontScale).sp, fontWeight = FontWeight.SemiBold,
+                                    style = TextStyle(fontFeatureSettings = "tnum"), maxLines = 1, softWrap = false)
+                            }
                         }
                     }
                     if (style.glyph == StatusGlyph.STACK) {
