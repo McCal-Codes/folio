@@ -135,8 +135,9 @@ private fun TipCard(tip: Tip, onClick: () -> Unit) {
             Icon(tip.icon, null, tint = Color.White, modifier = Modifier.size(40.dp))
         }
         Column(Modifier.padding(FolioSpace.LARGE.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.TINY.dp)) {
-            Text(tip.title, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(MarketText.inline(WhatsNew.firstSentence(tip.note.detail), LocalAccent.current.ink), color = Color.White.copy(alpha = .78f), fontSize = FolioType.SUBHEAD.sp,
+            Text(tip.title, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold, maxLines = if (tip.note.title == null) 4 else 2, overflow = TextOverflow.Ellipsis)
+            // An older entry has no bold title, so its title is already its first sentence: the line under it would say the same thing twice.
+            if (tip.note.title != null) Text(MarketText.inline(WhatsNew.firstSentence(tip.note.detail), LocalAccent.current.ink), color = Color.White.copy(alpha = .78f), fontSize = FolioType.SUBHEAD.sp,
                 maxLines = 3, overflow = TextOverflow.Ellipsis)
         }
     }
