@@ -1818,6 +1818,7 @@ fun LauncherScreen(
                                                 SUGGESTIONS_WIDGET -> stringResource(R.string.suggestions)
                                                 BIG_CLOCK_WIDGET -> stringResource(R.string.big_clock)
                                                 MUSIC_WIDGET -> stringResource(R.string.music)
+                                                PHOTO_WIDGET -> stringResource(R.string.photos_widget)
                                                 else -> stringResource(R.string.widget_panel)
                                             }, color = Ink,
                                             textAlign = TextAlign.Center)

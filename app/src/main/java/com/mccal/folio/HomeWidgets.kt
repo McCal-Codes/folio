@@ -236,6 +236,7 @@ internal fun widgetLabel(context: android.content.Context, id: Int, controller: 
     SUGGESTIONS_WIDGET -> context.getString(R.string.suggestions)
     BIG_CLOCK_WIDGET -> context.getString(R.string.big_clock)
     MUSIC_WIDGET -> context.getString(R.string.music)
+    PHOTO_WIDGET -> context.getString(R.string.photos_widget)
     INFO_WIDGET -> context.getString(R.string.widget_panel)
     EMPTY_WIDGET -> context.getString(R.string.add_widget)
     else -> controller.manager.getAppWidgetInfo(id)?.provider?.packageName?.let { swapped[it]?.label } ?: controller.label(id)
@@ -304,6 +305,7 @@ internal fun BuiltinWidgetCard(id: Int, slot: Int, opensApp: Boolean = false, on
         SUGGESTIONS_WIDGET -> SuggestionsCard(onAdd)
         BIG_CLOCK_WIDGET -> BigClockCard(onTap, slot, home = opensApp)
         MUSIC_WIDGET -> MusicWidgetCard(onTap)
+        PHOTO_WIDGET -> PhotoWidgetCard(onAdd)
         INFO_WIDGET -> if (slot % 3 == 2) ExpandedCard(onAdd) else GlassCard(onClick = onAdd) {
             Icon(Icons.Rounded.Widgets, null, tint = Color.White, modifier = Modifier.size(28.dp))
             Text(stringResource(R.string.your_widgets), color = Color.White, fontSize = FolioType.SUBHEAD.sp, maxLines = 1)

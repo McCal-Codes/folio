@@ -132,5 +132,9 @@ fun builtinWidgetConstraints(id: Int): WidgetSpanConstraints? = when (id) {
     MUSIC_WIDGET -> WidgetSpanConstraints(
         preferred = WidgetSpan(4, 2), minimum = WidgetSpan(MUSIC_MIN_COLUMNS, 1), maximum = WidgetSpan(GRID_COLUMNS, 4),
         canResizeHorizontally = true, canResizeVertically = true)
+    // Photos: tall card for the unfolded left pane (2 x 3) by default, square (2 x 2) or a wide strip (4 x 1) when resized.
+    PHOTO_WIDGET -> WidgetSpanConstraints(
+        preferred = WidgetSpan(2, 3), minimum = WidgetSpan(2, 1), maximum = WidgetSpan(GRID_COLUMNS, 4),
+        canResizeHorizontally = true, canResizeVertically = true)
     else -> null
 }
