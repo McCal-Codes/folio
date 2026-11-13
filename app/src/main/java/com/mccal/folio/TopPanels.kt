@@ -1681,15 +1681,52 @@ internal fun MediaTile(media: IslandActivity.Media?, modifier: Modifier, cell: D
 private fun MediaScrubber(media: IslandActivity.Media, accent: Color?) {
     val (position, duration) = rememberMediaPosition(media)
     if (duration <= 0L) return
-    Column(Modifier.padding(top = 3.dp)) {
+    var scrub by remember { mutableStateOf<Float?>(null) }
+    val shown = scrub?.let { (it * duration).toLong() } ?: position
+    // The line and the times under it are one place to tap or drag, so the touch area is more than the 3 dp the line is drawn with.
+    Column(Modifier.padding(top = 3.dp).mediaSeekable(media, duration) { scrub = it }) {
         Box(Modifier.fillMaxWidth().height(3.dp).clip(CircleShape).background(Color.White.copy(alpha = .22f))) {
-            Box(Modifier.fillMaxHeight().fillMaxWidth((position.toFloat() / duration).coerceIn(0f, 1f)).background(accent ?: Color.White))
+            Box(Modifier.fillMaxHeight().fillMaxWidth((shown.toFloat() / duration).coerceIn(0f, 1f)).background(accent ?: Color.White))
         }
         Row(Modifier.fillMaxWidth().padding(top = 1.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(formatMediaTime(position), color = FolioGlass.secondary, fontSize = FolioType.GROUP_LABEL.sp)
-            Text("-" + formatMediaTime(duration - position), color = FolioGlass.secondary, fontSize = FolioType.GROUP_LABEL.sp)
+            Text(formatMediaTime(shown), color = FolioGlass.secondary, fontSize = FolioType.GROUP_LABEL.sp)
+            Text("-" + formatMediaTime(duration - shown), color = FolioGlass.secondary, fontSize = FolioType.GROUP_LABEL.sp)
         }
     }
+}
+
+/** Whether the player lets a track be moved to a place ([PlaybackState.ACTION_SEEK_TO]); some, like a live stream, do not. */
+internal fun mediaCanSeek(actions: Long?): Boolean = ((actions ?: 0L) and android.media.session.PlaybackState.ACTION_SEEK_TO) != 0L
+
+/** The track position, in milliseconds, a finger at [x] of [width] points to on a line [duration] long; always inside the track. */
+internal fun mediaSeekTarget(x: Float, width: Float, duration: Long): Long =
+    if (width <= 0f || duration <= 0L) 0L else (duration * (x / width).coerceIn(0f, 1f)).toLong()
+
+/**
+ * Lets a finger tap or drag along a progress line to move the track there, when the player allows it. [onScrub] gets the finger's place (0 to 1)
+ * while it is down, so the line and times follow it, and null when it lifts, which is when the player is asked to seek. Right to left layouts
+ * mirror the line, so the finger's place is mirrored back.
+ */
+@Composable
+private fun Modifier.mediaSeekable(media: IslandActivity.Media, duration: Long, onScrub: (Float?) -> Unit): Modifier {
+    if (!mediaCanSeek(runCatching { media.controller.playbackState?.actions }.getOrNull())) return this
+    val rtl = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl
+    val latestScrub = androidx.compose.runtime.rememberUpdatedState(onScrub)
+    fun seek(x: Float, width: Int) {
+        val at = if (rtl) width - x else x
+        runCatching { media.controller.transportControls.seekTo(mediaSeekTarget(at, width.toFloat(), duration)) }
+    }
+    return this
+        .pointerInput(media, duration, rtl) { detectTapGestures { seek(it.x, size.width) } }
+        .pointerInput(media, duration, rtl) {
+            var last = 0f
+            detectHorizontalDragGestures(
+                onDragStart = { last = if (rtl) size.width - it.x else it.x; latestScrub.value((last / size.width).coerceIn(0f, 1f)) },
+                onHorizontalDrag = { change, by -> change.consume(); last = (last + (if (rtl) -by else by)).coerceIn(0f, size.width.toFloat()); latestScrub.value(last / size.width) },
+                onDragEnd = { latestScrub.value(null); seek(if (rtl) size.width - last else last, size.width) },
+                onDragCancel = { latestScrub.value(null) },
+            )
+        }
 }
 
 @Composable
@@ -2250,13 +2287,15 @@ private fun MusicPoster(media: IslandActivity.Media, accent: Color) {
             Text(media.title, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
             media.subtitle?.takeIf { plan.subtitle }?.let { Text(it, color = Color.White.copy(alpha = .72f), fontSize = FolioType.FOOTNOTE.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
             if (showWave) MusicWave(media.playing && !reduceMotion, accent)
-            if (plan.scrubber) Column(Modifier.fillMaxWidth(.84f).padding(top = 4.dp)) {
+            var scrub by remember { mutableStateOf<Float?>(null) }
+            val shown = scrub?.let { (it * duration).toLong() } ?: position
+            if (plan.scrubber) Column(Modifier.fillMaxWidth(.84f).padding(top = 4.dp).mediaSeekable(media, duration) { scrub = it }) {
                 Box(Modifier.fillMaxWidth().height(3.dp).clip(CircleShape).background(Color.White.copy(alpha = .22f))) {
-                    Box(Modifier.fillMaxHeight().fillMaxWidth((position.toFloat() / duration).coerceIn(0f, 1f)).background(Color.White))
+                    Box(Modifier.fillMaxHeight().fillMaxWidth((shown.toFloat() / duration).coerceIn(0f, 1f)).background(Color.White))
                 }
                 Row(Modifier.fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(formatMediaTime(position), color = Color.White.copy(alpha = .72f), fontSize = FolioType.GROUP_LABEL.sp)
-                    Text("-" + formatMediaTime(duration - position), color = Color.White.copy(alpha = .72f), fontSize = FolioType.GROUP_LABEL.sp)
+                    Text(formatMediaTime(shown), color = Color.White.copy(alpha = .72f), fontSize = FolioType.GROUP_LABEL.sp)
+                    Text("-" + formatMediaTime(duration - shown), color = Color.White.copy(alpha = .72f), fontSize = FolioType.GROUP_LABEL.sp)
                 }
             }
             Spacer(Modifier.height(8.dp))

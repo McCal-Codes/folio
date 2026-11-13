@@ -9,6 +9,7 @@ Folio shows the newest section on the phone after an update, and every version u
 
 ### Added
 - **Wi-Fi network name:** the status rail shows the name of the Wi-Fi network under the Wi-Fi mark, and a long name slides sideways to show all of it (it is shortened with Reduce Motion on). Android gives a network name only to apps with precise location, so Settings > Notifications & Control Center has a "Show Wi-Fi network name" row that asks for it; Folio reads just the name, never your position, and without it the rail says Wi-Fi as before. The Korean and Chinese text is machine translated.
+- **Seek in Now Playing:** tap or drag along the progress line on Control Center's Now Playing tile or the Music widget's Poster to move the track there, with the times following your finger. It works when the player allows seeking.
 - **Six more tiles:** Screen Mirroring, Display, Accessibility, Recorder, Location and VPN open the phone's own page for each, and each can be added from Add a Control.
 - **Undo and redo on Home:** two buttons beside Edit undo and redo the last change; the Undo pill that appears after a change fades away after a few seconds and sits above the dock.
 - **Control Center fits the window:** the Add a Control card on a short window shrinks the panel above it instead of covering the last row, never below the 48 dp touch size; the minus badges hang off the left edge of small tiles so they no longer cover the icon; Home's Edit bar no longer shows two Add or Done buttons.
