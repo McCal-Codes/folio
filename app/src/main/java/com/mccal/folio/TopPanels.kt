@@ -1360,6 +1360,19 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                     }
                 }
             }
+            // A swipe up or down along the strip changes page too, as on the Duo: down goes to the next page and up goes back, the way the pages are laid out.
+            val stripPage by rememberUpdatedState(current)
+            val stripPages by rememberUpdatedState(pages.size)
+            val swipePages = Modifier.pointerInput(Unit) {
+                var travel = 0f
+                val threshold = 24.dp.toPx()
+                detectVerticalDragGestures(onDragStart = { travel = 0f }, onDragCancel = { travel = 0f },
+                    onDragEnd = {
+                        val target = ccStripSwipeTarget(stripPage, stripPages, travel, threshold)
+                        if (target != stripPage) goTo(target)
+                        travel = 0f
+                    }) { change, by -> change.consume(); travel += by }
+            }
             if (grid.stripInHeader) Row(verticalAlignment = Alignment.CenterVertically) {
                 // Small dots, each a 32 by 48 dp target side by side (no gap between targets, so a tap near the edge cannot hit the wrong page): a short window has no row to spare for round buttons.
                 pages.forEachIndexed { index, spec ->
@@ -1383,11 +1396,11 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                 if (roomy) {
                     // Tall enough: the status stays at the top and the page icons stand in the middle of the grid's height, as Apple places them.
                     val railHeight = pageHeight + FolioTouch.MIN.dp + gap + (if (reserveSwitchRow) PANEL_SWITCH_ROW_DP.dp + gap else 0.dp)
-                    Box(Modifier.height(railHeight)) {
+                    Box(Modifier.height(railHeight).then(swipePages)) {
                         Column(Modifier.align(Alignment.TopCenter), verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp), horizontalAlignment = Alignment.CenterHorizontally) { top() }
                         Column(Modifier.align(Alignment.Center), verticalArrangement = Arrangement.spacedBy(FolioSpace.TINY.dp), horizontalAlignment = Alignment.CenterHorizontally) { items() }
                     }
-                } else Column(verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                } else Column(swipePages, verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     top()
                     items()
                 }
@@ -1749,6 +1762,16 @@ private fun Modifier.ccPress(pressed: Boolean): Modifier {
 }
 
 private const val CC_PRESS_SCALE = .94f
+
+/**
+ * The page a swipe along the page strip lands on: a drag of [travel] pixels (down is positive) that is at least [threshold] moves one page, down to
+ * the next and up back, and never past either end. Shorter drags stay where they are.
+ */
+internal fun ccStripSwipeTarget(current: Int, count: Int, travel: Float, threshold: Float): Int = when {
+    travel >= threshold -> (current + 1).coerceAtMost(count - 1)
+    travel <= -threshold -> (current - 1).coerceAtLeast(0)
+    else -> current
+}
 
 /** The leaving page thins out as it goes (a quarter of its weight left a whole page away), so a page half-way is still readable. */
 internal fun ccPageAlpha(away: Float): Float = 1f - .75f * away.coerceIn(0f, 1f)

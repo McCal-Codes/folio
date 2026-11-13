@@ -72,6 +72,28 @@ class ControlCenterLayoutTest {
         assertTrue((6 to 2) in ccAllowedSizes(CC_MEDIA, 6))
     }
 
+    @Test fun `a control that grows over small neighbors moves them to the first free places`() {
+        val row = listOf(CcSlot("a", 0, 0, 1, 1), CcSlot("b", 1, 0, 1, 1), CcSlot("c", 2, 0, 1, 1), CcSlot("d", 3, 0, 1, 1))
+        val grown = ccResize(row, "a", 2, 1, 4, 3)
+        assertEquals(listOf("a", "b", "c", "d"), grown.map { it.id })
+        assertEquals(CcSlot("a", 0, 0, 2, 1), grown[0])
+        // b steps aside to the first free cell, and nothing else moves
+        assertEquals(CcSlot("b", 0, 1, 1, 1), grown[1])
+        assertEquals(row[2], grown[2]); assertEquals(row[3], grown[3])
+    }
+
+    @Test fun `growing is refused when the displaced controls have nowhere to go or a module is in the way`() {
+        val row = listOf(CcSlot("a", 0, 0, 1, 1), CcSlot("b", 1, 0, 1, 1), CcSlot("c", 2, 0, 1, 1), CcSlot("d", 3, 0, 1, 1))
+        // one row only: b has no free place
+        assertSame(row, ccResize(row, "a", 2, 1, 4, 1))
+        // a module beside it does not move aside
+        val withModule = listOf(CcSlot("a", 0, 0, 1, 1), CcSlot(CC_MEDIA, 1, 0, 2, 2))
+        assertSame(withModule, ccResize(withModule, "a", 2, 1, 4, 4))
+        // a drag toward the bigger size snaps to it when the neighbors can step aside
+        assertEquals(2 to 1, ccSnapSize(row, "a", 2f, 1f, 4, 3))
+        assertEquals(1 to 1, ccSnapSize(row, "a", 2f, 1f, 4, 1))
+    }
+
     @Test fun `a corner drag lands on the nearest size that fits`() {
         val slots = ccDefaultLayout(4, controls.take(4), focus = false) + CcSlot("x", 0, 6, 1, 1)
         // dragged to about two cells wide on a free row: wide

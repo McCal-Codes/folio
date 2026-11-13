@@ -75,8 +75,29 @@ internal fun ccMove(slots: List<CcSlot>, id: String, col: Int, row: Int, cols: I
 internal fun ccResize(slots: List<CcSlot>, id: String, w: Int, h: Int, cols: Int, rows: Int): List<CcSlot> {
     val slot = slots.firstOrNull { it.id == id } ?: return slots
     if ((w to h) !in ccAllowedSizes(id, cols)) return slots
-    val resized = slot.copy(w = w, h = h)
-    return if (ccFits(slots, resized, cols, rows)) slots.map { if (it.id == id) resized else it } else slots
+    return ccGrowInto(slots, slot.copy(w = w, h = h), cols, rows) ?: slots
+}
+
+/** The modules and sliders that stay where they are; only the small controls (toggles and shortcuts) step aside when another control grows over them. */
+private val CC_STAYS_PUT = setOf(CC_CONNECTIVITY, CC_MEDIA, CC_BRIGHTNESS, CC_VOLUME, CC_FOCUS)
+
+/**
+ * [slots] with [resized] in place of the control it was. Where it covers other small controls they step aside to the first free places, reading
+ * left to right and top to bottom, so a bigger control does not need an empty cell beside it (a full page had none, and nothing could be resized).
+ * Null when it leaves the grid, would cover a module or slider, or the displaced controls have nowhere to go. The list keeps its order.
+ */
+internal fun ccGrowInto(slots: List<CcSlot>, resized: CcSlot, cols: Int, rows: Int): List<CcSlot>? {
+    if (resized.col < 0 || resized.row < 0 || resized.right > cols || resized.bottom > rows || resized.w <= 0 || resized.h <= 0) return null
+    val covered = slots.filter { it.id != resized.id && it.col < resized.right && resized.col < it.right && it.row < resized.bottom && resized.row < it.bottom }
+    if (covered.any { it.id in CC_STAYS_PUT }) return null
+    var placed = slots.filter { it.id != resized.id && covered.none { c -> c.id == it.id } } + resized
+    for (moving in covered.sortedWith(compareBy({ it.row }, { it.col }))) {
+        val spot = (0 until rows).firstNotNullOfOrNull { r ->
+            (0..(cols - moving.w)).firstNotNullOfOrNull { c -> moving.copy(col = c, row = r).takeIf { ccFits(placed, it, cols, rows) } }
+        } ?: return null
+        placed += spot
+    }
+    return slots.map { old -> placed.first { it.id == old.id } }
 }
 
 /**
@@ -86,7 +107,7 @@ internal fun ccResize(slots: List<CcSlot>, id: String, w: Int, h: Int, cols: Int
 internal fun ccSnapSize(slots: List<CcSlot>, id: String, dragW: Float, dragH: Float, cols: Int, rows: Int): Pair<Int, Int>? {
     val slot = slots.firstOrNull { it.id == id } ?: return null
     return ccAllowedSizes(id, cols)
-        .filter { (w, h) -> ccFits(slots, slot.copy(w = w, h = h), cols, rows) }
+        .filter { (w, h) -> ccGrowInto(slots, slot.copy(w = w, h = h), cols, rows) != null }
         .minByOrNull { (w, h) -> (w - dragW) * (w - dragW) + (h - dragH) * (h - dragH) }
 }
 
