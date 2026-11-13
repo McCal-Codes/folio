@@ -168,6 +168,20 @@ internal fun ExpandedWorkspace(
             IntOffset((x - motion.offset(physicalPosition)).roundToInt(), 0)
         }
     }
+    // A pane that has slid off to the left leaves its last stretch in the margin before the first grid column (the panes
+    // start 259 px in, so the one before is not gone when the next arrives). That edge is not a page to look at: it fades out
+    // as it reaches the margin and, once only the margin holds it, is moved out of reach so a touch there cannot land on it.
+    val marginPx = (initialHomeOrigin - stride).coerceAtLeast(0f)
+    val marginFadePx = with(density) { 96.dp.toPx() }
+    val clearOfMargin: Modifier.(Float) -> Modifier = { x ->
+        graphicsLayer {
+            val physicalPosition = nativePager.currentPage + nativePager.currentPageOffsetFraction
+            val right = x - motion.offset(physicalPosition) + homePaneWidth
+            val hidden = right <= marginPx
+            translationX = if (hidden) -2f * homePaneWidth else 0f
+            alpha = ((right - marginPx) / marginFadePx).coerceIn(0f, 1f)
+        }
+    }
     val showDiscover by remember(nativePager, firstHome) {
         derivedStateOf(structuralEqualityPolicy()) {
             firstHome > 0 && nativePager.currentPage + nativePager.currentPageOffsetFraction <= firstHome + .25f
@@ -199,7 +213,7 @@ internal fun ExpandedWorkspace(
         if (showLeading) {
             key("expanded-leading-home") {
                 stateHolder.SaveableStateProvider("expanded-leading-home") {
-                    Box(Modifier.place(leadingX).width((geometry.gridWidth + 16f).dp).fillMaxHeight()
+                    Box(Modifier.place(leadingX).clearOfMargin(leadingX).width((geometry.gridWidth + 16f).dp).fillMaxHeight()
                         .testTag("expanded-leading-home")) {
                         if (besideContent != null) besideContent(Modifier.fillMaxSize()) else HomePagePane(
                             -1, state, previewSlots, previewLeadingSlots, previewWidgetPlacements, appsById, geometry, contentHeight, bottomSpace,
@@ -216,7 +230,7 @@ internal fun ExpandedWorkspace(
         visibleHomes.forEach { page ->
             key("expanded-home-$page") {
                 stateHolder.SaveableStateProvider("expanded-home-$page") {
-                    Box(Modifier.place(initialHomeOrigin + page * stride)
+                    Box(Modifier.place(initialHomeOrigin + page * stride).clearOfMargin(initialHomeOrigin + page * stride)
                         .width((geometry.gridWidth + 16f).dp).fillMaxHeight()) {
                         HomePagePane(
                             page, state, previewSlots, previewLeadingSlots, previewWidgetPlacements, appsById, geometry, contentHeight, bottomSpace,

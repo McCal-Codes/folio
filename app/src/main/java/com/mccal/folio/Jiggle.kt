@@ -140,13 +140,18 @@ internal fun HomeSearchPill(onClick: () -> Unit) {
 internal val JIGGLE_BAR_ISLAND_GAP = 8.dp
 /** Where the jiggle bar's bottom edge falls (top inset + 48dp touch height + a little air), for Home's first-row clearance. */
 internal val JIGGLE_BAR_BOTTOM = JIGGLE_BAR_ISLAND_GAP + 48.dp + 4.dp
-/** How far the unfolded bar is lifted into the empty strip at the very top of the window, so Home gives way by almost nothing for it. */
-internal val JIGGLE_BAR_LIFT = 26.dp
+/** The air between the unfolded bar's pills and the first row (a 12 dp gap). */
+internal val JIGGLE_BAR_GRID_GAP = 12.dp
+/**
+ * How far the unfolded bar is lifted into the empty strip at the very top of the window, so Home gives way by almost nothing for it:
+ * the 26 dp that put the pills' bottom on the first row, and [JIGGLE_BAR_GRID_GAP] more so they clear it.
+ */
+internal val JIGGLE_BAR_LIFT = 26.dp + JIGGLE_BAR_GRID_GAP
 /**
  * The same for the unfolded window, where the bar sits at the pager's far end with no island gap and only its pills' drawn bottom (the
  * 48 dp touch box is 16 dp taller than the pill) has to clear the first row: 2 dp top + 48 dp box - 8 dp of unused touch height + 2 dp air.
  */
-internal val JIGGLE_BAR_BOTTOM_UNFOLDED = 44.dp - JIGGLE_BAR_LIFT
+internal val JIGGLE_BAR_BOTTOM_UNFOLDED = 44.dp - 26.dp
 
 /**
  * How wide the unfolded edit bar's pills run from the pager's far end, in dp at the default text size (+, Edit, Undo, Redo, Done): the span
