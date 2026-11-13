@@ -1358,19 +1358,14 @@ fun LauncherScreen(
                 }
             }
             androidx.compose.animation.AnimatedVisibility(homeEdit.active && sheet.isEmpty(),
-                // Unfolded, the bar sits in the free strip at the bottom of the Home half beside the page dots, so it neither
-                // covers the widget row nor pushes the grid; folded, it's at the top, clear of the Dynamic Island.
-                Modifier.align(when {
-                    // The bar is as wide as the pager, which sits at the screen's leading edge (trailing when left-handed), so it
-                    // is placed there too: at the opposite edge it ended under the Side Bar's own Done button.
-                    geometry.expanded -> if (state.leftHanded) Alignment.BottomEnd else Alignment.BottomStart
-                    state.leftHanded -> Alignment.TopEnd
-                    else -> Alignment.TopStart
-                }).width(pagerWidth),
-                enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { if (geometry.expanded) it / 2 else -it / 2 },
-                exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { if (geometry.expanded) it / 2 else -it / 2 }) {
+                // At the top in every posture, as on iOS, clear of the Dynamic Island. Unfolded it used to sit at the bottom beside
+                // the page dots and the Library button, where Edit, Undo and Redo crowded them. Unfolded, the pills gather at the
+                // pager's far end, away from the island at the middle of the top edge.
+                Modifier.align(if (state.leftHanded) Alignment.TopEnd else Alignment.TopStart).width(pagerWidth),
+                enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { -it / 2 },
+                exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { -it / 2 }) {
                 Row(Modifier.fillMaxWidth().padding(start = FolioSpace.COMFY.dp, end = FolioSpace.COMFY.dp,
-                    top = if (geometry.expanded) 0.dp else if (state.island) JIGGLE_BAR_ISLAND_GAP else FolioSpace.HAIR.dp).testTag("jiggle-bar"),
+                    top = if (state.island) JIGGLE_BAR_ISLAND_GAP else FolioSpace.HAIR.dp).testTag("jiggle-bar"),
                     horizontalArrangement = if (geometry.expanded) Arrangement.spacedBy(FolioSpace.SMALL.dp, Alignment.End) else Arrangement.Start,
                     verticalAlignment = Alignment.CenterVertically) {
                     val editPage = pager.currentPage.coerceIn(0, homePages - 1)

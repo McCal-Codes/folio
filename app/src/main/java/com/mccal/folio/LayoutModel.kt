@@ -147,11 +147,12 @@ fun jiggleBarBesideGrid(horizontalDock: Boolean, dockBesideRail: Boolean, window
 
 /**
  * The room Home keeps under the + / Edit / Done bar in edit mode: only what the bar needs above the first row, none when the bar
- * sits in the strip beside the page, or in the free strip of an expanded window. Pushing a grid down that has no spare height
+ * sits in the strip beside the page. The bar is at the top in every posture now, so an unfolded window gets the same small room
+ * when its first row starts closer to the edge than the bar reaches. Pushing a grid down that has no spare height
  * (F01, 27 Oct sweep) leaves its last row under the dock.
  */
-fun jiggleBarRoom(barBottom: Float, contentTop: Float, expanded: Boolean, besideGrid: Boolean): Float =
-    if (expanded || besideGrid) 0f else (barBottom - contentTop).coerceAtLeast(0f)
+fun jiggleBarRoom(barBottom: Float, contentTop: Float, besideGrid: Boolean): Float =
+    if (besideGrid) 0f else (barBottom - contentTop).coerceAtLeast(0f)
 
 enum class DockPlacement {
     /** Side Bar, or a bar along the bottom when a regular-size screen is upright (iPhone Duo). */
