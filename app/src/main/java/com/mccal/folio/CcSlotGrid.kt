@@ -158,7 +158,8 @@ internal fun CcSlotGrid(
                         })
                     // A still outline: the places are being arranged, so nothing else about the control moves or glows.
                     if (lifted || live) Box(Modifier.matchParentSize().border(1.5.dp, Color.White.copy(alpha = .9f), RoundedCornerShape(26.dp)))
-                    if (removable(id)) Box(Modifier.align(Alignment.TopStart).offset((-4).dp, (-4).dp).size(44.dp)
+                    // Hangs off the left edge (not the top, where the first row would clip it), so on a small tile it does not cover the control's icon.
+                    if (removable(id)) Box(Modifier.align(Alignment.TopStart).offset((-18).dp, (-11).dp).size(44.dp)
                         .pointerInput(id) { detectTapGestures { onRemove(id) } }, contentAlignment = Alignment.Center) {
                         Box(Modifier.size(22.dp).clip(CircleShape).background(Color.White.copy(alpha = .92f)), contentAlignment = Alignment.Center) {
                             Box(Modifier.size(10.dp, 2.dp).background(Color.Black.copy(alpha = .75f)))

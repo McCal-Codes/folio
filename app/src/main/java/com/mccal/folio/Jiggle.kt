@@ -90,11 +90,11 @@ internal fun Modifier.jiggle(key: Any, amount: Float = 1f): Modifier {
 
 /** The gray "–" in an icon's corner while jiggling. */
 @Composable
-internal fun BoxScope.JiggleRemoveButton(label: String, inset: Dp = 0.dp, onRemove: () -> Unit) {
+internal fun BoxScope.JiggleRemoveButton(label: String, inset: Dp = 0.dp, insetX: Dp = inset, onRemove: () -> Unit) {
     val haptic = LocalHapticFeedback.current
     // 44dp touch target (accessibility minimum) around a 22dp visual, centered on the corner; [inset] pulls it in so it
     // stays inside a tight container like the side dock, as iPhone keeps it inside the dock.
-    Box(Modifier.align(Alignment.TopStart).offset((-11).dp + inset, (-11).dp + inset).size(44.dp)
+    Box(Modifier.align(Alignment.TopStart).offset((-11).dp + insetX, (-11).dp + inset).size(44.dp)
         .clickable(role = Role.Button, onClickLabel = label, interactionSource = null, indication = null) {
             haptic.perform(FolioHaptic.Refuse); onRemove()
         }.semantics { contentDescription = label }, contentAlignment = Alignment.Center) {

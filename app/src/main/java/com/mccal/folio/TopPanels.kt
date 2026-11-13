@@ -1560,7 +1560,7 @@ private fun EditableControl(control: CcControl, on: Boolean, accent: Color, cell
         if (reorder != null) Modifier.ccReorderable(control.name, reorder, edit.active, stringResource(R.string.move_control_earlier, stringResource(control.label)),
             stringResource(R.string.move_control_later, stringResource(control.label)), onMove) { onNudge(it) } else Modifier)) {
         SquareToggle(control.icon(), stringResource(control.label), on, accent, cell) { if (!edit.active) onRun() }
-        if (edit.active) JiggleRemoveButton(stringResource(R.string.remove_control, stringResource(control.label)), onRemove = onRemove)
+        if (edit.active) JiggleRemoveButton(stringResource(R.string.remove_control, stringResource(control.label)), insetX = (-7).dp, onRemove = onRemove)
     }
 }
 
@@ -1628,8 +1628,9 @@ internal fun MediaTile(media: IslandActivity.Media?, modifier: Modifier, cell: D
         if (slim) Row(Modifier.fillMaxSize().padding(horizontal = cell * .16f), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.MusicNote, null, tint = FolioGlass.secondary, modifier = Modifier.size(cell * .34f))
             Spacer(Modifier.width(FolioSpace.SMALL.dp))
+            // Two lines, so "Not Playing" stays whole at large text instead of shortening to "Not Playi…".
             Text(media?.title ?: stringResource(R.string.not_playing), color = if (media != null) Color.White else FolioGlass.secondary,
-                fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
         } else Column(Modifier.fillMaxSize().padding(top = cell * .16f), verticalArrangement = Arrangement.SpaceBetween) {
             // The sides are padded row by row: the transport row below runs the full width, so each of its three controls is a third of the tile.
             Row(Modifier.padding(horizontal = cell * .16f), verticalAlignment = Alignment.Top) {
