@@ -14,6 +14,7 @@ import androidx.compose.material.icons.rounded.AirplanemodeActive
 import androidx.compose.material.icons.rounded.NotificationsOff
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.togetherWith
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.animation.core.Animatable
@@ -263,6 +264,9 @@ fun StatusRail(
         }
     }
     RequestFastFrames(burst)
+    // The charge as the styles draw it: it glides to a new reading instead of jumping, the same spring in every style.
+    val glidingLevel by animateFloatAsState((status.battery ?: 0).coerceIn(0, 100) / 100f,
+        if (still) snap() else FolioMotion.spring<Float>(FolioMotion.Glide), label = "battery glide") // english-only
     LaunchedEffect(isFull) {
         if (isFull) {
             fullCheck = true
@@ -324,7 +328,7 @@ fun StatusRail(
                             val w = size.width
                             val stroke = w * .075f * look.strokeScale
                             listOf(
-                                .44f to (batteryRing to (status.battery?.div(100f) ?: 0f)),
+                                .44f to (batteryRing to (if (status.battery != null) glidingLevel else 0f)),
                                 .30f to (wifiRing to wifiFraction),
                                 .16f to (cellRing to activeDots / 5f),
                             ).forEach { (r, ring) ->
@@ -420,7 +424,7 @@ fun StatusRail(
                             val radius = w * .44f
                             drawCircle(ink.copy(alpha = faint(look.trackAlpha)), radius, center, style = Stroke(w * .06f * look.strokeScale))
                             status.battery?.let { level ->
-                                drawArc(batteryColor, -90f, 360f * level / 100, false, Offset(center.x - radius, center.y - radius),
+                                drawArc(batteryColor, -90f, 360f * glidingLevel, false, Offset(center.x - radius, center.y - radius),
                                     Size(radius * 2, radius * 2), style = Stroke(width = w * .06f * look.strokeScale, cap = StrokeCap.Round))
                             }
                             if (style.glyph == StatusGlyph.RING) when {
@@ -448,7 +452,10 @@ fun StatusRail(
                         // Dots only when there is cellular strength to show, and the reading only when it's on: the
                         // mark reserves room for what it draws and nothing else, at any rail size.
                         val showsDots = !status.airplane && cellularVisual is CellularSignalVisual.Available
-                        val headroom = if (showsReading) GAUGE_CENTER - GAUGE_RADIUS else .06f
+                        // On the cable the bolt stands centred above the number, as on Apple's; the mark grows a little to hold it and settles back when unplugged.
+                        val boltRoom by animateFloatAsState(if (showsReading && status.charging) GAUGE_BOLT_ROOM else 0f,
+                            if (still) snap() else FolioMotion.spring<Float>(FolioMotion.Glide), label = "bolt room") // english-only
+                        val headroom = (if (showsReading) GAUGE_CENTER - GAUGE_RADIUS else .06f) + boltRoom
                         val ringCenter = headroom + GAUGE_RADIUS
                         val reading = status.battery?.toString() ?: "\u2014"
                         val readingSize = gaugeReadingSize(reading.length)
@@ -528,18 +535,13 @@ fun StatusRail(
                                 ink.copy(alpha = if (i < activeDots) 1f else faint(.28f)), w * GAUGE_DOT_RADIUS,
                                 Offset(center.x + (i - 2) * w * GAUGE_DOT_PITCH, w * dotsY))
                         }
+                        if (showsReading && boltRoom > 0f) Icon(Icons.Rounded.Bolt, null, tint = if (style.colorfulBattery) charging else ink,
+                            modifier = Modifier.size(visualSize * GAUGE_BOLT_ROOM * .95f).graphicsLayer { alpha = (boltRoom / GAUGE_BOLT_ROOM).coerceIn(0f, 1f) })
                         if (showsReading) Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier.padding(top = visualSize *
                                 ((ringCenter - GAUGE_RADIUS) - readingSize * .97f).coerceAtLeast(0f))
                         ) {
-                            // The number sits exactly on the ring's centre line; the charging bolt hangs off its left side rather than sharing the row,
-                            // which would push the digits to the right of the Wi-Fi mark and the dots under them.
-                            if (status.charging && !fullCheck) {
-                                val bolt = (visualSize.value * readingSize * .85f / fontScale).dp
-                                Icon(Icons.Rounded.Bolt, null, tint = if (style.colorfulBattery) charging else ink,
-                                    modifier = Modifier.align(Alignment.CenterStart).offset(x = -bolt).size(bolt))
-                            }
                             androidx.compose.animation.AnimatedContent(fullCheck, label = "gauge check", // english-only
                                 transitionSpec = {
                                     if (still) androidx.compose.animation.EnterTransition.None togetherWith androidx.compose.animation.ExitTransition.None
@@ -581,10 +583,10 @@ fun StatusRail(
                                 val inset = size.height * .18f
                                 if (surgeVal > 0f) {
                                     drawRoundRect(batteryColor.copy(alpha = .35f * surgeVal), Offset(inset - 1.5f, inset - 1.5f),
-                                        Size((body.width - inset * 2) * maxOf(level / 100f, surgeVal) + 3f, size.height - inset * 2 + 3f),
+                                        Size((body.width - inset * 2) * maxOf(glidingLevel, surgeVal) + 3f, size.height - inset * 2 + 3f),
                                         androidx.compose.ui.geometry.CornerRadius(size.height * .15f))
                                 }
-                                drawRoundRect(batteryColor, Offset(inset, inset), Size((body.width - inset * 2) * level / 100, size.height - inset * 2),
+                                drawRoundRect(batteryColor, Offset(inset, inset), Size((body.width - inset * 2) * glidingLevel, size.height - inset * 2),
                                     androidx.compose.ui.geometry.CornerRadius(size.height * .15f))
                             }
                         }
@@ -598,8 +600,12 @@ fun StatusRail(
                         if (status.charging) {
                             Icon(Icons.Rounded.Bolt, null, tint = if (style.colorfulBattery) charging else ink, modifier = Modifier.size(10.dp))
                         }
-                        Text(if (status.airplane) stringResource(R.string.status_airplane) else status.battery?.let { "$it%" } ?: "—",
-                            color = if (status.charging && style.colorfulBattery) charging else ink,
+                        val captionColor = if (status.charging && style.colorfulBattery) charging else ink
+                        if (!status.airplane && status.battery != null) {
+                            RollingNumber(status.battery, captionColor, detailSize, still, FontWeight.Medium)
+                            Text("%", color = captionColor, fontSize = detailSize, fontWeight = FontWeight.Medium, maxLines = 1, softWrap = false)
+                        } else Text(if (status.airplane) stringResource(R.string.status_airplane) else "—",
+                            color = captionColor,
                             fontSize = detailSize, fontWeight = FontWeight.Medium,
                             style = TextStyle(fontFeatureSettings = "tnum"),
                             maxLines = 1, softWrap = false, overflow = TextOverflow.Clip)
@@ -743,3 +749,6 @@ private fun rememberRingMotion(charging: Boolean, level: Int?, still: Boolean): 
         .animateFloat(0f, 1f, infiniteRepeatable(tween(5_000, easing = LinearEasing)), label = "drift") else null // english-only
     return RingMotion(breath, drift)
 }
+
+/** Height, as a fraction of the glyph width, the Gauge adds above its number to hold the charging bolt. */
+internal const val GAUGE_BOLT_ROOM = .17f
