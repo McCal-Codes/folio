@@ -36,7 +36,8 @@ internal object CrashLog {
         // The version code and whether this is a release build name the exact build: a crash's obfuscated stack can only be read
         // against that build's mapping, and the Folio Dev chip (build number, branch, commit) names a test build.
         val kind = if (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) "debuggable" else "release"
-        val dev = DevBuild.load(context)?.let { " · ${DevBuild.chip(it)}" }.orEmpty()
+        // Every line here is read while Folio is crashing, so none may be the reason a report is lost: a failed read leaves its part out.
+        val dev = runCatching { DevBuild.load(context)?.let { " · ${DevBuild.chip(it)}" } }.getOrNull().orEmpty()
         return "Folio: $version (code ${info?.longVersionCode ?: "?"}, $kind$dev)\n" +
             "Device: ${Build.MANUFACTURER} ${Build.MODEL} (Android ${Build.VERSION.RELEASE}, API ${Build.VERSION.SDK_INT})\n" +
             "Build: ${Diagnostics.buildDisplay()}\n" +
@@ -56,8 +57,8 @@ internal object CrashLog {
             appendLine("Time: ${now.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)}")
             appendLine(environment(context))
             appendLine("Thread: $threadName")
-            appendLine(Diagnostics.processReport())
-            appendLine(Diagnostics.widgetReport())
+            runCatching { Diagnostics.processReport() }.getOrNull()?.let { appendLine(it) }
+            runCatching { Diagnostics.widgetReport() }.getOrNull()?.let { appendLine(it) }
             appendLine()
             appendLine(error.stackTraceToString())
             Diagnostics.trailText().takeIf { it.isNotBlank() }?.let { appendLine("Before it:"); append(it) }
