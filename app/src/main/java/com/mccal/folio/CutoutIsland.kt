@@ -236,7 +236,7 @@ internal fun CutoutIsland(activity: IslandActivity?, eventsOff: Set<String> = em
         // No floor here: the edge gap is the shared placement's call, so Home and the island over apps match (#394).
         val top = geometry.top.dp
         // Home reads where the pill sits, so its edit bar can step below it instead of under it.
-        SideEffect { IslandFootprint.set(left, left + width.toPx(), (top + pillH).value, density.density) }
+        SideEffect { IslandFootprint.set(left, left + width.toPx()) }
         DisposableEffect(Unit) { onDispose { IslandFootprint.clear() } }
 
         val toggles = message == null && live != null
@@ -590,16 +590,15 @@ internal data class IslandGeometry(val camW: Float, val camH: Float, val centerX
 internal fun Rect.ltrb(): IntArray = intArrayOf(left, top, right, bottom)
 
 /**
- * Where the island pill is drawn on Home, in window px across and dp down: Home's edit bar reads it to step below the pill where the
- * two would overlap (a camera off the middle, as on the Fold's inner screen, puts the pill over the far page's pills).
+ * Where the island pill is drawn on Home, in window px across: Home's edit bar reads it to put Done on one side of the pill and its other
+ * pills on the other where the two would overlap (a camera off the middle, as on the Fold's inner screen, puts the pill over the far page's pills).
  */
 internal object IslandFootprint {
     var leftPx by mutableFloatStateOf(0f); private set
     var rightPx by mutableFloatStateOf(0f); private set
-    var bottomDp by mutableFloatStateOf(0f); private set
     var shown by mutableStateOf(false); private set
-    fun set(left: Float, right: Float, bottomDp: Float, density: Float) {
-        if (!shown || leftPx != left || rightPx != right || this.bottomDp != bottomDp) { leftPx = left; rightPx = right; this.bottomDp = bottomDp; shown = true }
+    fun set(left: Float, right: Float) {
+        if (!shown || leftPx != left || rightPx != right) { leftPx = left; rightPx = right; shown = true }
     }
     fun clear() { shown = false }
     /** Whether a bar spanning [leftPx]..[rightPx] across the window runs under the pill. */

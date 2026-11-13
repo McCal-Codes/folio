@@ -149,12 +149,11 @@ internal val JIGGLE_BAR_LIFT = 26.dp
 internal val JIGGLE_BAR_BOTTOM_UNFOLDED = 44.dp - JIGGLE_BAR_LIFT
 
 /**
- * Where the unfolded edit bar's bottom falls (dp) while it has stepped below the island pill, else 0. Home reads it so the grid
- * leaves room for the lowered bar (see [IslandFootprint]).
+ * How wide the unfolded edit bar's pills run from the pager's far end, in dp at the default text size (+, Edit, Undo, Redo, Done): the span
+ * the island pill is tested against to see whether it sits over them (see [IslandFootprint]).
  */
-internal object JiggleBarSpace {
-    var loweredBottomDp by androidx.compose.runtime.mutableFloatStateOf(0f)
-}
-/** The air kept between the island pill and a bar lowered under it, and the drawn height of a pill below its top inset (the 48 dp box less 8 dp and 2 dp of air). */
-internal val JIGGLE_BAR_UNDER_ISLAND_GAP = 4.dp
-internal val JIGGLE_BAR_PILL_DRAWN = 42.dp
+internal val JIGGLE_BAR_SPAN = 300.dp
+/** The air between the island pill and the bar's pills on either side of it. */
+internal val JIGGLE_BAR_ISLAND_SIDE_GAP = 8.dp
+/** How far Home's bottom controls drop in edit mode on the unfolded screen, so the last row's labels keep clear of them. */
+internal val JIGGLE_BAR_CONTROLS_DROP = 22.dp

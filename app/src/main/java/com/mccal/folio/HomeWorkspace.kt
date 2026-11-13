@@ -336,7 +336,7 @@ internal fun HomePagePane(
         // Unfolded, the bar is at the top too and the grid gives way by the little the pills need beyond the free strip.
         // The upright unfolded window keeps its grid clear of the bar's corners, so there the bar needs no room at all.
         val besideGrid = jiggleBarBesideGrid(geometry.horizontalDock, geometry.dockBesideRail, geometry.homeWidth, geometry.gridWidth, LocalDensity.current.fontScale)
-        val editRoom by animateDpAsState(if (roomWanted) jiggleBarRoom(maxOf((if (geometry.expanded) JIGGLE_BAR_BOTTOM_UNFOLDED else JIGGLE_BAR_BOTTOM).value, if (geometry.expanded) JiggleBarSpace.loweredBottomDp else 0f), geometry.contentTop, besideGrid).dp else 0.dp, label = "jiggle room")
+        val editRoom by animateDpAsState(if (roomWanted) jiggleBarRoom((if (geometry.expanded) JIGGLE_BAR_BOTTOM_UNFOLDED else JIGGLE_BAR_BOTTOM).value, geometry.contentTop, besideGrid).dp else 0.dp, label = "jiggle room")
         // The page was pushed down by the edit room, so its last row would sit under the page controls at rest. The page gets that much
         // more height (the controls below are small in edit mode), instead of a bottom row cut off until you scroll.
         Column(Modifier.layout { measurable, constraints ->

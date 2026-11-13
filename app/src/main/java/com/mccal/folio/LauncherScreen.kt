@@ -1225,6 +1225,8 @@ fun LauncherScreen(
             val besideHome = if (geometry.expanded) panelWidth.coerceAtLeast(0.dp) else 0.dp
             OwnMethod { Column(Modifier.align(if (state.leftHanded) Alignment.BottomEnd else Alignment.BottomStart).width(pagerWidth)
                 .onSizeChanged { bottomControlsHeight = with(density) { it.height.toDp() } }
+                // In edit mode the unfolded page is pushed down for the bar, so these controls drop a little to stay clear of the last row.
+                .offset(y = animateDpAsState(if (homeEdit.active && geometry.expanded) JIGGLE_BAR_CONTROLS_DROP else 0.dp, label = "controls drop").value)
                 .padding(start = if (state.leftHanded) 0.dp else besideHome + FolioSpace.LARGE.dp,
                     end = if (state.leftHanded) besideHome + FolioSpace.LARGE.dp else 0.dp, bottom = FolioSpace.SNUG.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 if (!isDefaultHome && !homeEdit.active && !drag.active) PreviewBar(onUseAsHome = { sheet = ""; onMakeDefault() },
@@ -1357,32 +1359,33 @@ fun LauncherScreen(
                     }
                 }
             }
-            // Unfolded, a camera off the middle puts the island pill over the far page's edit pills: the bar then steps below it.
-            var jiggleBarRightPx by remember { mutableFloatStateOf(0f) }
-            val barLeftPx = (editPillBounds?.left ?: 0) - with(density) { 96.dp.toPx() }
-            val barUnderIsland = geometry.expanded && state.island && homeEdit.active && IslandFootprint.overlapsAcross(barLeftPx, jiggleBarRightPx)
-            SideEffect { JiggleBarSpace.loweredBottomDp = if (barUnderIsland) IslandFootprint.bottomDp + JIGGLE_BAR_UNDER_ISLAND_GAP.value + JIGGLE_BAR_PILL_DRAWN.value else 0f }
+            // Unfolded, a camera off the middle puts the island pill over the far page's edit pills: Done then sits to the right of the pill and
+            // the other pills to its left. Judged from where the pill is and where the bar's pills run, not from the layout that results.
+            val barRightPx = with(density) { pagerWidth.toPx() - FolioSpace.COMFY.dp.toPx() }
+            val barSpanPx = with(density) { JIGGLE_BAR_SPAN.toPx() * LocalDensity.current.fontScale.coerceAtLeast(1f) }
+            val barAroundIsland = geometry.expanded && state.island && homeEdit.active && !state.leftHanded && IslandFootprint.shown &&
+                IslandFootprint.rightPx > barRightPx - barSpanPx && IslandFootprint.leftPx < barRightPx
             androidx.compose.animation.AnimatedVisibility(homeEdit.active && sheet.isEmpty(),
                 // At the top in every posture, as on iOS, clear of the Dynamic Island. Unfolded it used to sit at the bottom beside
                 // the page dots and the Library button, where Edit, Undo and Redo crowded them. Unfolded, the pills gather at the
                 // pager's far end, away from the island at the middle of the top edge.
-                Modifier.align(if (state.leftHanded) Alignment.TopEnd else Alignment.TopStart).width(pagerWidth)
-                    .then(if (geometry.expanded && !barUnderIsland) Modifier.offset(y = -JIGGLE_BAR_LIFT) else Modifier),
+                Modifier.align(if (state.leftHanded) Alignment.TopEnd else Alignment.TopStart).then(if (barAroundIsland) Modifier.fillMaxWidth() else Modifier.width(pagerWidth))
+                    .then(if (geometry.expanded) Modifier.offset(y = -JIGGLE_BAR_LIFT) else Modifier),
                 enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { -it / 2 },
                 exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { -it / 2 }) {
-                Row(Modifier.fillMaxWidth().onGloballyPositioned { jiggleBarRightPx = it.boundsInWindow().right }
-                    .padding(start = FolioSpace.COMFY.dp, end = FolioSpace.COMFY.dp,
-                    top = if (barUnderIsland) IslandFootprint.bottomDp.dp + JIGGLE_BAR_UNDER_ISLAND_GAP
-                        else if (state.island && !geometry.expanded) JIGGLE_BAR_ISLAND_GAP else FolioSpace.HAIR.dp).testTag("jiggle-bar"),
-                    horizontalArrangement = if (geometry.expanded) Arrangement.spacedBy(FolioSpace.SMALL.dp, Alignment.End) else Arrangement.Start,
+                Row(Modifier.fillMaxWidth().padding(start = FolioSpace.COMFY.dp, end = FolioSpace.COMFY.dp,
+                    top = if (state.island && !geometry.expanded) JIGGLE_BAR_ISLAND_GAP else FolioSpace.HAIR.dp).testTag("jiggle-bar"),
+                    horizontalArrangement = if (geometry.expanded && !barAroundIsland) Arrangement.spacedBy(FolioSpace.SMALL.dp, Alignment.End) else Arrangement.Start,
                     verticalAlignment = Alignment.CenterVertically) {
                     val editPage = pager.currentPage.coerceIn(0, homePages - 1)
                     // Folded, the Side Bar carries Add and Done in edit mode (whenever the status rail is on), so the bar keeps only Edit
                     // rather than showing each of them twice. Unfolded the rail is tall with the dock and its drag handle, so Add and Done
                     // join Edit in the bar at the top and the rail keeps nothing at its foot to overlap.
                     val railHasControls = state.verticalStatus && !geometry.expanded
-                    if (!railHasControls) JigglePill("", Icons.Rounded.Add, description = stringResource(R.string.add_widget)) {
-                        picker.slot = model.nextWidgetSlot(); picker.targetIndex = homeCellIndex(editPage, 0); picker.anyApp(); picker.profileSerial = null; sheet = "widgets"
+                    val addPill: @Composable () -> Unit = {
+                        if (!railHasControls) JigglePill("", Icons.Rounded.Add, description = stringResource(R.string.add_widget)) {
+                            picker.slot = model.nextWidgetSlot(); picker.targetIndex = homeCellIndex(editPage, 0); picker.anyApp(); picker.profileSerial = null; sheet = "widgets"
+                        }
                     }
                     // Back and forward beside Edit, as on Apple's: take the last change back, or put it back again. Dimmed when there is nothing to do.
                     // In the narrow strip beside the page there is no width for them in the row, so they stand under Edit instead.
@@ -1400,11 +1403,30 @@ fun LauncherScreen(
                             haptic.perform(FolioHaptic.Commit); model.redoEdit()
                         }
                     }
-                    if (stepsBesideEdit) { editPill(); stepPills() }
-                    else Column { editPill(); Row { stepPills() } }
-                    // Unfolded, keep all three together at the top right instead of spread across two pages.
-                    if (!geometry.expanded) Spacer(Modifier.weight(1f))
-                    if (!railHasControls) JigglePill(stringResource(R.string.done), emphasized = true) { haptic.perform(FolioHaptic.Commit); homeEdit.stop() }
+                    val donePill: @Composable () -> Unit = {
+                        if (!railHasControls) JigglePill(stringResource(R.string.done), emphasized = true) { haptic.perform(FolioHaptic.Commit); homeEdit.stop() }
+                    }
+                    if (barAroundIsland) {
+                        // The pills to the left of the island end beside it, and Done starts beside its far edge.
+                        val gap = JIGGLE_BAR_ISLAND_SIDE_GAP
+                        val leftRoom = with(density) { (IslandFootprint.leftPx - FolioSpace.COMFY.dp.toPx()).toDp() } - gap
+                        Box(Modifier.width(leftRoom.coerceAtLeast(0.dp)), contentAlignment = Alignment.CenterEnd) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
+                                addPill()
+                                if (stepsBesideEdit) { editPill(); stepPills() }
+                                else Column { editPill(); Row { stepPills() } }
+                            }
+                        }
+                        Spacer(Modifier.width(with(density) { (IslandFootprint.rightPx - IslandFootprint.leftPx).toDp() } + gap * 2))
+                        donePill()
+                    } else {
+                        addPill()
+                        if (stepsBesideEdit) { editPill(); stepPills() }
+                        else Column { editPill(); Row { stepPills() } }
+                        // Unfolded, keep all three together at the top right instead of spread across two pages.
+                        if (!geometry.expanded) Spacer(Modifier.weight(1f))
+                        donePill()
+                    }
                 }
             }
             if (!inLibrary && !drag.active) OwnMethod { Column(Modifier.align(railBottom(state.leftHanded)).railEdge(state.leftHanded, 12.dp + caseFitInset).padding(bottom = FolioSpace.SNUG.dp)
