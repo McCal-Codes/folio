@@ -114,7 +114,7 @@ class StatusStyleJsonTest {
     @Test fun unknownGlyphAndOutOfRangeFrostFallBack() {
         val json = org.json.JSONObject().put("glyph", "SPARKLES").put("railGlass", 3.0)
         val style = StatusStyle.fromJson(json)
-        assertEquals(StatusGlyph.STACK, style.glyph)
+        assertEquals(StatusGlyph.GAUGE, style.glyph)
         assertEquals(1f, style.railGlass)
         assertEquals(StatusStyle(), StatusStyle.fromJson(null))
     }

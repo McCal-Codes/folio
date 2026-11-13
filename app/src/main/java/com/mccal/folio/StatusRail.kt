@@ -58,7 +58,7 @@ data class StatusStyle(
     val showTime: Boolean = true,
     val showDate: Boolean = true,
     val showBatteryPercent: Boolean = true,
-    val glyph: StatusGlyph = StatusGlyph.STACK,
+    val glyph: StatusGlyph = StatusGlyph.GAUGE,
     val colorfulBattery: Boolean = true,
     /** Frost strength shared by the status, dock and island capsules (0 = clear, 1 = solid). */
     val railGlass: Float = .26f,
@@ -84,7 +84,7 @@ data class StatusStyle(
         fun fromJson(j: org.json.JSONObject?): StatusStyle = if (j == null) StatusStyle() else StatusStyle(
             showTime = j.optBoolean("showTime", true), showDate = j.optBoolean("showDate", true),
             showBatteryPercent = j.optBoolean("showBatteryPercent", true),
-            glyph = runCatching { StatusGlyph.valueOf(j.optString("glyph")) }.getOrDefault(StatusGlyph.STACK),
+            glyph = runCatching { StatusGlyph.valueOf(j.optString("glyph")) }.getOrDefault(StatusGlyph.GAUGE),
             colorfulBattery = j.optBoolean("colorfulBattery", true),
             railGlass = j.optDouble("railGlass", .26).toFloat().coerceIn(0f, 1f),
             showSilent = j.optBoolean("showSilent", true),
@@ -528,14 +528,17 @@ fun StatusRail(
                                 ink.copy(alpha = if (i < activeDots) 1f else faint(.28f)), w * GAUGE_DOT_RADIUS,
                                 Offset(center.x + (i - 2) * w * GAUGE_DOT_PITCH, w * dotsY))
                         }
-                        if (showsReading) Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center,
+                        if (showsReading) Box(
+                            contentAlignment = Alignment.Center,
                             modifier = Modifier.padding(top = visualSize *
                                 ((ringCenter - GAUGE_RADIUS) - readingSize * .97f).coerceAtLeast(0f))
                         ) {
+                            // The number sits exactly on the ring's centre line; the charging bolt hangs off its left side rather than sharing the row,
+                            // which would push the digits to the right of the Wi-Fi mark and the dots under them.
                             if (status.charging && !fullCheck) {
-                                Icon(Icons.Rounded.Bolt, null, tint = if (style.colorfulBattery) charging else ink, modifier = Modifier.size((visualSize.value * readingSize * .85f / fontScale).dp))
+                                val bolt = (visualSize.value * readingSize * .85f / fontScale).dp
+                                Icon(Icons.Rounded.Bolt, null, tint = if (style.colorfulBattery) charging else ink,
+                                    modifier = Modifier.align(Alignment.CenterStart).offset(x = -bolt).size(bolt))
                             }
                             androidx.compose.animation.AnimatedContent(fullCheck, label = "gauge check", // english-only
                                 transitionSpec = {
