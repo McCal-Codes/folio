@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -37,7 +38,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -134,10 +134,10 @@ internal fun PhotoWidgetCard(onEdit: () -> Unit) {
     var showOptions by remember { mutableStateOf(false) }
     val reduce = LocalReduceMotion.current
     // The long-press menu's Customize and Remove this photo reach the card through PhotoWidgetBus.
-    val optionsRequest by PhotoWidgetBus.optionsRequests.collectAsState()
+    val optionsRequest by PhotoWidgetBus.optionsRequests.collectAsStateWithLifecycle()
     var seenRequest by remember { mutableIntStateOf(optionsRequest) }
     LaunchedEffect(optionsRequest) { if (optionsRequest != seenRequest) { seenRequest = optionsRequest; showOptions = true } }
-    val changes by PhotoWidgetBus.changes.collectAsState()
+    val changes by PhotoWidgetBus.changes.collectAsStateWithLifecycle()
     LaunchedEffect(changes) { if (changes > 0) state = PhotoWidgetStore.load(context) }
     fun update(next: PhotoWidgetState) { state = next; PhotoWidgetStore.save(context, next) }
 

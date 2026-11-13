@@ -248,7 +248,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     val pick = { row: CustomizationPage -> if (sidebar) selected == row else null }
                     SheetGroup {
                         // General holds what you open once: updates, what's new, language, help, the roadmap, credits.
-                        val updateWaiting by SoftwareUpdate.status.collectAsState()
+                        val updateWaiting by SoftwareUpdate.status.collectAsStateWithLifecycle()
                         TweakRow(Icons.Rounded.Settings, FolioColors.Value.Gray, stringResource(R.string.general), "customization-general",
                             if (updateWaiting is SoftwareUpdate.Status.Available) "1" else null, selected = pick(CustomizationPage.GENERAL), chevron = !sidebar) { onPage(CustomizationPage.GENERAL) }
                         MenuDivider()
@@ -554,7 +554,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         if (state.leftPage == "DISCOVER") {
                             // Asked when the choice is made or the page opens, so the answer is here before anyone swipes right and meets an error.
                             val probeContext = androidx.compose.ui.platform.LocalContext.current
-                            val discoverRefused by DiscoverAvailability.refused.collectAsState()
+                            val discoverRefused by DiscoverAvailability.refused.collectAsStateWithLifecycle()
                             LaunchedEffect(Unit) { DiscoverAvailability.refresh(probeContext) }
                             if (discoverRefused) CardNote(stringResource(R.string.discover_refused_note), modifier = Modifier.testTag("discover-refused-note"))
                         }
@@ -894,7 +894,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 CustomizationPage.GENERAL -> {
                     val generalContext = androidx.compose.ui.platform.LocalContext.current
                     SheetGroup {
-                        val updateStatus by SoftwareUpdate.status.collectAsState()
+                        val updateStatus by SoftwareUpdate.status.collectAsStateWithLifecycle()
                         TweakRow(Icons.Rounded.SystemUpdate, FolioColors.Value.Gray, stringResource(R.string.software_update), "customization-software-update",
                             if (updateStatus is SoftwareUpdate.Status.Available) "1" else null) { onPage(CustomizationPage.SOFTWARE_UPDATE) }
                         MenuDivider()
@@ -997,14 +997,14 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 }
                 CustomizationPage.ADVANCED -> {
                     SettingsCard(stringResource(R.string.screenshot_mode)) {
-                        val screenshot by ScreenshotMode.on.collectAsState()
+                        val screenshot by ScreenshotMode.on.collectAsStateWithLifecycle()
                         SettingsSwitch(stringResource(R.string.screenshot_mode), screenshot, ScreenshotMode::set, "screenshot-mode-switch")
                         CardNote(stringResource(R.string.for_sharing_your_setup_folio_shows_9_41))
                         IosNavRow(stringResource(R.string.screenshot_swap_apps), null, { onPage(CustomizationPage.SCREENSHOT_SWAP) }, "screenshot-swap-row")
                     }
                     // Android 15 added the recording callback this needs; on older Android the card is not offered.
                     if (PrivateRecording.supported && remember { FeatureGate.PRIVATE_RECORDING.isOpen(sheetContext) }) SettingsCard(stringResource(R.string.private_while_recording)) {
-                        val privateWhileRecording by PrivateRecording.enabled.collectAsState()
+                        val privateWhileRecording by PrivateRecording.enabled.collectAsStateWithLifecycle()
                         SettingsSwitch(stringResource(R.string.private_while_recording), privateWhileRecording, { PrivateRecording.setEnabled(sheetContext, it) }, "private-while-recording-switch")
                         CardNote(stringResource(R.string.while_folio_s_screen_is_recorded_or_shared))
                     }
@@ -1133,9 +1133,9 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 CustomizationPage.SUPPORTER -> SupporterPage(onSoftwareUpdate = { onPage(CustomizationPage.SOFTWARE_UPDATE) })
                 CustomizationPage.SYSTEM_BRIDGE -> SystemBridgePage()
                 // The model's apps, not the sheet's state: Home's state is disguised while Screenshot Mode is on.
-                CustomizationPage.SCREENSHOT_SWAP -> ScreenshotSwapPage(model.state.collectAsState().value.apps)
+                CustomizationPage.SCREENSHOT_SWAP -> ScreenshotSwapPage(model.state.collectAsStateWithLifecycle().value.apps)
                 // The real apps for the same reason: in Screenshot Mode the editor should name the apps it changes.
-                CustomizationPage.ICON_ACTIONS -> IconActionsSettingsPage(model.state.collectAsState().value.apps, state.iconActions, model::setIconActions, model::setAllIconActions)
+                CustomizationPage.ICON_ACTIONS -> IconActionsSettingsPage(model.state.collectAsStateWithLifecycle().value.apps, state.iconActions, model::setIconActions, model::setAllIconActions)
                 CustomizationPage.DEVELOPER -> DeveloperPage(onShowBuild = { onClose(); DevBuild.reopen.intValue++ }, onClose = onClose)
                 CustomizationPage.PERMISSIONS -> PermissionsPage(isDefaultHome, onMakeDefault, onShadeSetup)
                 CustomizationPage.THEMES -> ThemesPage(state, model, backgrounds.previewBitmap)
@@ -2076,7 +2076,7 @@ internal fun focusRowStatus(context: android.content.Context, mode: FocusMode, o
 @Composable private fun FocusListPage(state: LauncherState, model: LauncherModel, onOpen: (String) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var access by remember { mutableStateOf(FocusController.hasAccess(context)) }
-    val reason by model.focusReason.collectAsState()
+    val reason by model.focusReason.collectAsStateWithLifecycle()
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(lifecycle) { lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) { access = FocusController.hasAccess(context) } }
     SheetGroup {
@@ -2177,7 +2177,7 @@ internal fun focusRowStatus(context: android.content.Context, mode: FocusMode, o
     }
     SettingsCard(stringResource(R.string.home_screen)) {
         // The real page count: while a Focus hides pages, Home's own state is the filtered copy.
-        val real by model.state.collectAsState()
+        val real by model.state.collectAsStateWithLifecycle()
         val pages = real.layout.pageCount
         Text(stringResource(R.string.show_pages), style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = FolioSpace.TINY.dp))
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
@@ -3031,7 +3031,7 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
     val hidden = state.apps.filter { it.id in state.hiddenApps }.sortedBy { it.label.lowercase() }
     var unlocked by remember { mutableStateOf(false) }
     // Private While Recording: the row and its count go, and the list relocks.
-    val recording by PrivateRecording.on.collectAsState()
+    val recording by PrivateRecording.on.collectAsStateWithLifecycle()
     androidx.compose.runtime.LaunchedEffect(recording) { if (recording) unlocked = false }
     if (hidden.isEmpty() || recording) return
     if (!unlocked) {
@@ -3160,7 +3160,7 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
     // Per-page looks (after Atria): each page can have its own icon size and labels.
     SheetGroupLabel(stringResource(R.string.pages))
     // Real pages and styles (a Focus hiding pages renumbers the state Home draws), collected so the chips update.
-    val real by model.state.collectAsState()
+    val real by model.state.collectAsStateWithLifecycle()
     val realPages = real.layout.pageCount
     SheetGroup {
         repeat(realPages) { page ->
@@ -3193,7 +3193,7 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
 @Composable private fun IslandAlertSettings(on: Boolean, appsOff: Set<String>, onOn: (Boolean) -> Unit, onChooseApps: () -> Unit) {
     SettingsSwitch(stringResource(R.string.other_notifications_2), on, onOn, "island-alerts-switch")
     if (on) {
-        val channels by IslandListenerService.messageChannels.collectAsState()
+        val channels by IslandListenerService.messageChannels.collectAsStateWithLifecycle()
         val seen = channels.values.filter { !it.isMessage }.map { it.packageName }.toSet() + appsOff
         IosNavRow(stringResource(R.string.apps), if (seen.isEmpty()) null else stringResource(R.string.count_of_total, (seen - appsOff).size, seen.size), onChooseApps, "island-alert-apps")
     }
@@ -3204,7 +3204,7 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
 /** Dynamic Island › Other Notifications: which apps' notifications pop up in the island (apps appear once they've sent one). */
 @Composable private fun IslandAlertApps(appsOff: Set<String>, avoidDouble: Boolean, onApp: (String, Boolean) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val channels by IslandListenerService.messageChannels.collectAsState()
+    val channels by IslandListenerService.messageChannels.collectAsStateWithLifecycle()
     val seen = channels.values.filter { !it.isMessage }.groupBy { it.packageName }
     val pm = context.packageManager
     fun label(pkg: String) = seen[pkg]?.first()?.appLabel
@@ -3238,7 +3238,7 @@ private class DuetHome(val layer: androidx.compose.ui.graphics.layer.GraphicsLay
 /** Messaging apps Folio has seen, and whether each one pops up through Android or the island. */
 @Composable private fun MessageChannelList() {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val channels by IslandListenerService.messageChannels.collectAsState()
+    val channels by IslandListenerService.messageChannels.collectAsStateWithLifecycle()
     val list = channels.values.filter { it.isMessage }.sortedWith(compareBy({ !it.popsUp }, { it.appLabel }))
     if (list.isEmpty()) CardNote(stringResource(R.string.messaging_apps_appear_here_after_they_po))
     list.forEach { channel ->
@@ -3365,7 +3365,7 @@ internal fun layoutSnapshotsShown(layoutHistory: Boolean, layoutDamaged: Boolean
 @Composable internal fun LayoutHistoryCard(state: LauncherState, model: LauncherModel, onClose: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(Unit) { LayoutHistory.load(context) }
-    val snapshots by LayoutHistory.snapshots.collectAsState()
+    val snapshots by LayoutHistory.snapshots.collectAsStateWithLifecycle()
     var confirm by remember { mutableStateOf<LayoutSnapshot?>(null) }
     SettingsCard(stringResource(R.string.layout_history)) {
         Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.CenterVertically) {
@@ -3567,8 +3567,8 @@ internal fun layoutSnapshotsShown(layoutHistory: Boolean, layoutDamaged: Boolean
 /** Settings › Software Update, laid out like iOS: the version, one clear action, and automatic updates. */
 @Composable private fun SoftwareUpdatePage(onBackup: (String) -> Unit = {}, onSupporter: () -> Unit = {}) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val status by SoftwareUpdate.status.collectAsState()
-    val betaNote by SoftwareUpdate.betaNote.collectAsState()
+    val status by SoftwareUpdate.status.collectAsStateWithLifecycle()
+    val betaNote by SoftwareUpdate.betaNote.collectAsStateWithLifecycle()
     val installed = remember { SoftwareUpdate.installedVersion(context) }
     val supported = SoftwareUpdate.supported(context)
     // Like iOS: the page checks when you open it, unless a check already ran this session.
@@ -3655,9 +3655,9 @@ internal fun layoutSnapshotsShown(layoutHistory: Boolean, layoutDamaged: Boolean
 /** Software Update › Older versions: going back is a rollback build under a higher versionCode, after an offer to back up. */
 @Composable private fun OlderVersions(onBackup: (String) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val found by SoftwareUpdate.rollbacks.collectAsState()
-    val failed by SoftwareUpdate.rollbackLookupFailed.collectAsState()
-    val status by SoftwareUpdate.status.collectAsState()
+    val found by SoftwareUpdate.rollbacks.collectAsStateWithLifecycle()
+    val failed by SoftwareUpdate.rollbackLookupFailed.collectAsStateWithLifecycle()
+    val status by SoftwareUpdate.status.collectAsStateWithLifecycle()
     var confirming by remember { mutableStateOf<SoftwareUpdate.Release?>(null) }
     SettingsCard(stringResource(R.string.rollback_card)) {
         val list = found
@@ -3872,7 +3872,7 @@ internal fun readCapped(input: java.io.InputStream, limit: Int): ByteArray? {
         SettingsCard(stringResource(R.string.bridge_root_title)) {
             CardNote(stringResource(R.string.bridge_root_note))
             SystemBridge.pausedNote(off, safe)?.let { CardNote(stringResource(it), Modifier.testTag("bridge-root-paused")) }
-            val status by RootHingeTester.status.collectAsState()
+            val status by RootHingeTester.status.collectAsStateWithLifecycle()
             val testing = status is RootHingeTester.Status.Running
             val found = (status as? RootHingeTester.Status.Done)?.report
             // The result lands whichever screen is showing (the Fold swaps displays mid-test), so the saved state is read again when it does.
@@ -3939,7 +3939,7 @@ internal fun readCapped(input: java.io.InputStream, limit: Int): ByteArray? {
                 SettingsSwitch(stringResource(R.string.bridge_rootgrant_allow), allow, { on -> allow = on; RootHingeStore.setAllowRootGrant(context, on) }, "bridge-rootgrant-allow")
                 CardNote(stringResource(R.string.bridge_rootgrant_note))
                 if (allow && !off && !safe) {
-                    val gs by RootSettingsGrantTester.status.collectAsState()
+                    val gs by RootSettingsGrantTester.status.collectAsStateWithLifecycle()
                     val working = gs is RootSettingsGrantTester.Status.Running
                     LaunchedEffect(gs) { granted = SecureSettingsGrant.isGranted(context); states = read() }
                     DisposableEffect(Unit) { onDispose { RootSettingsGrantTester.dismiss() } }
@@ -4026,7 +4026,7 @@ internal fun readCapped(input: java.io.InputStream, limit: Int): ByteArray? {
  */
 @Composable private fun AirPodsBridgeCard(off: Boolean, safe: Boolean, rootState: RootState) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val ui by AirPodsRoot.state.collectAsState()
+    val ui by AirPodsRoot.state.collectAsStateWithLifecycle()
     val ready = rootState == RootState.READY
     SettingsCard(stringResource(R.string.airpods_root_title)) {
         CardNote(stringResource(R.string.airpods_root_note))
@@ -4035,7 +4035,7 @@ internal fun readCapped(input: java.io.InputStream, limit: Int): ByteArray? {
         val done = read as? AirPodsRead.Done
         // The AirPods' own broadcast (no root, AirPodsBle.kt) wins over the system record while it is not expired.
         AirPodsBleSurface(BleSurface.BRIDGE)
-        val bleRead by AirPodsBle.state.collectAsState()
+        val bleRead by AirPodsBle.state.collectAsStateWithLifecycle()
         val now = rememberAirPodsNow()
         val shown = AirPodsFreshness.best((bleRead as? AirPodsBleRead.Found)?.battery, (done?.reading as? AirPodsReading.Found)?.battery, now)
         val numbers = shown?.let { AirPodsBleText.line(context, it, now) }

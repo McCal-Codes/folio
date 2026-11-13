@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
@@ -7,7 +8,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
@@ -45,7 +45,7 @@ private val BAR_GRADIENT = arrayOf(0f to CrackgateColors.BarTop, .3f to Crackgat
 @Composable
 internal fun CrackgateFault(shown: CrackgateShown) {
     val look = shown.look
-    val reduce = CrackgateOwner.reduceMotion.collectAsState()
+    val reduce = CrackgateOwner.reduceMotion.collectAsStateWithLifecycle()
     val fade = remember(shown) { Animatable(if (reduce.value) 1f else 0f) }
     val barTop = remember(shown) { Animatable(look.barTopPercent) }
     val endGap = remember(shown) { Animatable(look.barEndGapPercent) }

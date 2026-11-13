@@ -145,8 +145,8 @@ Not yet:
 - Private loops: `EverywhereOverlay.kt:184` still polls every 600 ms for a full-screen app. The Smart Stack rotation
   runs under `repeatOnLifecycle(RESUMED)` now, and `StatusRail` and `MicroHome` take the shared minute tick.
 - Reduce Motion is binary (scale exactly 0), and `DiscoverFrame.kt:44` reads the setting itself.
-- 16 `collectAsState()` left, in `CustomizationSheet.kt`, `StandBy.kt` and `EverywhereOverlay.kt`; everything else
-  collects with the lifecycle, the island included.
+- No `collectAsState()` left: every collection follows the lifecycle, the island and the overlay windows included (an
+  overlay's own owner runs from RESUMED until its window is removed).
 - Only 3 polite live regions; island notices and page changes are silent to TalkBack.
 
 ## Gaps
@@ -156,7 +156,7 @@ Not yet:
 | 1 | Name the springs Folio actually needs (`Settle`, `Quick`, `Firm`, plus `Sheet`, `Menu`, `Bounce` for switches) and move call sites onto them | M |
 | 2 | Sheet motion on a spring, growing from the source, with detents | M |
 | 3 | ~~Smart Stack rotation behind `repeatOnLifecycle`; `StatusRail` and `MicroHome` clocks onto `Ticker`~~ (done) | S |
-| 4 | ~~`collectAsState` → `collectAsStateWithLifecycle`~~ (done for the island, the cover, installs, notifications and the update status). Left: `CustomizationSheet.kt`, `StandBy.kt` (open in other pull requests) and `EverywhereOverlay.kt`, whose window has no lifecycle to follow | S |
+| 4 | ~~`collectAsState` → `collectAsStateWithLifecycle`~~ (done everywhere, 13 Nov 2026) | S |
 | 5 | ~~`DiscoverFrame` reads Reduce Motion through `reduceMotionEnabled()`~~ (done; it is a View, so it uses the helper `LocalReduceMotion` is built from). **Not** "a scale below 1 counts as Reduce Motion", as this row used to say: a scale of 0.5 means the person wants animations *faster*, not gone. Honouring the scale as a speed, alongside Animation Speed, is the right shape and is its own decision | S |
 | 6 | ~~Live regions for island notices and page changes~~ (done) | S |
 | 7 | Carry velocity into a re-grabbed page settle (part of the 0.7.1 Home swipe work; measure first) | M |

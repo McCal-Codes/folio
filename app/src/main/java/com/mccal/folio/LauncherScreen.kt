@@ -269,7 +269,7 @@ fun LauncherScreen(
     // When the Google app refuses to serve Discover (see DiscoverAvailability) the choice shows Today View instead of an error page.
     val discoverContext = androidx.compose.ui.platform.LocalContext.current
     remember { DiscoverAvailability.load(discoverContext) }
-    val discoverRefused by DiscoverAvailability.refused.collectAsState()
+    val discoverRefused by DiscoverAvailability.refused.collectAsStateWithLifecycle()
     LaunchedEffect(state.leftPage) { if (state.leftPage == "DISCOVER") DiscoverAvailability.refresh(discoverContext) }
     val todayMode = state.leftPage == "TODAY" || (state.leftPage == "DISCOVER" && discoverRefused)
     val discoverMode = state.leftPage == "DISCOVER" && !discoverRefused
@@ -2066,7 +2066,7 @@ fun LauncherScreen(
                 AppIconEditor(app, state.appIconStyles[app.id] ?: AppIconOverride(), onChange = { model.setAppIconStyle(app.id, it) }, onDone = { overlays.iconEditor = null },
                     actions = if (FeatureGate.ICON_ACTIONS.isOpen(launcherActivity) && !SafeMode.active) state.iconActions[app.id] ?: IconActions() else null,
                     // The real apps: while Screenshot Mode swaps them, Home's state carries the stand-ins' names.
-                    apps = model.state.collectAsState().value.apps, onActions = { model.setIconActions(app.id, it) })
+                    apps = model.state.collectAsStateWithLifecycle().value.apps, onActions = { model.setIconActions(app.id, it) })
             }
         }
         appsById[overlays.rename]?.let { app ->

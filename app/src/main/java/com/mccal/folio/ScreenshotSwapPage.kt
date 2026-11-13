@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,7 +11,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -36,7 +36,7 @@ import kotlinx.coroutines.withContext
 internal fun ScreenshotSwapPage(apps: List<AppEntry>) {
     val context = LocalContext.current
     remember { ScreenshotSwap.load(context) }
-    val rules by ScreenshotSwap.rules.collectAsState()
+    val rules by ScreenshotSwap.rules.collectAsStateWithLifecycle()
     val choosable = remember(apps) { apps.filter { !it.isShortcut } }
     val packages = remember(choosable) { choosable.mapTo(mutableSetOf()) { it.packageName } }
     val system by produceState<Set<String>?>(null, packages) { value = withContext(Dispatchers.IO) { systemPackages(context, packages) } }
