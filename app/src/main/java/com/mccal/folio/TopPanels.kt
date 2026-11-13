@@ -849,7 +849,9 @@ internal fun relativeMinutes(time: Long, now: Long): Long = ((now - time) / 60_0
 internal enum class CcControl(@androidx.annotation.StringRes val label: Int) {
     ROTATION(R.string.rotation_lock), DND(R.string.do_not_disturb), FLASHLIGHT(R.string.flashlight), CAMERA(R.string.camera), TIMER(R.string.timer),
     ALARM(R.string.alarm), CALCULATOR(R.string.calculator), SCREENSHOT(R.string.screenshot), LOCK(R.string.lock_screen), WALLET(R.string.wallet),
-    NOTES(R.string.notes), HOTSPOT(R.string.hotspot), BATTERY_SAVER(R.string.battery_saver), SETTINGS(R.string.settings), SYSTEM(R.string.android_quick_settings);
+    NOTES(R.string.notes), HOTSPOT(R.string.hotspot), BATTERY_SAVER(R.string.battery_saver), SETTINGS(R.string.settings), SYSTEM(R.string.android_quick_settings),
+    // Apple's other tiles that open a system page or app without any special permission.
+    CAST(R.string.screen_mirroring), DISPLAY(R.string.display), ACCESSIBILITY(R.string.accessibility), RECORDER(R.string.recorder), LOCATION(R.string.location), VPN(R.string.vpn);
 
     companion object {
         val DEFAULTS = listOf(ROTATION, DND, FLASHLIGHT, CAMERA, TIMER, CALCULATOR, SCREENSHOT, SYSTEM).map { it.name }
@@ -874,6 +876,12 @@ private fun CcControl.icon(): ImageVector = when (this) {
     CcControl.BATTERY_SAVER -> Icons.Rounded.BatterySaver
     CcControl.SETTINGS -> Icons.Rounded.Settings
     CcControl.SYSTEM -> Icons.Rounded.Tune
+    CcControl.CAST -> Icons.Rounded.Cast
+    CcControl.DISPLAY -> Icons.Rounded.BrightnessMedium
+    CcControl.ACCESSIBILITY -> Icons.Rounded.Accessibility
+    CcControl.RECORDER -> Icons.Rounded.Mic
+    CcControl.LOCATION -> Icons.Rounded.LocationOn
+    CcControl.VPN -> Icons.Rounded.VpnKey
 }
 
 @Composable
@@ -956,6 +964,12 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
             CcControl.BATTERY_SAVER -> open(Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS))
             CcControl.SETTINGS -> open(Intent(Settings.ACTION_SETTINGS))
             CcControl.SYSTEM -> { onClose(); onSystem() }
+            CcControl.CAST -> openFirst(R.string.screen_mirroring, listOf(Intent(Settings.ACTION_CAST_SETTINGS)))
+            CcControl.DISPLAY -> open(Intent(Settings.ACTION_DISPLAY_SETTINGS))
+            CcControl.ACCESSIBILITY -> open(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            CcControl.RECORDER -> openFirst(R.string.recorder, listOf(Intent(MediaStore.Audio.Media.RECORD_SOUND_ACTION)))
+            CcControl.LOCATION -> open(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+            CcControl.VPN -> open(Intent(Settings.ACTION_VPN_SETTINGS))
         }
     }
 
@@ -1066,7 +1080,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                 CC_BRIGHTNESS -> Icons.Rounded.LightMode; CC_VOLUME -> Icons.AutoMirrored.Rounded.VolumeUp; else -> Icons.Rounded.DarkMode }, true) } +
                 CcControl.entries.filter { it !in chosen && available(it) }.map { c -> CcGalleryItem(c.name, stringResource(c.label), c.icon(), false) }
         }
-        if (galleryOpen && edit.active) CcControlGallery(galleryItems, panel = panelBounds, fit = fitNow, onFit = { galleryFit = it }, onDismiss = { galleryOpen = false }, onAdd = { item ->
+        if (galleryOpen && edit.active) CcControlGallery(galleryItems, panel = panelBounds, fit = fitNow, minFit = FolioTouch.MIN / cell.value, onFit = { galleryFit = it }, onDismiss = { galleryOpen = false }, onAdd = { item ->
             if (item.module) onCcLayout(CcSavedLayout(cols, ccAdd(slots, item.id, cols, slotMoveRows) ?: slots, focusOn)) else onControls(controlNames + item.id)
             if (galleryItems.size <= 1) galleryOpen = false
         })

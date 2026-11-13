@@ -77,7 +77,8 @@ class CcOptionsTest {
     @Test fun `only the one-shot tiles close Control Center, and only when asked`() {
         val on = CcOptions(closeAfterToggle = true)
         val off = CcOptions()
-        val oneShot = setOf(CcControl.FLASHLIGHT, CcControl.CAMERA, CcControl.CALCULATOR, CcControl.SCREENSHOT, CcControl.SETTINGS, CcControl.LOCK, CcControl.WALLET, CcControl.NOTES)
+        val oneShot = setOf(CcControl.FLASHLIGHT, CcControl.CAMERA, CcControl.CALCULATOR, CcControl.SCREENSHOT, CcControl.SETTINGS, CcControl.LOCK, CcControl.WALLET, CcControl.NOTES,
+            CcControl.CAST, CcControl.DISPLAY, CcControl.ACCESSIBILITY, CcControl.RECORDER, CcControl.LOCATION, CcControl.VPN)
         for (control in CcControl.entries) {
             assertFalse("${control.name} never closes it while the option is off", ccClosesAfterTap(control, off))
             assertEquals(control.name, control in oneShot, ccClosesAfterTap(control, on))

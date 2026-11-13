@@ -695,6 +695,10 @@
     <string name="notes">메모</string>
     <string name="hotspot">핫스팟</string>
     <string name="battery_saver">절전 모드</string>
+    <string name="screen_mirroring">화면 미러링</string>
+    <string name="display">디스플레이</string>
+    <string name="recorder">녹음기</string>
+    <string name="vpn">VPN</string>
     <string name="settings">설정</string>
     <string name="more_in_settings">설정에 %1$d개 더 있음</string>
     <string name="android_quick_settings">Android 빠른 설정</string>

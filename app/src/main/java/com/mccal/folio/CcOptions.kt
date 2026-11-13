@@ -87,6 +87,7 @@ internal object CcLastPage {
 internal val CC_ONE_SHOT_CONTROLS: Set<CcControl> = setOf(
     CcControl.FLASHLIGHT, CcControl.CAMERA, CcControl.CALCULATOR, CcControl.SCREENSHOT,
     CcControl.SETTINGS, CcControl.LOCK, CcControl.WALLET, CcControl.NOTES,
+    CcControl.CAST, CcControl.DISPLAY, CcControl.ACCESSIBILITY, CcControl.RECORDER, CcControl.LOCATION, CcControl.VPN,
 )
 
 internal fun ccClosesAfterTap(control: CcControl, options: CcOptions): Boolean = options.closeAfterToggle && control in CC_ONE_SHOT_CONTROLS

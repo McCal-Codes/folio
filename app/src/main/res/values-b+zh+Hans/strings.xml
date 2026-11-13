@@ -696,6 +696,10 @@
     <string name="notes">备忘录</string>
     <string name="hotspot">个人热点</string>
     <string name="battery_saver">省电模式</string>
+    <string name="screen_mirroring">屏幕镜像</string>
+    <string name="display">显示</string>
+    <string name="recorder">录音机</string>
+    <string name="vpn">VPN</string>
     <string name="settings">设置</string>
     <string name="more_in_settings">设置中还有 %1$d 项</string>
     <string name="android_quick_settings">Android 快捷设置</string>

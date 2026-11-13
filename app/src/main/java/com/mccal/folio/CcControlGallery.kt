@@ -75,13 +75,13 @@ internal fun ccGalleryFilter(items: List<CcGalleryItem>, query: String): List<Cc
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun CcControlGallery(items: List<CcGalleryItem>, panel: androidx.compose.ui.geometry.Rect? = null, fit: Float = 1f, onFit: (Float) -> Unit = {}, onAdd: (CcGalleryItem) -> Unit, onDismiss: () -> Unit) {
+internal fun CcControlGallery(items: List<CcGalleryItem>, panel: androidx.compose.ui.geometry.Rect? = null, fit: Float = 1f, minFit: Float = CC_GALLERY_MIN_FIT, onFit: (Float) -> Unit = {}, onAdd: (CcGalleryItem) -> Unit, onDismiss: () -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
     val shown = ccGalleryFilter(items, query)
     // On a wide window (the unfolded Fold, a tablet) it floats as a card, as on an iPad: beside the panel when there is room, else low under it. It can be dragged.
     val wide = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= CC_GALLERY_CARD_MIN_WIDTH_DP
     if (wide) androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
-        FloatingGalleryCard(items, shown, query, { query = it }, panel, fit, onFit, onAdd, onDismiss)
+        FloatingGalleryCard(items, shown, query, { query = it }, panel, fit, minFit, onFit, onAdd, onDismiss)
     } else ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(Modifier.navigationBarsPadding().padding(horizontal = FolioSpace.LARGE.dp).padding(bottom = FolioSpace.LARGE.dp)) {
             GalleryBody(items, shown, query, { query = it }, onAdd)
@@ -94,12 +94,12 @@ internal data class CcCardPlacement(val x: Float, val y: Float, val maxHeight: F
 
 /**
  * The scale that fits Control Center (from [panelTop] down, [panelHeight] tall at full size, in px) above a low card whose top is [cardTop], keeping [margin] between them,
- * so the card never covers a control. 1 when it already fits; never below [CC_GALLERY_MIN_FIT], below which the controls would be too small to use (the card is draggable then).
+ * so the card never covers a control. 1 when it already fits; never below [minFit], which keeps a tile at least the minimum touch size (the card is draggable past that).
  */
-internal fun ccGalleryFit(panelTop: Float, panelHeight: Float, cardTop: Float, margin: Float): Float =
-    if (panelHeight <= 0f) 1f else ((cardTop - margin - panelTop) / panelHeight).coerceIn(CC_GALLERY_MIN_FIT, 1f)
+internal fun ccGalleryFit(panelTop: Float, panelHeight: Float, cardTop: Float, margin: Float, minFit: Float = CC_GALLERY_MIN_FIT): Float =
+    if (panelHeight <= 0f) 1f else ((cardTop - margin - panelTop) / panelHeight).coerceIn(minFit.coerceAtMost(1f), 1f)
 
-/** The least Control Center shrinks to while the gallery card stands low under it. */
+/** The least Control Center shrinks to when nothing says better. */
 internal const val CC_GALLERY_MIN_FIT = .6f
 
 /**
@@ -129,7 +129,7 @@ internal const val CC_GALLERY_MOVE_STEP_DP = 48
 
 @Composable
 private fun FloatingGalleryCard(items: List<CcGalleryItem>, shown: List<CcGalleryItem>, query: String, onQuery: (String) -> Unit,
-    panel: androidx.compose.ui.geometry.Rect?, fit: Float, onFit: (Float) -> Unit, onAdd: (CcGalleryItem) -> Unit, onDismiss: () -> Unit) {
+    panel: androidx.compose.ui.geometry.Rect?, fit: Float, minFit: Float, onFit: (Float) -> Unit, onAdd: (CcGalleryItem) -> Unit, onDismiss: () -> Unit) {
     val density = androidx.compose.ui.platform.LocalDensity.current
     val config = androidx.compose.ui.platform.LocalConfiguration.current
     val winW = with(density) { config.screenWidthDp.dp.toPx() }
@@ -148,7 +148,7 @@ private fun FloatingGalleryCard(items: List<CcGalleryItem>, shown: List<CcGaller
     fun nudge(dx: Float, dy: Float) { shiftX += dx; shiftY += dy }
     // Standing low, the card would cover the controls: Control Center shrinks to fit above it, and comes back to full size when the card moves off or closes.
     // [bounds] is where the panel stands now, at the scale [fit] it has, so its full height is that divided by the scale.
-    val shrink = if (place.low && cardH > 0) ccGalleryFit(bounds[1], (bounds[3] - bounds[1]) / fit, y, margin) else 1f
+    val shrink = if (place.low && cardH > 0) ccGalleryFit(bounds[1], (bounds[3] - bounds[1]) / fit, y, margin, minFit) else 1f
     androidx.compose.runtime.LaunchedEffect(shrink) { onFit(shrink) }
     androidx.compose.runtime.DisposableEffect(Unit) { onDispose { onFit(1f) } }
     val move = stringResource(R.string.cc_gallery_move)
