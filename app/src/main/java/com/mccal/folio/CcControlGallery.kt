@@ -123,7 +123,7 @@ internal fun ccGalleryCardPlacement(winW: Float, winH: Float, panel: FloatArray,
 }
 
 /** The share of the window's height the card takes when it stands low under the controls. */
-internal const val CC_GALLERY_LOW_CARD_HEIGHT = .4f
+internal const val CC_GALLERY_LOW_CARD_HEIGHT = .45f
 /** How far one step of the move actions shifts the card, in dp. */
 internal const val CC_GALLERY_MOVE_STEP_DP = 48
 
