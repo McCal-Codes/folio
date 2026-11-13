@@ -349,7 +349,7 @@ internal fun VisualWidgetPicker(
                     val cappedFolio = selectedApp == null && FOLIO_WIDGETS !in expandedApps && builtins.size > columns
                     header("duo-widgets", folioLabel, if (cappedFolio) builtins.size else null)
                     items(if (cappedFolio) builtins.take(columns) else builtins, key = { "builtin-${it.first}" }) { (id, label, icon) ->
-                        GalleryCard(label, stringResource(R.string.folio), stringResource(if (id == BIG_CLOCK_WIDGET || id == MUSIC_WIDGET) R.string.wide else R.string.small), Modifier.testTag("widget-builtin-$id")
+                        GalleryCard(label, stringResource(R.string.folio), stringResource(when (id) { BIG_CLOCK_WIDGET, MUSIC_WIDGET -> R.string.wide; PHOTO_WIDGET -> R.string.tall; else -> R.string.small }), Modifier.testTag("widget-builtin-$id")
                             .clickable { focusManager.clearFocus(); keyboard?.hide(); onBuiltin(id) }) {
                             Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(22.dp))
                                 .background(Color.White.copy(alpha = .1f)), contentAlignment = Alignment.Center) {

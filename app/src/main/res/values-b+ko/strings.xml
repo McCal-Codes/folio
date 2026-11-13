@@ -722,6 +722,7 @@
     <string name="change_photos">사진 변경</string>
     <string name="play_slideshow">슬라이드쇼 재생</string>
     <string name="pause_slideshow">슬라이드쇼 일시 정지</string>
+    <string name="tall">길게</string>
     <string name="photo_options">사진 옵션</string>
     <string name="photo_show_date">날짜 표시</string>
     <string name="photo_shuffle">셔플</string>

@@ -94,8 +94,9 @@ private fun PhotoOptionsDialog(state: PhotoWidgetState, onChange: (PhotoWidgetSt
         title = { Text(stringResource(R.string.photo_options)) },
         text = {
             Column {
-                androidx.compose.material3.TextButton(onChangePhotos, Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp)) {
-                    Text(stringResource(R.string.change_photos))
+                Row(Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp).clickable(role = Role.Button, onClick = onChangePhotos),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.change_photos), color = androidx.compose.material3.MaterialTheme.colorScheme.primary)
                 }
                 @Composable fun switchRow(label: String, on: Boolean, set: (Boolean) -> Unit) = Row(
                     Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp).toggleable(on, role = Role.Switch, onValueChange = set),
