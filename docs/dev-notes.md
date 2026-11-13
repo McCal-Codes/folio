@@ -1,16 +1,14 @@
 # Folio Dev notes: steps to try in this build
 
-Optional. Each "- " line becomes a checkbox on Folio Dev's "New build" page (Settings > General > What's New > This build).
+Optional. Each "- " line becomes a checkbox on Folio Dev's "New build" page (Settings > General > Tips > This build). The build number is the branch's commit count, so a higher number is always the newer build.
 
-- Market app checks: add a source whose app lists no developer. The sheet should say why Install with Folio is missing.
-- Shorter What's New: open What's New. Each feature should be one short line, with room for more than two above Continue.
-- Island tint and ticker: get a notification. The pill should match the app's color.
-- App menu color: hold an app. The menu should take the icon's color.
-- Unfolded spacing: unfold flat, then part way. The pages should ease apart.
-- Nixie and Minimal clocks: pick each in StandBy.
-- StandBy widgets: tap or flick the card to switch.
-- Ambient lamp: prop the Fold in tent pose. The cover screen should glow.
-- Page edge: swipe past the first page. It should pull back softly.
-- Expand a widget: hold Clock, Calendar or Vitals and choose Expand temporarily.
-- Status rail: plug in. A small bolt should show.
-- Control Center: flip Battery Saver. Tap Bluetooth for its panel.
+- Photos widget: add Photos from the widget picker, pick a few photos, and watch it advance. Tap it for Show the date, Shuffle and the speed.
+- Photos menu: hold the widget. Customize opens its options and Remove this photo takes the showing photo out.
+- Widget menu: hold any widget. Remove sits at the bottom, and More options holds custom size and pages.
+- Edit mode rail: on the cover screen, hold Home. The side buttons should not overlap the Undo bar.
+- Undo and redo: move an icon, then tap Undo in the top bar, then Redo.
+- Control Center edit: open Control Center, tap Edit, hold a tile to move it, drag a corner to resize it.
+- Add a Control: tap Add in Control Center's edit mode. Search, and check the sections.
+- Reduce Motion: turn it on in Settings. The Photos widget should switch photos with no fade and show no play button.
+- Large text: set the phone's font size to the largest. Check the widget menu and Photos options for clipping.
+- Tips: open Settings > General > Tips. Each new feature should have a row, newest version first.

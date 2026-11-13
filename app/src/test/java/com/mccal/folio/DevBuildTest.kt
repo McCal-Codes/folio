@@ -30,6 +30,16 @@ class DevBuildTest {
         assertEquals("a colon after 40 characters is part of the title", long to null, DevBuild.split(long))
     }
 
+    @Test fun `a build number comes from the file and shows beside the branch and commit`() {
+        val numbered = DevBuild.parse("""{"branch":"b","sha":"abc12345","dirty":true,"build":1031,"builtAt":"","commits":[]}""")!!
+        assertEquals(1031, numbered.build)
+        assertEquals("Build 1031 · b · abc12345+", DevBuild.chip(numbered))
+        assertTrue(DevBuild.summary(numbered).startsWith("Folio Dev build 1031 b abc12345"))
+        // A file from before builds were numbered still reads, with no number shown.
+        assertEquals(0, info().build); assertNull(DevBuild.buildLabel(info()))
+        assertEquals("capability-broker · 465d9147", DevBuild.chip(info()))
+    }
+
     @Test fun `no checklist is fine and a damaged file is nothing`() {
         assertEquals(emptyList<String>(), DevBuild.parse("""{"branch":"b","sha":"s","builtAt":"","commits":[]}""")!!.notes)
         assertNull(DevBuild.parse("not json")); assertNull(DevBuild.parse("""{"branch":"b"}"""))

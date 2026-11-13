@@ -103,7 +103,7 @@ internal class SettingsScroll(private var page: CustomizationPage, offset: Int) 
     }
 }
 
-internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, ISLAND_ADVANCED, SUPPORTER, SUPPORTERS, GENERAL, SUPPORT, FOLD_TWEAK, ACCESSIBILITY, SYSTEM_BRIDGE, WHAT_TO_TEST, DEVELOPER, SCREENSHOT_SWAP, STORAGE, ICON_ACTIONS;
+internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS, GESTURES, FOLD, BACKUP, HELP, SIDE_KEY, LOCK, CREDITS, TWEAKS, TWEAK, MARKET, ADVANCED, NOTIFICATIONS, SEARCH, TODAY, ISLAND, PERMISSIONS, FOCUS, FOCUS_MODE, THEMES, COMING_SOON, TWEAK_LIBRARY, SOFTWARE_UPDATE, LIBRARY_TWEAK, ISLAND_APPS, ISLAND_ADVANCED, SUPPORTER, SUPPORTERS, GENERAL, SUPPORT, FOLD_TWEAK, ACCESSIBILITY, SYSTEM_BRIDGE, WHAT_TO_TEST, DEVELOPER, SCREENSHOT_SWAP, STORAGE, ICON_ACTIONS, TIPS;
 
     /** The page Back returns to: the nav bar button and the system Back gesture both use it. */
     val parent: CustomizationPage get() = when (this) {
@@ -113,7 +113,7 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         FOCUS_MODE -> FOCUS
         ISLAND_APPS, ISLAND_ADVANCED -> ISLAND
         // The pages you open once live under General, as iOS keeps them under General › About.
-        SOFTWARE_UPDATE, ADVANCED, BACKUP, HELP, COMING_SOON, CREDITS, STORAGE, PERMISSIONS, SUPPORT -> GENERAL
+        SOFTWARE_UPDATE, ADVANCED, BACKUP, HELP, COMING_SOON, CREDITS, STORAGE, PERMISSIONS, SUPPORT, TIPS -> GENERAL
         SUPPORTER, SUPPORTERS -> SUPPORT
         SYSTEM_BRIDGE, SCREENSHOT_SWAP -> ADVANCED
         WHAT_TO_TEST -> HELP
@@ -168,6 +168,7 @@ internal enum class CustomizationPage { OVERVIEW, SETUP, WALLPAPER, HOME, STATUS
         SUPPORT -> R.string.support_folio
         SUPPORTER -> R.string.supporter
         WHAT_TO_TEST -> R.string.what_to_test
+        TIPS -> R.string.tips
     }
 }
 
@@ -341,6 +342,11 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 // The old Setup Checklist lives on in Privacy & Permissions (one list of everything Folio can use).
                 CustomizationPage.SETUP -> PermissionsPage(isDefaultHome, onMakeDefault, onShadeSetup)
                 CustomizationPage.COMING_SOON -> ComingSoonPage()
+                CustomizationPage.TIPS -> {
+                    val tipsContext = androidx.compose.ui.platform.LocalContext.current
+                    TipsPage(onShowWhatsNew = { onClose(); onShowWhatsNew() },
+                        onShowBuild = if (DevBuild.isDevApp(tipsContext) && DevBuild.load(tipsContext) != null) ({ onClose(); DevBuild.reopen.intValue++ }) else null)
+                }
                 CustomizationPage.WHAT_TO_TEST -> WhatToTestPage(onOpenSetup = { onClose(); onShowWelcome() })
                 CustomizationPage.WALLPAPER -> {
                     val wallpaperContext = androidx.compose.ui.platform.LocalContext.current
@@ -892,14 +898,11 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         TweakRow(Icons.Rounded.SystemUpdate, FolioColors.Value.Gray, stringResource(R.string.software_update), "customization-software-update",
                             if (updateStatus is SoftwareUpdate.Status.Available) "1" else null) { onPage(CustomizationPage.SOFTWARE_UPDATE) }
                         MenuDivider()
-                        TweakRow(Icons.Rounded.NewReleases, FolioColors.Value.Green, stringResource(R.string.what_s_new), "customization-whats-new",
-                            "v" + WhatsNew.currentVersion(generalContext)) { onClose(); onShowWhatsNew() }
-                        if (DevBuild.isDevApp(generalContext) && DevBuild.load(generalContext) != null) {
-                            MenuDivider()
-                            TweakRow(Icons.Rounded.Build, FolioColors.Value.Orange, DevBuild.THIS_BUILD_LABEL, "customization-dev-build",
-                                DevBuild.load(generalContext)?.sha) { onClose(); DevBuild.reopen.intValue++ }
-                        }
+                        // What's New, This build and every earlier feature live on the Tips page, one row here.
+                        TweakRow(Icons.Rounded.Lightbulb, FolioColors.Value.Green, stringResource(R.string.tips), "customization-tips",
+                            "v" + WhatsNew.currentVersion(generalContext)) { onPage(CustomizationPage.TIPS) }
                     }
+
                     SheetGroup {
                         // Android's own per-app language screen (13+), which lists every language Folio ships, as iOS does.
                         if (android.os.Build.VERSION.SDK_INT >= 33) {
@@ -1524,6 +1527,7 @@ internal val SettingsIndex: List<Triple<Int, Int, CustomizationPage>> = listOf(
     Triple(R.string.settings_supporter_code, R.string.settings_keywords_supporter_code, CustomizationPage.SUPPORTER),
     Triple(R.string.roadmap, R.string.settings_keywords_roadmap, CustomizationPage.COMING_SOON),
     Triple(R.string.what_to_test, R.string.settings_keywords_what_to_test, CustomizationPage.WHAT_TO_TEST),
+    Triple(R.string.tips, R.string.settings_keywords_tips, CustomizationPage.TIPS),
     Triple(R.string.help, R.string.settings_keywords_help, CustomizationPage.HELP),
     Triple(R.string.credits, R.string.settings_keywords_credits, CustomizationPage.CREDITS),
     Triple(R.string.supporters, R.string.settings_keywords_supporters, CustomizationPage.SUPPORTERS),

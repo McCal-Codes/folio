@@ -1955,6 +1955,10 @@
     <string name="open_the_new_setup">새 설정 열기</string>
     <string name="what_to_test_none">이 빌드에는 테스트할 항목이 없습니다.</string>
     <string name="settings_keywords_what_to_test">테스트 베타 테스터 체크리스트 보고</string>
+    <string name="tips">팁</string>
+    <string name="settings_keywords_tips">팁 새로운 기능 새 소식 가이드 사용법 버전 기록</string>
+    <string name="tips_none">아직 팁이 없습니다.</string>
+    <string name="tips_footer">Folio에 새 기능이 생기면 여기에 표시됩니다.</string>
     <string name="roadmap_updated">%1$s 업데이트됨</string>
     <string name="roadmap_saved_copy">%1$s에 저장된 사본</string>
     <string name="supporter_expired_beta_note">후원자 코드가 %1$s에 만료되어 Folio가 지금은 공개 버전만 찾습니다. Ko-fi에서 갱신해 새 코드를 받은 뒤 설정 › 후원자에서 등록하세요.</string>

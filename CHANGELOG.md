@@ -8,6 +8,9 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.7.0] - Unreleased
 
 ### Added
+- **Tips:** Settings > General > Tips lists every new feature, newest version first, with What's New and, on Folio Dev, This build one tap away. New features appear there with no second list to keep. The Korean and Chinese text is machine translated.
+- **Photos widget:** pick up to 20 photos and Home shows them one at a time, with a soft fade, the date if you like, and a play and pause button. Tap it for Show the date, Shuffle and a speed of 5, 10 or 30 seconds, hold it for Customize and Remove this photo. With Reduce Motion on the photos switch without a fade. The Korean and Chinese text is machine translated.
+- **A calmer widget menu:** holding a widget shows its sizes and everyday actions first, Remove stays pinned at the bottom, and custom size, pages and stack order sit behind More options. Home's side buttons no longer overlap the Undo bar.
 - **Search the Market:** the Packages tab has a search box that filters by name, id, author or section as you type, and says so when nothing matches. The Korean and Chinese text is machine translated.
 - **Wi-Fi network name:** the status rail shows the name of the Wi-Fi network under the Wi-Fi mark, and a long name slides sideways to show all of it (it is shortened with Reduce Motion on). Android gives a network name only to apps with precise location, so Settings > Notifications & Control Center has a "Show Wi-Fi network name" row that asks for it; Folio reads just the name, never your position, and without it the rail says Wi-Fi as before. The Korean and Chinese text is machine translated.
 - **Seek in Now Playing:** tap or drag along the progress line on Control Center's Now Playing tile or the Music widget's Poster to move the track there, with the times following your finger. It works when the player allows seeking.

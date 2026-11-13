@@ -46,6 +46,8 @@ internal data class DevCommit(val sha: String, val subject: String)
 internal data class DevBuildInfo(
     val branch: String, val sha: String, val builtAt: String, val dirty: Boolean,
     val commits: List<DevCommit>, val notes: List<String>,
+    /** The number of commits on the branch when this was built: it only rises, so a higher number is always the newer build. 0 when the file has none. */
+    val build: Int = 0,
 )
 
 /** The build that was on the phone before this one, as remembered when its welcome page was closed. */
@@ -76,11 +78,20 @@ internal object DevBuild {
         val commits = o.optJSONArray("commits")
         val notes = o.optJSONArray("notes")
         DevBuildInfo(
-            branch = o.getString("branch"), sha = o.getString("sha"), builtAt = o.optString("builtAt"), dirty = o.optBoolean("dirty"),
+            branch = o.getString("branch"), sha = o.getString("sha"), builtAt = o.optString("builtAt"), dirty = o.optBoolean("dirty"), build = o.optInt("build", 0),
             commits = (0 until (commits?.length() ?: 0)).map { commits!!.getJSONObject(it).let { c -> DevCommit(c.getString("sha"), c.getString("subject")) } },
             notes = (0 until (notes?.length() ?: 0)).map { notes!!.getString(it) },
         )
     }.getOrNull()
+
+    /** "Build 1031", or nothing for a file written before builds were numbered. */
+    fun buildLabel(info: DevBuildInfo): String? = info.build.takeIf { it > 0 }?.let { "Build $it" } // english-only
+
+    /** The commit, with a plus when the tree had changes the commit does not hold, so a build made before its commit is not mistaken for it. */
+    fun shaLabel(info: DevBuildInfo): String = info.sha + if (info.dirty) "+" else ""
+
+    /** The chip under the title: build, branch and commit, whichever the file has. */
+    fun chip(info: DevBuildInfo): String = listOfNotNull(buildLabel(info), info.branch, shaLabel(info)).joinToString(" · ")
 
     fun load(context: Context): DevBuildInfo? = if (!isDevApp(context)) null
         else runCatching { context.assets.open("dev-build.json").bufferedReader().use { parse(it.readText()) } }.getOrNull()
@@ -146,7 +157,7 @@ internal object DevBuild {
 
     /** Text for an issue or a message: which build this is, with nothing about the person. */
     fun summary(info: DevBuildInfo): String = buildString {
-        append("Folio Dev ").append(info.branch).append(' ').append(info.sha).append(if (info.dirty) " (uncommitted changes)" else "")
+        append("Folio Dev ").append(buildLabel(info)?.let { it.lowercase() + " " } ?: "").append(info.branch).append(' ').append(info.sha).append(if (info.dirty) " (uncommitted changes)" else "")
         append(", built ").append(info.builtAt)
     }
 }
@@ -216,7 +227,7 @@ internal fun DevBuildSheet(info: DevBuildInfo, seen: DevBuildSeen, onDismiss: ()
                     Text(when (kind) { DevBuild.Kind.FIRST -> DevText.WELCOME; DevBuild.Kind.NEW -> DevText.NEW_BUILD; DevBuild.Kind.REOPENED -> DevText.THIS_BUILD },
                         color = white, fontSize = FolioType.TITLE.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                         modifier = Modifier.padding(top = FolioSpace.COMFY.dp))
-                    Text(info.branch + " · " + info.sha, color = FolioColors.Cyan, fontSize = FolioType.FOOTNOTE.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                    Text(DevBuild.chip(info), color = FolioColors.Cyan, fontSize = FolioType.FOOTNOTE.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
                         modifier = Modifier.padding(top = FolioSpace.SMALL.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(FolioRadius.CONTROL.dp))
                             .background(FolioColors.Cyan.copy(alpha = .16f)).padding(horizontal = FolioSpace.COMPACT.dp, vertical = FolioSpace.TINY.dp).testTag("dev-build-sha"))
                     Text(when (kind) { DevBuild.Kind.FIRST -> DevText.WELCOME_BODY; DevBuild.Kind.NEW -> DevText.NEW_BODY; DevBuild.Kind.REOPENED -> DevText.REOPENED_BODY },
@@ -247,7 +258,7 @@ internal fun DevBuildSheet(info: DevBuildInfo, seen: DevBuildSeen, onDismiss: ()
                     }
                 }
                 if (changes.isNotEmpty()) {
-                    SheetGroupLabel(DevBuild.THIS_BUILD_LABEL + " (${info.sha})")
+                    SheetGroupLabel(DevBuild.THIS_BUILD_LABEL + " (${DevBuild.shaLabel(info)})")
                     changes.take(DevBuild.LEAD_ROWS).forEach { c -> WhatsNew.symbol(c.subject).let { (icon, color) -> DevRow(icon, androidx.compose.ui.graphics.Color(color), c.subject, c.sha) } }
                     val rest = changes.drop(DevBuild.LEAD_ROWS)
                     if (rest.isNotEmpty() && !moreOpen) SheetGroup(Modifier.padding(top = FolioSpace.MEDIUM.dp)) {
