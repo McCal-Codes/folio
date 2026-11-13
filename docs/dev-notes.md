@@ -5,7 +5,8 @@ Optional. Each "- " line becomes a checkbox on Folio Dev's "New build" page (Set
 - Photos widget: add Photos from the widget picker, pick a few photos, and watch it advance. Tap it for Show the date, Shuffle and the speed.
 - Photos menu: hold the widget. Customize opens its options and Remove this photo takes the showing photo out.
 - Widget menu: hold any widget. Remove sits at the bottom, and More options holds custom size and pages.
-- Edit mode rail: on the cover screen, hold Home. The side buttons should not overlap the Undo bar.
+- Edit bar: hold Home, unfolded and on the cover screen. Add, Edit, Undo, Redo and Done should sit at the top with nothing overlapping, and the dock handle under the dock stays clear.
+- Blue dot: watch the top right for the location dot. Folio reads the Wi-Fi name about every 20 seconds, which may light it. A fix is planned: read the name once per network.
 - Undo and redo: move an icon, then tap Undo in the top bar, then Redo.
 - Control Center edit: open Control Center, tap Edit, hold a tile to move it, drag a corner to resize it.
 - Add a Control: tap Add in Control Center's edit mode. Search, and check the sections.

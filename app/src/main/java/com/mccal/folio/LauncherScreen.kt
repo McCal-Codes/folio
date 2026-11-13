@@ -1370,9 +1370,10 @@ fun LauncherScreen(
                     horizontalArrangement = if (geometry.expanded) Arrangement.spacedBy(FolioSpace.SMALL.dp, Alignment.End) else Arrangement.Start,
                     verticalAlignment = Alignment.CenterVertically) {
                     val editPage = pager.currentPage.coerceIn(0, homePages - 1)
-                    // The Side Bar already carries Add and Done in edit mode (whenever the status rail is on, folded or not), so the bar keeps only Edit
-                    // rather than showing each of them twice, and stays clear of the page dots.
-                    val railHasControls = state.verticalStatus
+                    // Folded, the Side Bar carries Add and Done in edit mode (whenever the status rail is on), so the bar keeps only Edit
+                    // rather than showing each of them twice. Unfolded the rail is tall with the dock and its drag handle, so Add and Done
+                    // join Edit in the bar at the top and the rail keeps nothing at its foot to overlap.
+                    val railHasControls = state.verticalStatus && !geometry.expanded
                     if (!railHasControls) JigglePill("", Icons.Rounded.Add, description = stringResource(R.string.add_widget)) {
                         picker.slot = model.nextWidgetSlot(); picker.targetIndex = homeCellIndex(editPage, 0); picker.anyApp(); picker.profileSerial = null; sheet = "widgets"
                     }
@@ -1403,7 +1404,7 @@ fun LauncherScreen(
                 .width(preset.dockWidth.dp), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
                 val controlSize = dockIconSize(geometry.iconSize).dp
-                if (homeEdit.active && state.verticalStatus) {
+                if (homeEdit.active && state.verticalStatus && !geometry.expanded) {
                     CircleControl(Icons.Rounded.Add, stringResource(R.string.add_widget), "rail-add-widget", controlSize) {
                         val editPage = pager.currentPage.coerceIn(0, homePages - 1)
                         picker.slot = model.nextWidgetSlot()
@@ -1418,7 +1419,7 @@ fun LauncherScreen(
                         haptic.perform(FolioHaptic.Commit)
                         homeEdit.stop()
                     }
-                } else {
+                } else if (!(homeEdit.active && geometry.expanded)) {
                     if (pager.currentPage == -1) CircleControl(Icons.Rounded.ArrowForward, stringResource(R.string.back_to_home), "discover-home", controlSize) { scope.launch { pager.animateScrollToPage(0) } }
                     val searchBounds = remember { android.graphics.Rect() }
                     if (!state.searchPill || pager.currentPage !in 0 until homePages) Box(Modifier.onGloballyPositioned { searchBounds.set(it.boundsInWindow().toAndroidBounds()) }) {
