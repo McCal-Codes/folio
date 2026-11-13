@@ -1144,8 +1144,8 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
         val connectivity = listOf(
             ConnectivityItem(Icons.Rounded.AirplanemodeActive, stringResource(R.string.airplane_mode_2), status.airplane, AccentOrange) { open(Intent(Settings.ACTION_AIRPLANE_MODE_SETTINGS)) },
-            ConnectivityItem(Icons.Rounded.SignalCellularAlt, stringResource(R.string.cellular_data), !status.airplane && (status.cellularLevel ?: 0) > 0, AccentGreen) { open(Intent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY)) },
-            ConnectivityItem(Icons.Rounded.Wifi, stringResource(R.string.wi_fi), status.wifiConnected, AccentBlue) { open(Intent(Settings.Panel.ACTION_WIFI)) },
+            ConnectivityItem(Icons.Rounded.SignalCellularAlt, stringResource(R.string.cellular_data), !status.airplane && (status.cellularLevel ?: 0) > 0, AccentGreen, status.carrierName) { open(Intent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY)) },
+            ConnectivityItem(Icons.Rounded.Wifi, stringResource(R.string.wi_fi), status.wifiConnected && !status.airplane, AccentBlue, status.wifiName) { open(Intent(Settings.Panel.ACTION_WIFI)) },
             ConnectivityItem(Icons.Rounded.Bluetooth, stringResource(R.string.bluetooth), controls.bluetoothOn, AccentBlue) {
                 val panel = Intent("android.settings.panel.action.BLUETOOTH")
                 val target = if (panel.resolveActivity(context.packageManager) != null) panel else Intent(Settings.ACTION_BLUETOOTH_SETTINGS)
@@ -1521,7 +1521,12 @@ private fun ConnectivityList(items: List<ConnectivityItem>, modifier: Modifier) 
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text(item.label, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
-                    Text(stringResource(if (item.on) R.string.state_on else R.string.state_off), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp)
+                    // The name of the network or carrier, sliding sideways when it is too long for the row (ellipsized when motion is reduced).
+                    val reduce = LocalReduceMotion.current
+                    val name = item.detail?.takeIf { item.on }
+                    Text(name ?: stringResource(if (item.on) R.string.state_on else R.string.state_off), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp,
+                        maxLines = 1, overflow = if (reduce) TextOverflow.Ellipsis else TextOverflow.Clip,
+                        modifier = if (name == null || reduce) Modifier else Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 600, velocity = 24.dp))
                 }
             }
         }
@@ -1564,7 +1569,8 @@ private fun EditableControl(control: CcControl, on: Boolean, accent: Color, cell
     }
 }
 
-private data class ConnectivityItem(val icon: ImageVector, val label: String, val on: Boolean, val accent: Color, val onClick: () -> Unit)
+/** [detail] is the network or carrier name shown instead of "On" while the connection is on (null when Android does not give one). */
+private data class ConnectivityItem(val icon: ImageVector, val label: String, val on: Boolean, val accent: Color, val detail: String? = null, val onClick: () -> Unit)
 
 /** Elapsed and total position for a playing track, ticking once a second while playing. */
 @Composable

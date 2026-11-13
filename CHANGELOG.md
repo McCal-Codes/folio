@@ -8,6 +8,9 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.7.0] - Unreleased
 
 ### Added
+- **Six more tiles:** Screen Mirroring, Display, Accessibility, Recorder, Location and VPN open the phone's own page for each, and each can be added from Add a Control.
+- **Undo and redo on Home:** two buttons beside Edit undo and redo the last change; the Undo pill that appears after a change fades away after a few seconds and sits above the dock.
+- **Control Center fits the window:** the Add a Control card on a short window shrinks the panel above it instead of covering the last row, never below the 48 dp touch size; the minus badges hang off the left edge of small tiles so they no longer cover the icon; Home's Edit bar no longer shows two Add or Done buttons.
 - **Control Center editor (beta):** in Control Center's edit mode, press and hold a control to move it, drag its corner to resize it, and use the minus to take it off. Places and sizes are saved, and Reset puts the usual page back.
 - **Control Center hold cards (beta):** every module can be taken off and added back from a searchable Add a Control sheet, the edit handles follow each control's corner, and on a wide screen Control Center can sit on the right, in the middle, or on the left. Press and hold brightness or volume for a card with Auto brightness, or Media, Ring and Alarm sliders.
 - **Fit more dock apps:** an optional switch in Dock settings. On a short screen it lets dock places and icons shrink below the 48 dp touch size so more apps fit. Off by default.

@@ -71,10 +71,12 @@ class DeviceStatusMonitor(private val context: Context) : DefaultLifecycleObserv
     private var networkRegistered = false
     private var phoneRegistered = false
     private var receiverRegistered = false
-    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+    // Android hands out the network's name only to a callback that asks for location info (and only once location is allowed), so the capabilities it reports are kept and read from.
+    @Volatile private var networkCaps: NetworkCapabilities? = null
+    private val networkCallback = object : ConnectivityManager.NetworkCallback(FLAG_INCLUDE_LOCATION_INFO) {
         override fun onAvailable(network: Network) = updateConnection()
-        override fun onLost(network: Network) = updateConnection()
-        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) = updateConnection()
+        override fun onLost(network: Network) { networkCaps = null; updateConnection() }
+        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) { networkCaps = capabilities; updateConnection() }
     }
     private fun carrierOrNull(): String? = runCatching { phone.networkOperatorName }.getOrNull()?.trim()?.takeIf { it.isNotEmpty() }
     private val phoneCallback = object : TelephonyCallback(), TelephonyCallback.SignalStrengthsListener {
@@ -125,7 +127,7 @@ class DeviceStatusMonitor(private val context: Context) : DefaultLifecycleObserv
 
     @Suppress("DEPRECATION")
     private fun updateConnection() {
-        val caps = runCatching { connection.getNetworkCapabilities(connection.activeNetwork) }.getOrNull()
+        val caps = networkCaps ?: runCatching { connection.getNetworkCapabilities(connection.activeNetwork) }.getOrNull()
         val info = (caps?.transportInfo as? WifiInfo) ?: runCatching { wifi.connectionInfo }.getOrNull()
         val connected = info?.supplicantState == SupplicantState.COMPLETED || caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
         val level = info?.rssi?.takeIf { connected && it > -127 }?.let { WifiManager.calculateSignalLevel(it, 5) }
