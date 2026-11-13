@@ -1086,6 +1086,7 @@
     <string name="changes_appearance_only">외관만 변경합니다.</string>
     <string name="dismiss">닫기</string>
     <string name="undo">실행 취소</string>
+    <string name="redo">다시 실행</string>
     <string name="no_screenshots">스크린샷 없음</string>
     <string name="its_publisher_hasn_t_shown_what_it_looks">게시자가 아직 미리보기 이미지를 제공하지 않았습니다.</string>
     <string name="text_1_s_for_folio_folio_package_2_s">Folio용 %1$s: folio://package/%2$s</string>

@@ -525,6 +525,8 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     private val mutable = MutableStateFlow(load())
     val state = mutable.asStateFlow()
     private var undoLayout: Pair<HomeLayout, HomeLayout>? = null
+    /** What Undo just took back, as (the layout now, the layout it undid): Redo puts the second back while the first is still what Home shows. */
+    private var redoPair: Pair<HomeLayout, HomeLayout>? = null
     private var undoImportSettings: UndoImportSettings? = null
     /**
      * Smart Stacks a restored backup took off Home because an old overflow widget in it kept their slot number, with the
@@ -1377,6 +1379,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         val old = mutable.value
         if (old.layout == next) return false
         undoLayout = old.layout to next
+        redoPair = null
         undoImportSettings = null
         mutable.value = old.copy(homeSlots = next.slots, leadingSlots = next.leadingSlots, dock = next.dock,
             widgetPlacements = next.widgetPlacements, folders = next.folders,
@@ -1408,8 +1411,19 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         undoLayout = null
         undoImportSettings = null
         setAsideStacks = null
+        redoPair = mutable.value.layout to after
         persist()
         return true
+    }
+
+    /** Whether Redo has something to put back: only while Home still shows the layout Undo left, so any later edit ends it. */
+    fun canRedoEdit(layout: HomeLayout): Boolean = redoPair?.first == layout
+
+    /** Puts back what Undo just took away, as one more edit (so Undo works on it again). */
+    fun redoEdit(): Boolean {
+        val (now, undone) = redoPair ?: return false
+        if (mutable.value.layout != now) return false
+        return commitLayout(undone)
     }
     fun setLabels(value: Boolean) { if (statePayloadInvalid) return; undoLayout = null; undoImportSettings = null; mutable.update { it.copy(labels = value, canUndoEdit = false) }; persist() }
     /** Adds an empty Home page after the last one; returns its index. */

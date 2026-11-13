@@ -134,6 +134,9 @@ fun homeControlsSpace(isDefaultHome: Boolean, measuredDp: Float): Float =
  */
 const val JIGGLE_BAR_CLUSTER_DP = 124f
 
+/** How long the Undo pill stays after a change to Home, in ms. */
+const val UNDO_PILL_MS = 5000L
+
 /**
  * Whether the edit bar sits beside the page rather than above its first row: the upright unfolded window keeps its grid centered
  * with the dock as a bottom bar, so the grid starts further from the window's edge than the bar's pills reach. Judged from

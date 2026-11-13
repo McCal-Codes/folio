@@ -1092,6 +1092,7 @@
     <string name="changes_appearance_only">Changes appearance only.</string>
     <string name="dismiss">Dismiss</string>
     <string name="undo">Undo</string>
+    <string name="redo">Redo</string>
     <string name="no_screenshots">No screenshots</string>
     <string name="its_publisher_hasn_t_shown_what_it_looks">Its publisher hasn\'t shown what it looks like yet.</string>
     <string name="text_1_s_for_folio_folio_package_2_s">%1$s for Folio: folio://package/%2$s</string>

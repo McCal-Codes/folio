@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
@@ -106,14 +107,14 @@ internal fun BoxScope.JiggleRemoveButton(label: String, inset: Dp = 0.dp, onRemo
 /** Glass capsule button for the jiggle-mode bar ("+", "Edit", "Done"). */
 @Composable
 internal fun JigglePill(label: String, icon: ImageVector? = null, description: String = label, emphasized: Boolean = false,
-    modifier: Modifier = Modifier, onClick: () -> Unit) {
+    modifier: Modifier = Modifier, enabled: Boolean = true, onClick: () -> Unit) {
     // The bar sits on the wallpaper, so it follows Home's ink like the Search pill does: white text on a light surface vanished (27 Oct sweep, F03 follow-up).
     val homeInk = LocalHomeInk.current
-    Box(modifier.minimumInteractiveComponentSize(), contentAlignment = Alignment.Center) {
+    Box(modifier.minimumInteractiveComponentSize().alpha(if (enabled) 1f else .4f), contentAlignment = Alignment.Center) {
         Row(Modifier.heightIn(min = 34.dp).clip(CircleShape)
             .background(if (emphasized) (if (homeInk.dark) homeInk.primary.copy(alpha = .92f) else Color.White.copy(alpha = .92f))
                 else if (homeInk.dark) Color.White.copy(alpha = .45f) else Color.White.copy(alpha = .22f))
-            .clickable(role = Role.Button, onClick = onClick).semantics { contentDescription = description }
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick).semantics { contentDescription = description }
             .padding(horizontal = if (label.isEmpty()) 7.dp else FolioSpace.LARGE.dp), verticalAlignment = Alignment.CenterVertically) {
             val ink = if (emphasized) (if (homeInk.dark) Color.White else Color.Black) else homeInk.primary
             icon?.let { Icon(it, null, tint = ink, modifier = Modifier.size(20.dp)) }

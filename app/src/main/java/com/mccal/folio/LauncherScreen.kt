@@ -34,6 +34,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.FormatListBulleted
+import androidx.compose.material.icons.automirrored.rounded.Redo
 import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.animation.core.Animatable
@@ -1322,8 +1323,14 @@ fun LauncherScreen(
                     }
                 }
             } }
+            // The Undo pill is a passing offer: it fades after a few seconds. Undo stays in the edit bar, the rail and Home's menu.
+            var undoPillShown by remember { mutableStateOf(false) }
+            LaunchedEffect(state.editRevision, state.canUndoEdit) {
+                undoPillShown = state.canUndoEdit
+                if (state.canUndoEdit) { kotlinx.coroutines.delay(UNDO_PILL_MS); undoPillShown = false }
+            }
             androidx.compose.animation.AnimatedVisibility(
-                visible = state.canUndoEdit && sheet.isEmpty() && !drag.active,
+                visible = undoPillShown && state.canUndoEdit && sheet.isEmpty() && !drag.active,
                 // Above the dock when it runs along the bottom, not on top of its icons.
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottomControlsHeight + FolioSpace.COMFY.dp +
                     (if (geometry.horizontalDock && !geometry.dockBesideRail) (geometry.dockBarHeight + 8f).dp else 0.dp)),
@@ -1373,9 +1380,24 @@ fun LauncherScreen(
                     if (!railHasControls) JigglePill("", Icons.Rounded.Add, description = stringResource(R.string.add_widget)) {
                         picker.slot = model.nextWidgetSlot(); picker.targetIndex = homeCellIndex(editPage, 0); picker.anyApp(); picker.profileSerial = null; sheet = "widgets"
                     }
-                    JigglePill(stringResource(R.string.edit), modifier = Modifier.onGloballyPositioned { editPillBounds = it.boundsInWindow().roundToIntRect() }) {
-                        overlays.emptyCell = homeEdit.lastEmptyIndex?.takeIf { homeCellPage(it) == editPage } ?: homeCellIndex(editPage, 0)
+                    // Back and forward beside Edit, as on Apple's: take the last change back, or put it back again. Dimmed when there is nothing to do.
+                    // In the narrow strip beside the page there is no width for them in the row, so they stand under Edit instead.
+                    val stepsBesideEdit = !jiggleBarBesideGrid(geometry.horizontalDock, geometry.dockBesideRail, geometry.homeWidth, geometry.gridWidth, LocalDensity.current.fontScale)
+                    val editPill: @Composable () -> Unit = {
+                        JigglePill(stringResource(R.string.edit), modifier = Modifier.onGloballyPositioned { editPillBounds = it.boundsInWindow().roundToIntRect() }) {
+                            overlays.emptyCell = homeEdit.lastEmptyIndex?.takeIf { homeCellPage(it) == editPage } ?: homeCellIndex(editPage, 0)
+                        }
                     }
+                    val stepPills: @Composable () -> Unit = {
+                        JigglePill("", Icons.AutoMirrored.Rounded.Undo, description = stringResource(R.string.undo), enabled = state.canUndoEdit) {
+                            haptic.perform(FolioHaptic.Commit); model.undoEdit()
+                        }
+                        JigglePill("", Icons.AutoMirrored.Rounded.Redo, description = stringResource(R.string.redo), enabled = model.canRedoEdit(state.layout)) {
+                            haptic.perform(FolioHaptic.Commit); model.redoEdit()
+                        }
+                    }
+                    if (stepsBesideEdit) { editPill(); stepPills() }
+                    else Column { editPill(); Row { stepPills() } }
                     // Unfolded, keep all three together at the top right instead of spread across two pages.
                     if (!geometry.expanded) Spacer(Modifier.weight(1f))
                     if (!railHasControls) JigglePill(stringResource(R.string.done), emphasized = true) { haptic.perform(FolioHaptic.Commit); homeEdit.stop() }
