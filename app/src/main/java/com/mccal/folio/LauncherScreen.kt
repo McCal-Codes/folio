@@ -1416,12 +1416,8 @@ fun LauncherScreen(
                         picker.profileSerial = null
                         sheet = "widgets"
                     }
-                    if (state.canUndoEdit) {
-                        CircleControl(Icons.AutoMirrored.Rounded.Undo, stringResource(R.string.undo), "rail-undo", controlSize) {
-                            haptic.perform(FolioHaptic.Commit)
-                            model.undoEdit()
-                        }
-                    }
+                    // Undo and Redo live in the top bar. A third rail button used to appear after the first change and push Add
+                    // up over the dock (seen on the Fold's cover screen).
                     CircleControl(Icons.Rounded.Check, stringResource(R.string.done), "rail-done", controlSize) {
                         haptic.perform(FolioHaptic.Commit)
                         homeEdit.stop()

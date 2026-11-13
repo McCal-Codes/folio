@@ -719,6 +719,8 @@
     <string name="pause_slideshow">Pause slideshow</string>
     <string name="tall">Tall</string>
     <string name="remove_this_photo">Remove this photo</string>
+    <string name="more_options">More options</string>
+    <string name="fewer_options">Fewer options</string>
     <string name="photo_options">Photos options</string>
     <string name="photo_show_date">Show the date</string>
     <string name="photo_shuffle">Shuffle</string>
