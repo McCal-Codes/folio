@@ -702,6 +702,8 @@ private fun RollingNumber(value: Int?, color: Color, fontSize: androidx.compose.
     val rising = value >= previous
     SideEffect { previous = value }
     val text = value.toString()
+    // Digits always read left to right, even in a right-to-left layout.
+    CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         text.forEachIndexed { index, digit ->
             key(text.length - 1 - index) {
@@ -718,6 +720,7 @@ private fun RollingNumber(value: Int?, color: Color, fontSize: androidx.compose.
                 }
             }
         }
+    }
     }
 }
 
