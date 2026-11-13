@@ -30,7 +30,7 @@ internal object Diagnostics {
     private const val LAST_SEEN = "lastSeenWallTime"
     private const val VISIBLE = "visible"
     private const val TRAIL_FILE = "trail.txt"
-    private const val TRAIL_SIZE = 40
+    private const val TRAIL_SIZE = 80
     /** A restart within this long of Folio last being on screen is worth a note. */
     private const val RESTART_WINDOW_MS = 2 * 60_000L
     private const val TRACE_LIMIT = 48_000
@@ -303,6 +303,10 @@ internal object Diagnostics {
         appendLine("Folio diagnostics (${format(System.currentTimeMillis())})")
         appendLine(CrashLog.environment(context))
         appendLine()
+        appendLine(processReport())
+        appendLine()
+        appendLine(widgetReport())
+        appendLine()
         appendLine(hingeReport(context))
         appendLine()
         appendLine(cutoutReport(context))
@@ -319,11 +323,48 @@ internal object Diagnostics {
         append(ownLog().takeLast(20_000))
     }.take(60_000)
 
+    // Many more lines than are kept: the window system writes hundreds a second while a screen changes, so a fixed few hundred were all
+    // that and nothing of Folio's own. [quietLog] drops those before the tail is cut.
     private fun ownLog(): String = runCatching {
-        val process = ProcessBuilder("logcat", "-d", "-t", "400", "-v", "time", "--pid", android.os.Process.myPid().toString())
+        val process = ProcessBuilder("logcat", "-d", "-t", "3000", "-v", "time", "--pid", android.os.Process.myPid().toString())
             .redirectErrorStream(true).start()
-        process.inputStream.bufferedReader().use { it.readText() }.also { process.destroy() }
+        quietLog(process.inputStream.bufferedReader().use { it.readText() }.also { process.destroy() })
     }.getOrDefault("(log unavailable)")
+
+    /** Tags of Android's window, input and drawing system that say nothing about a Folio problem and fill the log on every fold and rotation. */
+    private val LOG_NOISE = setOf("VRI", "ViewRootImpl", "InsetsController", "InsetsSourceConsumer", "BLASTBufferQueue_Java", "InputTransport", "HWUI",
+        "InputMethodManager", "InputMethodManagerUtils", "ImeTracker", "perf_hint", "WindowOnBackDispatcher", "DeviceStateManagerGlobal", "incfs", "libc")
+    private val LOG_LINE = Regex("""^\d\d-\d\d \d\d:\d\d:\d\d\.\d{3} ([VDIWEFA])/([^(]+)\(""")
+
+    /**
+     * [raw] logcat text (`-v time`) without the lines of [LOG_NOISE] tags, so the tail that is kept reaches back to what Folio itself said.
+     * Fatal lines are always kept; a line with no tag (a stack trace's continuation) goes with the line before it.
+     */
+    internal fun quietLog(raw: String): String {
+        var keep = true
+        return raw.lineSequence().filter { line ->
+            val match = LOG_LINE.find(line)
+            if (match != null) keep = match.groupValues[1] in "FA" || match.groupValues[2].trim().substringBefore('[') !in LOG_NOISE // "VRI[MainActivity]@8cfe68" is the VRI tag
+            keep
+        }.joinToString("\n")
+    }
+
+    /** Set by the widget code: what each widget on Home is and how it is doing, read when a report is made. */
+    @Volatile var widgetStatus: (() -> String)? = null
+
+    /** The widgets Home holds (the app that provides each, its size, whether it is bound), or why that is not known. */
+    fun widgetReport(): String = buildString {
+        appendLine("Widgets:")
+        append(runCatching { widgetStatus?.invoke() }.getOrNull()?.takeIf { it.isNotBlank() } ?: "  (not read yet)")
+    }
+
+    /** What Android knows about this process and what it was doing: lets a report say whether it was short of memory or had run a long time. */
+    fun processReport(): String {
+        val runtime = Runtime.getRuntime()
+        val usedMb = (runtime.totalMemory() - runtime.freeMemory()) / 1_048_576
+        val upSeconds = (android.os.SystemClock.elapsedRealtime() - android.os.Process.getStartElapsedRealtime()) / 1000
+        return "Process: up ${upSeconds / 60} min ${upSeconds % 60} s, heap $usedMb of ${runtime.maxMemory() / 1_048_576} MB, ${Thread.activeCount()} threads"
+    }
 
     /**
      * The bundle, built where it can take its time. It runs logcat and reads report files, and doing that on the

@@ -505,6 +505,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart(); widgets.host.startListening()
+        Diagnostics.event("Widgets listening") // english-only
         // A new build can also arrive while this activity is alive in a restored task, so look again each time it starts.
         if (!showDevBuild.value && DevBuild.shouldShow(this)) showDevBuild.value = true
         if (!timeReceiverRegistered) {
@@ -531,7 +532,7 @@ class MainActivity : ComponentActivity() {
         stoppedSinceHome = true
         closeOverlays() // never come back to a blurred Home
         if (timeReceiverRegistered) { unregisterReceiver(timeReceiver); timeReceiverRegistered = false }
-        widgets.host.stopListening(); model.flushPending(); super.onStop()
+        widgets.host.stopListening(); Diagnostics.event("Widgets stopped listening (Home stopped)"); model.flushPending(); super.onStop() // english-only
     }
     override fun onDestroy() {
         LauncherSheets.closeAllOf(this); LauncherPages.closeAllOf(this) // an entry left by a window that never closed cannot outlive its screen
@@ -556,6 +557,7 @@ class MainActivity : ComponentActivity() {
         SoftwareUpdate.startCheckIfDue(this)
         FolioForeground.visible.value = true
         Diagnostics.event("Home shown (${Diagnostics.screenSummary(this).substringBefore(',')})")
+        widgets.refreshReport()
         Diagnostics.checkpoint(this, visible = true)
         FolioActions.home = java.lang.ref.WeakReference(this)
         model.syncFocus()

@@ -67,6 +67,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Page effects with more curves:** a page effect package can set curves for more channels (the 0.7.0 format), listed as tweaks.pageEffects.channels.
 
 ### Changed
+- **Reports say more:** a bug report now names the exact build (version code, release or debug, and the build number on Folio Dev), how long Folio had run and its memory, each widget on Home (its app, size, and whether Android still has it bound), and when a widget could not be drawn or an app that provides widgets changed. The log in it skips the window system's own chatter so it reaches back to what Folio said, and the list of recent events holds 80 instead of 40.
 - Widgets are managed from Edit on Home only. The Widgets list in Home Screen & Dock settings is gone.
 - **Swiping a panel away follows your finger:** Notification Center and Control Center move up with your finger when you swipe up and close when you let go, if you went far enough or flicked. A short pull springs back. They used to close in one jump partway through the swipe.
 - **Control Center controls settle in:** when Control Center opens, the controls on its first page fade in and rise a few points one after another, 20 ms apart, instead of arriving all at once. It does not run while you are editing controls or with Reduce Motion on.
@@ -77,6 +78,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **What's New stays short:** each new feature shows its first sentence, at most two lines, so more than two fit above Continue. The island entry has its own icon.
 
 ### Fixed
+- **Crash when the phone folds or unfolds with a panel open:** Notification Center or Control Center could close Folio with "Padding must be non-negative" on a Flip3 (reported on 0.6.9.1). The spring that moves a panel off the hinge dipped a hair below zero on its way back to the window's edge, and a padding cannot be negative. It is now held at zero.
 - **Search finds Older versions:** searching Settings for "rollback", "downgrade" or "go back" now leads to Software Update, where going back to an older version lives.
 - **Home starts full:** a new setup now fills Home with your apps, up to the rows that fit your screen, instead of a handful of starter apps and an empty page. Folio's own entries and the dock's apps are left out of the fill, and everything is still yours to change.
 - **New installs start on Automatic rows:** a fresh install no longer starts on a fixed four rows, so a tall phone uses its height from the first launch. An existing Home keeps the rows it has.
