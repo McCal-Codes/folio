@@ -79,6 +79,8 @@
     <string name="control_center_size">Control Center size</string>
     <string name="cc_size_note">On a phone the panel fills the width, so the sizes look much the same. They show on a wider screen, like an unfolded Fold or a tablet.</string>
     <string name="search_controls">Search Controls</string>
+    <string name="market_search_packages">Search packages</string>
+    <string name="market_no_packages_match">No packages match your search.</string>
     <string name="cc_gallery_modules">Modules</string>
     <string name="cc_gallery_controls">Controls</string>
     <string name="no_controls_found">No controls found</string>

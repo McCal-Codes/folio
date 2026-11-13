@@ -83,6 +83,8 @@
     <string name="unfolded_clock_beside_notifications">펼쳤을 때 알림 옆에 시계 표시</string>
     <string name="control_center_size">제어 센터 크기</string>
     <string name="cc_size_note">휴대전화에서는 패널이 화면 너비를 채우기 때문에 크기가 거의 같아 보입니다. 펼친 폴드나 태블릿 같은 넓은 화면에서 차이가 나타납니다.</string>
+    <string name="market_search_packages">패키지 검색</string>
+    <string name="market_no_packages_match">검색과 일치하는 패키지가 없습니다.</string>
     <string name="search_controls">제어 항목 검색</string>
     <string name="cc_gallery_modules">모듈</string>
     <string name="cc_gallery_controls">제어 항목</string>

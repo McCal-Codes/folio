@@ -8,6 +8,7 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.7.0] - Unreleased
 
 ### Added
+- **Search the Market:** the Packages tab has a search box that filters by name, id, author or section as you type, and says so when nothing matches. The Korean and Chinese text is machine translated.
 - **Wi-Fi network name:** the status rail shows the name of the Wi-Fi network under the Wi-Fi mark, and a long name slides sideways to show all of it (it is shortened with Reduce Motion on). Android gives a network name only to apps with precise location, so Settings > Notifications & Control Center has a "Show Wi-Fi network name" row that asks for it; Folio reads just the name, never your position, and without it the rail says Wi-Fi as before. The Korean and Chinese text is machine translated.
 - **Seek in Now Playing:** tap or drag along the progress line on Control Center's Now Playing tile or the Music widget's Poster to move the track there, with the times following your finger. It works when the player allows seeking.
 - **Six more tiles:** Screen Mirroring, Display, Accessibility, Recorder, Location and VPN open the phone's own page for each, and each can be added from Add a Control.

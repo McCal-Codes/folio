@@ -85,6 +85,8 @@
     <string name="unfolded_clock_beside_notifications">展开时：时钟在通知旁边</string>
     <string name="control_center_size">控制中心大小</string>
     <string name="cc_size_note">在手机上，面板会占满屏幕宽度，所以各种大小看起来差不多。在展开的折叠屏或平板等较宽的屏幕上才会有明显区别。</string>
+    <string name="market_search_packages">搜索软件包</string>
+    <string name="market_no_packages_match">没有符合搜索的软件包。</string>
     <string name="search_controls">搜索控制项</string>
     <string name="cc_gallery_modules">模块</string>
     <string name="cc_gallery_controls">控制项</string>
