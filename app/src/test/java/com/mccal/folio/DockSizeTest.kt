@@ -94,6 +94,17 @@ class DockShownWholeTest {
         assertTrue(g.dockRowHeight >= STANDARD_DOCK_PITCH)
     }
 
+    @Test fun `more than six places on the side bar keep a gap between icons`() {
+        val side = LayoutPreset(dockPlacement = DockPlacement.SIDE)
+        for ((w, h) in listOf(1080f to 792f, 1234f to 905f, 412f to 915f, 412f to 1100f)) for (slots in 7..9) {
+            val g = homeGeometry(w, h, side, true, statusHeight = 160f, dockSlots = slots)
+            if (g.dockShownSlots > STANDARD_DOCK_SLOTS)
+                assertTrue("$w x $h $slots: icon ${g.dockIcon} in a ${g.dockRowHeight} place", g.dockIcon <= g.dockRowHeight - 8f + .01f)
+        }
+        val six = homeGeometry(1080f, 792f, side, true, statusHeight = 160f, dockSlots = 6)
+        assertEquals("six places keep the icon they had", dockIconSize(six.iconSize), six.dockIcon, .01f)
+    }
+
     @Test fun `a side bar too short for four places ends on a whole place`() {
         val side = LayoutPreset(dockPlacement = DockPlacement.SIDE)
         for (h in listOf(200f, 226f, 250f, 274f, 300f, 320f, 360f, 400f)) {

@@ -588,7 +588,10 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
     val sizedDockIcon = if (p.dockSize <= 1f) roomyDockIcon * p.dockSize
         else minOf(roomyDockIcon * p.dockSize, maxOf(roomyDockIcon, dockIconRoom))
     // Fit more dock apps: the icon gives way to the room a place has, so a tighter place never crowds it.
-    val dockIcon = if (p.dockCompact) minOf(sizedDockIcon, maxOf(dockIconRoom, 24f)) else sizedDockIcon
+    val fittedDockIcon = if (p.dockCompact) minOf(sizedDockIcon, maxOf(dockIconRoom, 24f)) else sizedDockIcon
+    // A Side Bar holding more than the standard six packs its places at the 48 dp a touch target needs, so its icons give way to leave
+    // 8 dp between them (never under 28 dp) instead of touching. Six or fewer keep the icon they always had.
+    val dockIcon = if (!horizontalDock && shownSlots > STANDARD_DOCK_SLOTS) minOf(fittedDockIcon, maxOf(dockRowHeight - 8f, 28f)) else fittedDockIcon
     val basePitch = dockIcon + 22f
     val dockPitch = if (dockSpace <= 0f) basePitch else minOf(basePitch + dockSpace, maxOf(basePitch, (barRoom - 16f) / slots))
     // With the dock at the bottom and no Side Bar beside the page (upright unfolded, or Full-width Home), the page is
