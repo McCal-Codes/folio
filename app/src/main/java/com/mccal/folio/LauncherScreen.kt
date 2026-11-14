@@ -842,6 +842,7 @@ fun LauncherScreen(
             // The page controls under Home (and the Preview bar before Folio is the Home app), measured: the old guess
             // of 44dp, 88dp with the Preview bar, left the App Library's panel under the Preview bar sideways.
             var bottomControlsHeight by remember { mutableStateOf(0.dp) }
+            val windowHeightDp = maxHeight.value
             val geometry = homeGeometry(maxWidth.value, maxHeight.value, preset, state.labels, dockSlots = shownDock.size, statusRail = state.verticalStatus,
                 statusHeight = if (state.verticalStatus) statusHeight + 22f else 0f,
                 labelHeight = with(density) { (LocalLabelSize.current.lineSp * glanceFontFactor(fontScale)).sp.toDp().value } + 6f, inLibrary = inLibrary,
@@ -1370,6 +1371,11 @@ fun LauncherScreen(
             // The lift is as much as the strip above the bar allows, up to JIGGLE_BAR_LIFT: the pills' drawn top sits ~10 dp inside the bar's
             // box, and keeps 4 dp from the window's top edge. A short, wide window has no strip, so its bar stays on screen and Home gives
             // way for what the lift falls short by (HomePagePane reads it from here).
+            // Folded, the Side Bar carries Add and Done in edit mode, but only where its column has the room under the dock for two round
+            // controls: a short window (a phone held sideways) has none, and the controls then sat on the dock's last apps, so the bar
+            // at the top carries them there as it does unfolded. Judged from where the dock ends, not from a size class.
+            val editControlsOnRail = state.verticalStatus && !geometry.expanded &&
+                windowHeightDp - (geometry.dockTop + geometry.dockHeight) >= 2 * (dockIconSize(geometry.iconSize).coerceAtLeast(FolioTouch.MIN.toFloat()) + FolioSpace.SMALL) + 24f
             val barStripDp = if (barBoxTopPx < 0f) JIGGLE_BAR_LIFT else with(density) { barBoxTopPx.toDp() } + 6.dp
             SideEffect { homeEdit.barLift = barStripDp.coerceIn(0.dp, JIGGLE_BAR_LIFT) }
             androidx.compose.animation.AnimatedVisibility(homeEdit.active && sheet.isEmpty(),
@@ -1389,7 +1395,7 @@ fun LauncherScreen(
                     // Folded, the Side Bar carries Add and Done in edit mode (whenever the status rail is on), so the bar keeps only Edit
                     // rather than showing each of them twice. Unfolded the rail is tall with the dock and its drag handle, so Add and Done
                     // join Edit in the bar at the top and the rail keeps nothing at its foot to overlap.
-                    val railHasControls = state.verticalStatus && !geometry.expanded
+                    val railHasControls = editControlsOnRail
                     val addPill: @Composable () -> Unit = {
                         if (!railHasControls) JigglePill("", Icons.Rounded.Add, description = stringResource(R.string.add_widget)) {
                             picker.slot = model.nextWidgetSlot(); picker.targetIndex = homeCellIndex(editPage, 0); picker.anyApp(); picker.profileSerial = null; sheet = "widgets"
@@ -1441,7 +1447,7 @@ fun LauncherScreen(
                 .width(preset.dockWidth.dp), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
                 val controlSize = dockIconSize(geometry.iconSize).dp
-                if (homeEdit.active && state.verticalStatus && !geometry.expanded) {
+                if (homeEdit.active && editControlsOnRail) {
                     CircleControl(Icons.Rounded.Add, stringResource(R.string.add_widget), "rail-add-widget", controlSize) {
                         val editPage = pager.currentPage.coerceIn(0, homePages - 1)
                         picker.slot = model.nextWidgetSlot()
