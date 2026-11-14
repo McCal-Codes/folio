@@ -119,9 +119,9 @@ private fun TipHero(tip: Tip, caption: String, onClick: () -> Unit) {
         }
         Column(Modifier.padding(top = FolioSpace.XL.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
             Text(caption.uppercase(), color = Color.White.copy(alpha = .8f), fontSize = FolioType.GROUP_LABEL.sp, fontWeight = FontWeight.SemiBold, letterSpacing = .6.sp)
-            Text(tip.title, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold, lineHeight = 32.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
-            Text(MarketText.inline(WhatsNew.firstSentence(tip.note.detail), Color.White), color = Color.White.copy(alpha = .92f), fontSize = FolioType.SUBHEAD.sp,
-                maxLines = 3, overflow = TextOverflow.Ellipsis)
+            Text(tip.title, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold, lineHeight = 28.sp * 1.15f)
+            // No line limit: the hero grows, so a long title or large text is read in full instead of cut at "...".
+            Text(MarketText.inline(WhatsNew.firstSentence(tip.note.detail), Color.White), color = Color.White.copy(alpha = .92f), fontSize = FolioType.SUBHEAD.sp)
         }
     }
 }

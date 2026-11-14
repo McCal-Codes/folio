@@ -169,7 +169,7 @@ private fun FloatingGalleryCard(items: List<CcGalleryItem>, shown: List<CcGaller
     val right = stringResource(R.string.cc_gallery_move_right)
     val up = stringResource(R.string.cc_gallery_move_up)
     val down = stringResource(R.string.cc_gallery_move_down)
-    Box(Modifier.fillMaxSize().clickable(interactionSource = null, indication = null, onClick = onDismiss)) {
+    Box(Modifier.fillMaxSize().then(dismissScrim(onDismiss))) {
         Column(Modifier.offset { androidx.compose.ui.unit.IntOffset(x.roundToInt(), y.roundToInt()) }.width(CC_GALLERY_CARD_WIDTH_DP.dp)
             .heightIn(max = with(density) { place.maxHeight.toDp() }).onSizeChanged { cardH = it.height }
             .clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(FolioColors.MenuSurface).clickable(interactionSource = null, indication = null) {}
@@ -254,6 +254,6 @@ private fun GalleryTile(item: CcGalleryItem, onAdd: (CcGalleryItem) -> Unit) {
                 Icon(Icons.Rounded.Add, null, tint = Color.White, modifier = Modifier.size(14.dp))
             }
         }
-        Text(item.label, color = Color.White, fontSize = FolioType.GROUP_LABEL.sp, maxLines = 2, lineHeight = 14.sp, textAlign = TextAlign.Center, modifier = Modifier.padding(top = FolioSpace.TINY.dp))
+        Text(item.label, color = Color.White, fontSize = FolioType.GROUP_LABEL.sp, maxLines = 2, lineHeight = FolioType.GROUP_LABEL.sp * 1.2f, textAlign = TextAlign.Center, modifier = Modifier.padding(top = FolioSpace.TINY.dp))
     }
 }

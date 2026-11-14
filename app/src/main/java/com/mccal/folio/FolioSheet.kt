@@ -33,7 +33,22 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+
+/**
+ * The tap-anywhere-else backdrop behind a sheet, menu or card. TalkBack reads it as a button named Dismiss instead of a
+ * blank full-screen control (A11Y-6); sighted taps behave as before, with no ripple.
+ */
+@Composable
+internal fun dismissScrim(onDismiss: () -> Unit): Modifier {
+    val label = androidx.compose.ui.res.stringResource(R.string.dismiss)
+    return Modifier
+        .clickable(androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, null,
+            role = androidx.compose.ui.semantics.Role.Button, onClick = onDismiss)
+        .semantics { contentDescription = label }
+}
 
 /**
  * Fades or slides an overlay into place, and never leaves it invisible.
@@ -282,7 +297,7 @@ private fun FormSheet(onDismissRequest: () -> Unit, dismissOnBack: Boolean, widt
         MaterialTheme(colorScheme = FolioSheetColors, typography = MaterialTheme.typography) {
             Box(Modifier.fillMaxSize().graphicsLayer { alpha = appear.value * fade.value * OverlayExits.alpha(exit.progress.value, fades = true, reduce = exit.reduce) }
                 .background(Color.Black.copy(alpha = .35f))
-                .clickable(androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, null, onClick = dismiss))
+                .then(dismissScrim(dismiss)))
             FoldAvoidingBox(Modifier.windowInsetsPadding(WindowInsets.safeDrawing).padding(FolioSpace.XXL.dp)) {
                 androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
                     val maxSheetHeight = minOf(maxHeight, 760.dp)

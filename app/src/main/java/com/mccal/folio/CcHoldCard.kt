@@ -145,7 +145,7 @@ internal fun CcHoldTall(icon: ImageVector, label: String, value: Float, onDismis
     val shown by animateFloatAsState(value.coerceIn(0f, 1f), if (reduce) androidx.compose.animation.core.snap() else FolioMotion.spring(FolioMotion.Snap), label = label)
     FolioDialog(onDismiss, androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
         FolioDialogWindow(dim = .45f, blurRadiusDp = 24)
-        Box(Modifier.fillMaxSize().clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null, onClick = onDismiss)
+        Box(Modifier.fillMaxSize().then(dismissScrim(onDismiss))
             .systemBarsPadding().graphicsLayer { alpha = progress }, contentAlignment = Alignment.Center) {
             Column(Modifier.heightIn(max = 640.dp).padding(FolioSpace.LARGE.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.LARGE.dp)) {
                 Icon(icon, null, tint = Color.White, modifier = Modifier.size(36.dp))
