@@ -325,15 +325,15 @@ fun railControlsReserve(count: Int, homeIconSize: Float): Float {
  */
 const val MIN_DOCK_SLOTS = 4
 const val STANDARD_DOCK_SLOTS = 6
-const val MAX_DOCK_SLOTS = 8
+const val MAX_DOCK_SLOTS = 9
 
 /**
  * How many places the dock may have in a window [heightDp] tall: what the Side Bar can stack under the status rail and above
- * the page controls (about 250 dp together) at one dock app's pitch, never fewer than [STANDARD_DOCK_SLOTS] so no window
- * loses what it had, never more than [MAX_DOCK_SLOTS]. A 900 dp phone takes eight, a 780 dp one seven.
+ * the page controls (about 250 dp together, and 16 dp of padding) at one dock app's pitch (its icon and 8 dp, never under the 48 dp a place needs), never fewer than [STANDARD_DOCK_SLOTS] so no window
+ * loses what it had, never more than [MAX_DOCK_SLOTS]. A 780 dp window takes nine, a 740 dp one eight, a 700 dp one seven.
  */
 fun dockCapacity(heightDp: Float, homeIconSize: Float, dockSize: Float = 1f): Int =
-    ((heightDp - 250f) / (dockIconSize(homeIconSize) * dockSize + 22f)).toInt().coerceIn(STANDARD_DOCK_SLOTS, MAX_DOCK_SLOTS)
+    ((heightDp - 266f) / (dockIconSize(homeIconSize) * dockSize + 8f).coerceAtLeast(STANDARD_DOCK_PITCH)).toInt().coerceIn(STANDARD_DOCK_SLOTS, MAX_DOCK_SLOTS)
 
 fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Boolean, statusHeight: Float = 0f, labelHeight: Float = 20f, inLibrary: Boolean = false, homeBottomSpace: Float = 44f,
     /** How many round controls (search, back to Home) sit at the bottom of the rail on the page shown now: 0, 1 or 2. */

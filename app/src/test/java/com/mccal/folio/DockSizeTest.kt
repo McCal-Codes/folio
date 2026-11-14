@@ -27,7 +27,7 @@ class DockSizeTest {
 
     @Test fun `a larger dock never has apps bigger than its room`() {
         for ((w, h) in listOf(360f to 640f, 360f to 780f, 412f to 915f, 704f to 932f, 800f to 1280f)) {
-            for (slots in 4..8) for (placement in DockPlacement.entries) {
+            for (slots in 4..9) for (placement in DockPlacement.entries) {
                 val g = geometry(w, h, MAX_DOCK_SIZE, slots, placement)
                 val room = if (g.horizontalDock) minOf(g.dockBarHeight - 22f, (g.dockBarRoom - 32f - 16f) / slots - 22f) else minOf(dockWidthForSize(MAX_DOCK_SIZE) - 12f, g.dockRowHeight - 4f)
                 val base = geometry(w, h, 1f, slots, placement).dockIcon
@@ -52,7 +52,7 @@ class DockSizeTest {
 
 class DockCenteredTest {
     @Test fun `a centered dock has the same space above it as below it, on any screen`() {
-        for ((w, h) in listOf(320f to 568f, 360f to 740f, 412f to 915f, 412f to 1100f, 800f to 1280f)) for (slots in 4..8) {
+        for ((w, h) in listOf(320f to 568f, 360f to 740f, 412f to 915f, 412f to 1100f, 800f to 1280f)) for (slots in 4..9) {
             val p = LayoutPreset(dockCentered = true, dockPlacement = DockPlacement.SIDE)
             val g = homeGeometry(w, h, p, true, statusHeight = 0f, dockSlots = slots)
             val above = g.dockTop - 8f
@@ -70,7 +70,7 @@ class DockCenteredTest {
 
 class DockShownWholeTest {
     @Test fun `the side dock shows only the places that fit whole, on every window`() {
-        for ((w, h) in listOf(320f to 568f, 360f to 640f, 360f to 740f, 412f to 915f, 800f to 1280f)) for (slots in 4..8) for (size in listOf(.8f, 1f, 1.6f)) {
+        for ((w, h) in listOf(320f to 568f, 360f to 640f, 360f to 740f, 412f to 915f, 800f to 1280f)) for (slots in 4..9) for (size in listOf(.8f, 1f, 1.6f)) {
             val p = LayoutPreset(dockSize = size, dockWidth = dockWidthForSize(size), dockPlacement = DockPlacement.SIDE)
             val g = homeGeometry(w, h, p, true, statusHeight = 160f, dockSlots = slots)
             val shown = g.dockShownSlots
@@ -84,6 +84,14 @@ class DockShownWholeTest {
         val side = LayoutPreset(dockPlacement = DockPlacement.SIDE)
         assertEquals(8, homeGeometry(412f, 1100f, side, true, statusHeight = 160f, dockSlots = 8).dockShownSlots)
         assertTrue(homeGeometry(320f, 568f, side, true, statusHeight = 160f, dockSlots = 8).dockShownSlots < 8)
+    }
+
+    @Test fun `a trifold-sized window shows all nine places on the side bar`() {
+        val side = LayoutPreset(dockPlacement = DockPlacement.SIDE)
+        val g = homeGeometry(1234f, 905f, side, true, statusHeight = 160f, dockSlots = 9)
+        assertEquals(9, g.dockShownSlots)
+        assertTrue("nine places fit inside the window", g.dockTop + g.dockHeight <= 905f + .5f)
+        assertTrue(g.dockRowHeight >= STANDARD_DOCK_PITCH)
     }
 
     @Test fun `a side bar too short for four places ends on a whole place`() {
