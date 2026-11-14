@@ -56,6 +56,11 @@ internal class HomeEditMode {
     var onRemove: (DropTarget) -> Unit = {}
     /** Home cell that was long-pressed to start editing, for "Edit" and "+". */
     var lastEmptyIndex: Int? = null
+    /**
+     * How far the unfolded bar is really lifted: [JIGGLE_BAR_LIFT] where the window has that much empty strip above the page, less where it
+     * has not (a short, wide window), so the pills are never pushed off the top edge. Home gives way for whatever the lift falls short by.
+     */
+    var barLift by mutableStateOf(JIGGLE_BAR_LIFT)
     fun start() { active = true }
     fun stop() { active = false }
 }

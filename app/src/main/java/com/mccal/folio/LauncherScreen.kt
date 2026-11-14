@@ -265,6 +265,8 @@ fun LauncherScreen(
     var expandedWorkspace by remember(screenConfig) { mutableStateOf(screenConfig.fitsRegularHomeLayout()) }
     /** Where the jiggle bar's Edit button is, so its menu opens right under it. */
     var editPillBounds by remember { mutableStateOf<androidx.compose.ui.unit.IntRect?>(null) }
+    // Where the edit bar's box starts in the window: the strip above it is all the unfolded bar can be lifted into.
+    var barBoxTopPx by remember { mutableFloatStateOf(-1f) }
     // The page left of Home is Folio's Today View, Google Discover when chosen and available, or nothing at all.
     // When the Google app refuses to serve Discover (see DiscoverAvailability) the choice shows Today View instead of an error page.
     val discoverContext = androidx.compose.ui.platform.LocalContext.current
@@ -1365,12 +1367,18 @@ fun LauncherScreen(
             val barSpanPx = with(density) { JIGGLE_BAR_SPAN.toPx() * LocalDensity.current.fontScale.coerceAtLeast(1f) }
             val barAroundIsland = geometry.expanded && state.island && homeEdit.active && !state.leftHanded && IslandFootprint.shown &&
                 IslandFootprint.rightPx > barRightPx - barSpanPx && IslandFootprint.leftPx < barRightPx
+            // The lift is as much as the strip above the bar allows, up to JIGGLE_BAR_LIFT: the pills' drawn top sits ~10 dp inside the bar's
+            // box, and keeps 4 dp from the window's top edge. A short, wide window has no strip, so its bar stays on screen and Home gives
+            // way for what the lift falls short by (HomePagePane reads it from here).
+            val barStripDp = if (barBoxTopPx < 0f) JIGGLE_BAR_LIFT else with(density) { barBoxTopPx.toDp() } + 6.dp
+            SideEffect { homeEdit.barLift = barStripDp.coerceIn(0.dp, JIGGLE_BAR_LIFT) }
             androidx.compose.animation.AnimatedVisibility(homeEdit.active && sheet.isEmpty(),
                 // At the top in every posture, as on iOS, clear of the Dynamic Island. Unfolded it used to sit at the bottom beside
                 // the page dots and the Library button, where Edit, Undo and Redo crowded them. Unfolded, the pills gather at the
                 // pager's far end, away from the island at the middle of the top edge.
                 Modifier.align(if (state.leftHanded) Alignment.TopEnd else Alignment.TopStart).then(if (barAroundIsland) Modifier.fillMaxWidth() else Modifier.width(pagerWidth))
-                    .then(if (geometry.expanded) Modifier.offset(y = -JIGGLE_BAR_LIFT) else Modifier),
+                    .onGloballyPositioned { barBoxTopPx = it.positionInWindow().y }
+                    .then(if (geometry.expanded) Modifier.offset(y = -homeEdit.barLift) else Modifier),
                 enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { -it / 2 },
                 exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { -it / 2 }) {
                 Row(Modifier.fillMaxWidth().padding(start = FolioSpace.COMFY.dp, end = FolioSpace.COMFY.dp,
