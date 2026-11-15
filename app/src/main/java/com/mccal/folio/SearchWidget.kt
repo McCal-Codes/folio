@@ -12,10 +12,13 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -51,8 +54,13 @@ internal fun SearchWidgetCard(onOpen: () -> Unit) {
     val hint = stringResource(R.string.search_widget_hint)
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val card = maxHeight >= SEARCH_WIDGET_CARD_MIN_HEIGHT_DP.dp
+        // GlassCard shrinks its content on a short card (down to 60%) so a clock fits; a search field is read at full size, so undo that.
+        val shrink = (minOf(maxWidth, maxHeight) / 150.dp).coerceIn(.6f, 1f)
         GlassCard(onClick = onOpen) {
-            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+          val inner = LocalDensity.current
+          CompositionLocalProvider(LocalDensity provides Density(inner.density / shrink, inner.fontScale)) {
+            // As a strip the field fills the card's height so it sits in the middle; as a card it stays on top with the chips below.
+            Row(Modifier.fillMaxWidth().then(if (card) Modifier.heightIn(min = 48.dp) else Modifier.fillMaxHeight()), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.Search, null, tint = ink.secondary, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(FolioSpace.MEDIUM.dp))
                 Text(hint, color = ink.secondary, fontSize = FolioType.SUBHEAD.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
@@ -71,6 +79,7 @@ internal fun SearchWidgetCard(onOpen: () -> Unit) {
                     }
                 }
             }
+          }
         }
     }
 }
