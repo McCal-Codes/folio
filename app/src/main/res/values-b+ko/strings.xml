@@ -740,6 +740,7 @@
     <string name="add_a_control">제어 항목 추가</string>
     <string name="not_playing">재생 중이 아님</string>
     <string name="music">음악</string>
+    <string name="search_widget_hint">앱, 설정 검색</string>
     <string name="photos_widget">사진</string>
     <string name="photo_n_of">사진 %2$d장 중 %1$d번째</string>
     <string name="add_photos">사진 추가</string>

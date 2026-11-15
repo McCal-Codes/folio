@@ -155,6 +155,13 @@ internal enum class FeatureGate(
     PHOTO_WIDGET("photoWidget", closedSince = "2026-11-13", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
 
     /**
+     * The Search widget (a Finder-style search box on Home, with shortcuts to a few phone settings) in the widget gallery. It
+     * adds a new widget to every Home, so supporters and Folio Dev try it first; everyone gets it in 0.7.0: flip
+     * [OPEN_IN_0_7_0] to open it. One already on Home (from a layout backup) keeps drawing either way.
+     */
+    SEARCH_WIDGET("searchWidget", closedSince = "2026-11-15", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
+
+    /**
      * Adjust island: pull a handle to make the island wider, nudge it, or fit it to the camera Android reports. A supporter on a
      * smaller minimum width found the pill narrower than the camera area; the automatic fit stays the default.
      */

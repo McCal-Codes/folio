@@ -237,6 +237,8 @@ internal fun VisualWidgetPicker(
     val musicWidgetOpen = rememberGateOpen(FeatureGate.MUSIC_WIDGET)
     val photosLabel = stringResource(R.string.photos_widget)
     val photoWidgetOpen = rememberGateOpen(FeatureGate.PHOTO_WIDGET)
+    val searchLabel = stringResource(R.string.search)
+    val searchWidgetOpen = rememberGateOpen(FeatureGate.SEARCH_WIDGET)
     val upNextLabel = stringResource(R.string.up_next)
     val dateLabel = stringResource(R.string.date)
     val clockLabel = stringResource(R.string.clock)
@@ -267,10 +269,11 @@ internal fun VisualWidgetPicker(
     } }
     val allBuiltins = listOf(Triple(CLOCK_WIDGET, clockLabel, Icons.Rounded.Schedule), Triple(DATE_WIDGET, dateLabel, Icons.Rounded.CalendarToday),
         Triple(UP_NEXT_WIDGET, upNextLabel, androidx.compose.material.icons.Icons.AutoMirrored.Rounded.EventNote), Triple(BIG_CLOCK_WIDGET, bigClockLabel, Icons.Rounded.LockClock), Triple(SUGGESTIONS_WIDGET, suggestionsLabel, androidx.compose.material.icons.Icons.Rounded.AutoAwesome),
-        Triple(MUSIC_WIDGET, musicWidgetLabel, Icons.Rounded.MusicNote), Triple(PHOTO_WIDGET, photosLabel, Icons.Rounded.PhotoLibrary),
+        Triple(MUSIC_WIDGET, musicWidgetLabel, Icons.Rounded.MusicNote), Triple(PHOTO_WIDGET, photosLabel, Icons.Rounded.PhotoLibrary), Triple(SEARCH_WIDGET, searchLabel, Icons.Rounded.Search),
         Triple(INFO_WIDGET, widgetPanelLabel, Icons.Rounded.Widgets))
         .filter { it.first != MUSIC_WIDGET || musicWidgetOpen }
         .filter { it.first != PHOTO_WIDGET || photoWidgetOpen }
+        .filter { it.first != SEARCH_WIDGET || searchWidgetOpen }
     // Folio's own widgets are searchable like any app's, and shown with the Folio chip or while browsing.
     val builtins = if ((selectedApp == null || selectedApp == FOLIO_WIDGETS) && selectedProfile.isPersonal)
         allBuiltins.filter { matchesWidgetSearch(words, it.second, folioLabel) } else emptyList()
@@ -349,7 +352,7 @@ internal fun VisualWidgetPicker(
                     val cappedFolio = selectedApp == null && FOLIO_WIDGETS !in expandedApps && builtins.size > columns
                     header("duo-widgets", folioLabel, if (cappedFolio) builtins.size else null)
                     items(if (cappedFolio) builtins.take(columns) else builtins, key = { "builtin-${it.first}" }) { (id, label, icon) ->
-                        GalleryCard(label, stringResource(R.string.folio), stringResource(when (id) { BIG_CLOCK_WIDGET, MUSIC_WIDGET -> R.string.wide; PHOTO_WIDGET -> R.string.tall; else -> R.string.small }), Modifier.testTag("widget-builtin-$id")
+                        GalleryCard(label, stringResource(R.string.folio), stringResource(when (id) { BIG_CLOCK_WIDGET, MUSIC_WIDGET, SEARCH_WIDGET -> R.string.wide; PHOTO_WIDGET -> R.string.tall; else -> R.string.small }), Modifier.testTag("widget-builtin-$id")
                             .clickable { focusManager.clearFocus(); keyboard?.hide(); onBuiltin(id) }) {
                             Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(22.dp))
                                 .background(Color.White.copy(alpha = .1f)), contentAlignment = Alignment.Center) {

@@ -741,6 +741,7 @@
     <string name="add_a_control">添加控制</string>
     <string name="not_playing">未在播放</string>
     <string name="music">音乐</string>
+    <string name="search_widget_hint">搜索应用、设置</string>
     <string name="photos_widget">照片</string>
     <string name="photo_n_of">第 %1$d 张,共 %2$d 张</string>
     <string name="add_photos">添加照片</string>
