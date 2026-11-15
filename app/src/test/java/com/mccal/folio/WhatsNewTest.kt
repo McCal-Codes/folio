@@ -125,10 +125,10 @@ class WhatsNewTest {
 
     @Test fun `a beta's sheet shows only that beta and earlier betas move to history`() {
         val view = WhatsNew.sheetNotes(tagged, "0.7.0-beta.5")
-        assertEquals("0.7.0 beta 5", view.release?.version)
+        assertEquals("0.7.0-beta.5", view.release?.version)
         assertEquals(listOf("**Newest:** beta 5 only.", "A fix from beta 5"), view.release!!.sections.flatMap { it.second })
         // Newest earlier beta first, then the older releases; the whole 0.7.0 is not listed twice.
-        assertEquals(listOf("0.7.0 beta 3", "0.7.0 beta 1", "0.6.0"), view.older.map { it.version })
+        assertEquals(listOf("0.7.0-beta.3", "0.7.0-beta.1", "0.6.0"), view.older.map { it.version })
         assertEquals(listOf("**Middle:** came in beta 3.", "A fix from beta 3"), view.older[0].sections.flatMap { it.second })
     }
 

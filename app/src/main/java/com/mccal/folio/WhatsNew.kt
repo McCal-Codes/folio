@@ -184,8 +184,8 @@ internal object WhatsNew {
         val beta = betaNumber(current)
         val own = if (whole != null && beta != null && whole.betas.isNotEmpty()) whole.forBeta(beta).takeIf { it.sections.isNotEmpty() } else null
         if (whole == null || own == null || beta == null) return SheetNotes(whole, notes.filter { it != whole })
-        val earlier = whole.betas.filter { it < beta }.sortedDescending().map { n -> whole.forBeta(n).copy(version = "${whole.version} beta $n", date = null) }
-        return SheetNotes(own.copy(version = "${whole.version} beta $beta"), earlier + notes.filter { it != whole })
+        val earlier = whole.betas.filter { it < beta }.sortedDescending().map { n -> whole.forBeta(n).copy(version = "${whole.version}-beta.$n", date = null) }
+        return SheetNotes(own.copy(version = "${whole.version}-beta.$beta"), earlier + notes.filter { it != whole })
     }
 
     fun markSeen(context: Context) = context.getSharedPreferences(PREFS, 0).edit().putString(SEEN, currentVersion(context)).apply()
