@@ -20,8 +20,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 
-/** One version's notes from CHANGELOG.md: its number, date, and bullet points grouped by heading (Added, Changed, Fixed). */
-data class ReleaseNotes(val version: String, val date: String?, val sections: List<Pair<String, List<String>>>)
+/**
+ * One version's notes from CHANGELOG.md: its number, date, and bullet points grouped by heading (Added, Changed, Fixed).
+ * [betaOf] says which beta of this release first shipped a line (a line ends in a hidden `<!-- beta 3 -->`); it is empty
+ * for a release that is not tagged, such as 0.6.0 or an older one, and for those every line counts as the release's own.
+ */
+data class ReleaseNotes(val version: String, val date: String?, val sections: List<Pair<String, List<String>>>, val betaOf: Map<String, Int> = emptyMap()) {
+    /** The betas this release went through, oldest first. */
+    val betas: List<Int> get() = betaOf.values.toSortedSet().toList()
+
+    /** Only the lines that first shipped in beta [number], with empty headings dropped. */
+    fun forBeta(number: Int): ReleaseNotes = copy(
+        sections = sections.map { (heading, items) -> heading to items.filter { betaOf[it] == number } }.filter { it.second.isNotEmpty() },
+    )
+}
 
 /** A changelog line split into its bold title ("**More rows:** …") and the rest; [title] is null for plain lines. */
 data class NoteItem(val title: String?, val detail: String)
@@ -86,6 +98,12 @@ internal object WhatsNew {
         }
     }
 
+    /** The hidden marker that ends a changelog line: which beta of the release first shipped it. */
+    private val BETA_TAG = Regex("""\s*<!--\s*beta\s+(\d+)\s*-->\s*$""")
+
+    /** The beta number in a version name ("0.7.0-beta.5" is 5); null for a release or a dev build. */
+    fun betaNumber(versionName: String): Int? = Regex("""-beta\.(\d+)$""").find(versionName)?.groupValues?.get(1)?.toInt()
+
     private const val PREFS = "whats_new"
     private const val SEEN = "seen_version"
 
@@ -94,17 +112,22 @@ internal object WhatsNew {
         val releases = mutableListOf<ReleaseNotes>()
         var version: String? = null; var date: String? = null
         val sections = mutableListOf<Pair<String, MutableList<String>>>()
-        fun flush() { version?.let { v -> releases += ReleaseNotes(v, date, sections.filter { it.second.isNotEmpty() }.map { it.first to it.second.toList() }) } }
+        val betaOf = mutableMapOf<String, Int>()
+        fun flush() { version?.let { v -> releases += ReleaseNotes(v, date, sections.filter { it.second.isNotEmpty() }.map { it.first to it.second.toList() }, betaOf.toMap()) } }
         markdown.lineSequence().forEach { raw ->
             val line = raw.trimEnd()
             val heading = Regex("""^## \[(\d+\.\d+\.\d+[^\]]*)](?:\s*-\s*(.+))?""").find(line)
             when {
-                heading != null -> { flush(); version = heading.groupValues[1]; date = heading.groupValues[2].ifBlank { null }; sections.clear() }
-                line.startsWith("## ") -> { flush(); version = null; sections.clear() }
+                heading != null -> { flush(); version = heading.groupValues[1]; date = heading.groupValues[2].ifBlank { null }; sections.clear(); betaOf.clear() }
+                line.startsWith("## ") -> { flush(); version = null; sections.clear(); betaOf.clear() }
                 version != null && line.startsWith("### ") -> sections += line.removePrefix("### ").trim() to mutableListOf()
                 version != null && line.startsWith("- ") -> {
                     if (sections.isEmpty()) sections += "" to mutableListOf()
-                    sections.last().second += line.removePrefix("- ").trim()
+                    // A trailing `<!-- beta N -->` is for What's New, not for the reader of the line: take it off and remember it.
+                    val tag = BETA_TAG.find(line)
+                    val text = line.removePrefix("- ").replace(BETA_TAG, "").trim()
+                    sections.last().second += text
+                    if (tag != null) betaOf[text] = tag.groupValues[1].toInt()
                 }
             }
         }
@@ -144,6 +167,27 @@ internal object WhatsNew {
         return notes(context).any { it.version == current || it.version == base || it.version.startsWith(base) }
     }
 
+    /** What the sheet shows: the notes for this build, and the earlier releases (and earlier betas of this release) for Version History. */
+    data class SheetNotes(val release: ReleaseNotes?, val older: List<ReleaseNotes>)
+
+    /**
+     * On a beta only what is new in that beta: beta 5's sheet lists beta 5's lines, and betas 1 to 4 wait in Version History
+     * under "0.7.0 beta 4" and so on. The release itself, a dev build, a release with no tagged lines and a beta with
+     * nothing of its own show the whole release instead, so the sheet is never empty when the changelog has something.
+     */
+    fun sheetNotes(notes: List<ReleaseNotes>, current: String): SheetNotes {
+        val base = current.substringBefore('-')
+        val whole = notes.firstOrNull { it.version == current }
+            ?: notes.firstOrNull { it.version == base }
+            ?: notes.firstOrNull { it.version.startsWith(base) }
+            ?: notes.firstOrNull()
+        val beta = betaNumber(current)
+        val own = if (whole != null && beta != null && whole.betas.isNotEmpty()) whole.forBeta(beta).takeIf { it.sections.isNotEmpty() } else null
+        if (whole == null || own == null || beta == null) return SheetNotes(whole, notes.filter { it != whole })
+        val earlier = whole.betas.filter { it < beta }.sortedDescending().map { n -> whole.forBeta(n).copy(version = "${whole.version} beta $n", date = null) }
+        return SheetNotes(own.copy(version = "${whole.version} beta $beta"), earlier + notes.filter { it != whole })
+    }
+
     fun markSeen(context: Context) = context.getSharedPreferences(PREFS, 0).edit().putString(SEEN, currentVersion(context)).apply()
 }
 
@@ -153,13 +197,9 @@ internal object WhatsNew {
 internal fun WhatsNewSheet(onWhatToTest: (() -> Unit)? = null, onDismiss: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val current = androidx.compose.runtime.remember { WhatsNew.currentVersion(context) }
-    val version = androidx.compose.runtime.remember { WhatsNew.releaseVersion(context) }
-    val notes = androidx.compose.runtime.remember { WhatsNew.notes(context) }
-    val release = notes.firstOrNull { it.version == current }
-        ?: notes.firstOrNull { it.version == version }
-        ?: notes.firstOrNull { it.version.startsWith(version) }
-        ?: notes.firstOrNull()
-    val older = notes.filter { it != release }
+    val shown = androidx.compose.runtime.remember { WhatsNew.sheetNotes(WhatsNew.notes(context), current) }
+    val release = shown.release
+    val older = shown.older
     var expanded by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(setOf<String>()) }
     var showAllFeatures by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
     var fixesOpen by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
