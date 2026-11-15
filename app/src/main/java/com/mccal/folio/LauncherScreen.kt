@@ -1242,8 +1242,8 @@ fun LauncherScreen(
                 val shelfInk = LocalHomeInk.current
                 val shelfGlass = LocalGlassLook.current
                 Row(if (!geometry.controlShelf) Modifier else Modifier.testTag("control-shelf")
-                    .background(if (shelfInk.dark) Color.White.copy(alpha = (shelfGlass.widget * 2f).coerceAtMost(.6f))
-                        else Color.Black.copy(alpha = (shelfGlass.widget * 1.7f).coerceAtMost(.55f)), CircleShape)
+                    .background(if (shelfInk.dark) Color.White.copy(alpha = (shelfGlass.widget * 2.4f).coerceAtMost(.68f))
+                        else Color.Black.copy(alpha = (shelfGlass.widget * 2.6f).coerceAtMost(.68f)), CircleShape)
                     .border(1.dp, shelfGlass.outlineColor, CircleShape).padding(horizontal = FolioSpace.SMALL.dp),
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
                     // Only when there is a page to the left of Home: with Today View and Discover both off, the
