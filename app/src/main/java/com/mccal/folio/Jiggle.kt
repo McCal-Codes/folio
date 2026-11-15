@@ -167,3 +167,8 @@ internal val JIGGLE_BAR_SPAN = 300.dp
 internal val JIGGLE_BAR_ISLAND_SIDE_GAP = 8.dp
 /** How far Home's bottom controls drop in edit mode on the unfolded screen, so the last row's labels keep clear of them. */
 internal val JIGGLE_BAR_CONTROLS_DROP = 22.dp
+/**
+ * The same on the folded screen, where a full last row also ended under the page controls (the cover screen, 14 Nov 2026: the library
+ * button sat over the last row's labels by about 11 dp). A little less than unfolded, so the controls stay clear of the gesture bar.
+ */
+internal val JIGGLE_BAR_CONTROLS_DROP_FOLDED = 18.dp

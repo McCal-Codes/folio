@@ -1228,8 +1228,8 @@ fun LauncherScreen(
             val besideHome = if (geometry.expanded) panelWidth.coerceAtLeast(0.dp) else 0.dp
             OwnMethod { Column(Modifier.align(if (state.leftHanded) Alignment.BottomEnd else Alignment.BottomStart).width(pagerWidth)
                 .onSizeChanged { bottomControlsHeight = with(density) { it.height.toDp() } }
-                // In edit mode the unfolded page is pushed down for the bar, so these controls drop a little to stay clear of the last row.
-                .offset(y = animateDpAsState(if (homeEdit.active && geometry.expanded) JIGGLE_BAR_CONTROLS_DROP else 0.dp, label = "controls drop").value)
+                // In edit mode the page is pushed down for the bar, so these controls drop a little to stay clear of the last row.
+                .offset(y = animateDpAsState(if (!homeEdit.active) 0.dp else if (geometry.expanded) JIGGLE_BAR_CONTROLS_DROP else JIGGLE_BAR_CONTROLS_DROP_FOLDED, label = "controls drop").value)
                 .padding(start = if (state.leftHanded) 0.dp else besideHome + FolioSpace.LARGE.dp,
                     end = if (state.leftHanded) besideHome + FolioSpace.LARGE.dp else 0.dp, bottom = FolioSpace.SNUG.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 if (!isDefaultHome && !homeEdit.active && !drag.active) PreviewBar(onUseAsHome = { sheet = ""; onMakeDefault() },
