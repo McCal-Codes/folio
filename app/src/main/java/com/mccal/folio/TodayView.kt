@@ -65,7 +65,9 @@ internal fun TodayView(state: LauncherState, widgets: WidgetController, modifier
             val columnsWidth = minOf(maxWidth - 32.dp, 390.dp)
             val gap = 14.dp
             val cell = (columnsWidth - gap) / 2
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = FolioSpace.LARGE.dp).padding(top = FolioSpace.MEDIUM.dp, bottom = 96.dp), // clear of Home's page dots
+            val todayScroll = rememberScrollState()
+            // Widgets scroll under Home's page controls, so the bottom edge fades toward them rather than running through the icons.
+            Column(Modifier.fillMaxSize().edgeFade(todayScroll).verticalScroll(todayScroll).padding(horizontal = FolioSpace.LARGE.dp).padding(top = FolioSpace.MEDIUM.dp, bottom = 96.dp), // clear of Home's page dots
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(gap)) {
                 Column(Modifier.width(columnsWidth), verticalArrangement = Arrangement.spacedBy(gap)) {
                     // Search capsule

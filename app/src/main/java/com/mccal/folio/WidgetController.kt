@@ -317,11 +317,13 @@ class WidgetController(
             val bound = host.appWidgetIds.toSet()
             val state = model.state.value
             val lines = state.widgetPlacements.map { p ->
+                val where = "  id ${p.id} · page ${p.page} cell ${p.column},${p.row} span ${p.spanX}×${p.spanY} · " // english-only
+                // Folio's own widgets have negative ids Android does not know; asking it about them only fills the log with errors.
+                if (p.id < 0) return@map where + "built in" // english-only
                 val info = manager.getAppWidgetInfo(p.id)
                 val options = runCatching { manager.getAppWidgetOptions(p.id) }.getOrNull()
                 val told = options?.let { "${it.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)}×${it.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT)} dp" } ?: "?"
-                "  id ${p.id} · page ${p.page} cell ${p.column},${p.row} span ${p.spanX}×${p.spanY} · " + // english-only
-                    (info?.provider?.packageName ?: "NOT BOUND") + (if (p.id !in bound) " (host does not list it)" else "") + " · told $told" // english-only
+                where + (info?.provider?.packageName ?: "NOT BOUND") + (if (p.id !in bound) " (host does not list it)" else "") + " · told $told" // english-only
             }
             (lines + "  ${state.widgetStacks.size} stacks, ${state.todayWidgets.size} Today widgets, ${bound.size} ids held by the host").joinToString("\n") // english-only
         }.getOrDefault("  (could not be read)") // english-only

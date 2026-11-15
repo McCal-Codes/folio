@@ -61,8 +61,13 @@ internal class HomeEditMode {
      * has not (a short, wide window), so the pills are never pushed off the top edge. Home gives way for whatever the lift falls short by.
      */
     var barLift by mutableStateOf(JIGGLE_BAR_LIFT)
+    /**
+     * How much taller the bar is than one row of pills: nothing where they all fit, one more row where a narrow window (a flip's cover
+     * screen) wraps Done under the rest. Measured, so Home gives way for exactly what the bar takes.
+     */
+    var barExtra by mutableStateOf(0.dp)
     fun start() { active = true }
-    fun stop() { active = false }
+    fun stop() { active = false; barExtra = 0.dp }
 }
 
 internal val LocalHomeEdit = staticCompositionLocalOf { HomeEditMode() }
@@ -144,7 +149,8 @@ internal fun HomeSearchPill(onClick: () -> Unit) {
 /** Extra top inset for the jiggle bar when the Dynamic Island is on, so its pills don't sit under the island. */
 internal val JIGGLE_BAR_ISLAND_GAP = 8.dp
 /** Where the jiggle bar's bottom edge falls (top inset + 48dp touch height + a little air), for Home's first-row clearance. */
-internal val JIGGLE_BAR_BOTTOM = JIGGLE_BAR_ISLAND_GAP + 48.dp + 4.dp
+internal val JIGGLE_BAR_ROW = 48.dp
+internal val JIGGLE_BAR_BOTTOM = JIGGLE_BAR_ISLAND_GAP + JIGGLE_BAR_ROW + 4.dp
 /** The air between the unfolded bar's pills and the first row (a 12 dp gap). */
 internal val JIGGLE_BAR_GRID_GAP = 12.dp
 /**

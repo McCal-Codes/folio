@@ -142,3 +142,7 @@ fun builtinWidgetConstraints(id: Int): WidgetSpanConstraints? = when (id) {
         canResizeHorizontally = true, canResizeVertically = true)
     else -> null
 }
+
+/** The size a built-in widget starts at: its own preferred size, or the Clock's and Date's 2 × 2 (the Big Clock is as wide as the page). */
+fun builtinDefaultSpan(id: Int): WidgetSpan =
+    builtinWidgetConstraints(id)?.preferred ?: WidgetSpan(if (id == BIG_CLOCK_WIDGET) GRID_COLUMNS else 2, 2)
