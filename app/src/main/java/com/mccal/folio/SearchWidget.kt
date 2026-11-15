@@ -38,7 +38,7 @@ internal const val SEARCH_WIDGET_CARD_MIN_HEIGHT_DP = 120
 internal fun searchWidgetShortcuts(): List<Pair<Int, String>> = listOf(
     R.string.wi_fi to Settings.ACTION_WIFI_SETTINGS,
     R.string.bluetooth to Settings.ACTION_BLUETOOTH_SETTINGS,
-    R.string.display_brightness to Settings.ACTION_DISPLAY_SETTINGS,
+    R.string.display to Settings.ACTION_DISPLAY_SETTINGS,
 )
 
 /**
@@ -71,9 +71,9 @@ internal fun SearchWidgetCard(onOpen: () -> Unit) {
                         val label = stringResource(title)
                         Row(Modifier.weight(1f).heightIn(min = 48.dp).background(Color.White.copy(alpha = .16f), CircleShape)
                             .clickable(role = Role.Button, onClickLabel = label) { if (!edit.active) openSystemSetting(context, action) else onOpen() }
-                            .padding(horizontal = FolioSpace.MEDIUM.dp), verticalAlignment = Alignment.CenterVertically,
+                            .padding(horizontal = FolioSpace.SMALL.dp), verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center) {
-                            Text(label, color = ink.primary, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.Medium, maxLines = 2,
+                            Text(label, color = ink.primary, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.Medium, maxLines = 1,
                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                         }
                     }
