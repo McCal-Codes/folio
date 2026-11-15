@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.content.Context
 import android.content.Intent
 import android.provider.AlarmClock
@@ -23,7 +24,6 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -360,7 +360,7 @@ private fun CalendarIcon(modifier: Modifier, palette: LivePalette) {
 private fun ClockIcon(modifier: Modifier, palette: LivePalette) {
     // The tick is read while drawing, so a second redraws the hands without recomposing the icon.
     val tick = rememberSecondTick()
-    val screenshot by ScreenshotMode.on.collectAsState()
+    val screenshot by ScreenshotMode.on.collectAsStateWithLifecycle()
     Box(modifier.clip(RoundedCornerShape(22)).background(palette.clockBackground)) {
         Canvas(Modifier.fillMaxSize()) {
             tick.value // subscribes this draw to the second tick

@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -33,7 +34,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -107,8 +107,8 @@ private const val AIRPODS_FRESH_MS = 60_000L
  */
 @Composable
 private fun AirPodsCardLine(device: IslandEvent.Bluetooth, color: Color) {
-    val ui by AirPodsRoot.state.collectAsState()
-    val bleRead by AirPodsBle.state.collectAsState()
+    val ui by AirPodsRoot.state.collectAsStateWithLifecycle()
+    val bleRead by AirPodsBle.state.collectAsStateWithLifecycle()
     val context = androidx.compose.ui.platform.LocalContext.current
     val now = System.currentTimeMillis()
     // The broadcast reading wins while it is not expired (shown with its age after a few minutes); otherwise the root read for

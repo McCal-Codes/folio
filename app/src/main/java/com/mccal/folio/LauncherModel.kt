@@ -201,9 +201,13 @@ data class LauncherState(
     val islandAlertAppsOff: Set<String> = emptySet(),
     /** Control Center's small controls, in order (names of [CcControl]). */
     val ccControls: List<String> = CcControl.DEFAULTS,
+    /** Places made in the Control Center editor (FeatureGate.CC_EDITOR); null until the person moves something. */
+    internal val ccLayout: CcSavedLayout? = null,
     val ccSize: PanelSize = PanelSize.STANDARD,
     /** Unfolded: Control Center in the middle instead of under the right-hand pull. */
     val ccCentered: Boolean = false,
+    /** Control Center sits under the top left corner on a wide window (left handed); [ccCentered] wins when both are set. */
+    val ccLeft: Boolean = false,
     /** How Control Center's tiles are drawn: Clear glass, Frosted or Solid. */
     val ccLook: CcLook = CcLook.CLEAR,
     /** Control Center's pages, sliders and tap behavior (FeatureGate.CC_SETTINGS_V2); the defaults are what it always did. */
@@ -521,6 +525,8 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     private val mutable = MutableStateFlow(load())
     val state = mutable.asStateFlow()
     private var undoLayout: Pair<HomeLayout, HomeLayout>? = null
+    /** What Undo just took back, as (the layout now, the layout it undid): Redo puts the second back while the first is still what Home shows. */
+    private var redoPair: Pair<HomeLayout, HomeLayout>? = null
     private var undoImportSettings: UndoImportSettings? = null
     /**
      * Smart Stacks a restored backup took off Home because an old overflow widget in it kept their slot number, with the
@@ -1373,6 +1379,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         val old = mutable.value
         if (old.layout == next) return false
         undoLayout = old.layout to next
+        redoPair = null
         undoImportSettings = null
         mutable.value = old.copy(homeSlots = next.slots, leadingSlots = next.leadingSlots, dock = next.dock,
             widgetPlacements = next.widgetPlacements, folders = next.folders,
@@ -1404,8 +1411,19 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         undoLayout = null
         undoImportSettings = null
         setAsideStacks = null
+        redoPair = mutable.value.layout to after
         persist()
         return true
+    }
+
+    /** Whether Redo has something to put back: only while Home still shows the layout Undo left, so any later edit ends it. */
+    fun canRedoEdit(layout: HomeLayout): Boolean = redoPair?.first == layout
+
+    /** Puts back what Undo just took away, as one more edit (so Undo works on it again). */
+    fun redoEdit(): Boolean {
+        val (now, undone) = redoPair ?: return false
+        if (mutable.value.layout != now) return false
+        return commitLayout(undone)
     }
     fun setLabels(value: Boolean) { if (statePayloadInvalid) return; undoLayout = null; undoImportSettings = null; mutable.update { it.copy(labels = value, canUndoEdit = false) }; persist() }
     /** Adds an empty Home page after the last one; returns its index. */
@@ -1455,14 +1473,16 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     fun setIslandAlerts(value: Boolean) = updateSettings(soon = false) { it.copy(islandAlerts = value) }
     fun setIslandAlertApp(packageName: String, enabled: Boolean) = updateSettings(soon = false) {
         it.copy(islandAlertAppsOff = if (enabled) it.islandAlertAppsOff - packageName else it.islandAlertAppsOff + packageName) }
+    internal fun setCcLayout(layout: CcSavedLayout?) = updateSettings(soon = false) { it.copy(ccLayout = layout) }
     fun setCcControls(controls: List<String>) = updateSettings(soon = false) { it.copy(ccControls = controls.distinct()) }
     fun setCcSize(size: PanelSize) = updateSettings(soon = false) { it.copy(ccSize = size) }
     fun setCcCentered(value: Boolean) = updateSettings(soon = false) { it.copy(ccCentered = value) }
+    internal fun setCcSide(side: CcSide) = updateSettings(soon = false) { it.copy(ccCentered = side == CcSide.MIDDLE, ccLeft = side == CcSide.LEFT) }
     fun setCcLook(look: CcLook) = updateSettings(soon = false) { it.copy(ccLook = look) }
     fun setCcOptions(options: CcOptions) = updateSettings(soon = false) { it.copy(ccOptions = options) }
     /** Reset Control Center, and its Undo: size, look, the middle and the options, in one write. The chosen controls are not touched. */
-    fun restoreControlCenter(size: PanelSize, centered: Boolean, look: CcLook, options: CcOptions) =
-        updateSettings(soon = false) { it.copy(ccSize = size, ccCentered = centered, ccLook = look, ccOptions = options) }
+    internal fun restoreControlCenter(size: PanelSize, centered: Boolean, look: CcLook, options: CcOptions, layout: CcSavedLayout? = null, left: Boolean = false) =
+        updateSettings(soon = false) { it.copy(ccSize = size, ccCentered = centered, ccLeft = left, ccLook = look, ccOptions = options, ccLayout = layout) }
     fun setNcLayout(value: NcLayout) = updateSettings(soon = false) { it.copy(ncLayout = value) }
     fun setShadeOverApps(value: Boolean) = updateSettings(soon = false) { it.copy(shadeOverApps = value) }
     fun setShadePull(value: Boolean) = updateSettings(soon = false) { it.copy(shadePull = value) }
@@ -1708,8 +1728,8 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
             .put(SettingKeys.ISLAND_EVENTS_OFF, JSONArray(s.islandEventsOff.toList())).put("libraryCategories", s.libraryCategories).put("libraryWork", s.libraryWork).put("iconStyle", s.iconStyle.name).put("iconTint", s.iconTint)
             .put("iconShape", s.iconShape.name).put("iconPack", s.iconPack ?: JSONObject.NULL).put("badgeStyle", s.badgeStyle.name).put("badgeColor", s.badgeColor.name).put("badgeLook", s.badgeLook.name).put("badgeSize", s.badgeSize.name).put("badgesWhenOpened", s.badgesWhenOpened)
             .put("badgesSeen", JSONObject().apply { s.badgesSeen.forEach { (pkg, count) -> put(pkg, count) } }).put("searchPill", s.searchPill).put("homeStrip", s.homeStrip.key).put("swipeDownHome", s.swipeDownHome).put("messagesApp", s.messagesApp ?: JSONObject.NULL).put(SettingKeys.MESSAGES_AVOID_DOUBLE, s.messagesAvoidDouble)
-            .put(SettingKeys.ISLAND_ALERTS, s.islandAlerts).put(SettingKeys.ISLAND_ALERT_APPS_OFF, JSONArray(s.islandAlertAppsOff.toList())).put("ccControls", JSONArray(s.ccControls))
-            .put("ccSize", s.ccSize.name).put("ccCentered", s.ccCentered).put("ccLook", s.ccLook.name).also { s.ccOptions.writeTo(it) }.put("ncLayout", s.ncLayout.name)
+            .put(SettingKeys.ISLAND_ALERTS, s.islandAlerts).put(SettingKeys.ISLAND_ALERT_APPS_OFF, JSONArray(s.islandAlertAppsOff.toList())).put("ccControls", JSONArray(s.ccControls)).also { j -> s.ccLayout?.let { j.put("ccLayout", ccLayoutToJson(it)) } }
+            .put("ccSize", s.ccSize.name).put("ccCentered", s.ccCentered).put("ccLeft", s.ccLeft).put("ccLook", s.ccLook.name).also { s.ccOptions.writeTo(it) }.put("ncLayout", s.ncLayout.name)
             // The old switch is kept, so a backup restored in an earlier Folio still opens the same way.
             .put("ncSplit", s.ncLayout == NcLayout.FULL_SCREEN).put("shadeOverApps", s.shadeOverApps).put("shadePull", s.shadePull).put("shadePullTab", s.shadePullTab).put("pullTarget", s.pullTarget.name)
             .put("widgetStacks", JSONObject().apply { s.widgetStacks.forEach { (slot, ids) -> put(slot.toString(), JSONArray(ids)) } })
@@ -1994,8 +2014,10 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?, dockMirror: St
         islandAlertAppsOff = j.optJSONArray(SettingKeys.ISLAND_ALERT_APPS_OFF)?.let { a -> (0 until a.length()).map(a::getString).toSet() } ?: emptySet(),
         ccControls = j.optJSONArray("ccControls")?.let { a -> (0 until a.length()).map(a::getString).filter { name -> CcControl.entries.any { it.name == name } } }
             ?: CcControl.DEFAULTS,
+        ccLayout = ccLayoutFromJson(j.optJSONObject("ccLayout")),
         ccSize = runCatching { PanelSize.valueOf(j.optString("ccSize")) }.getOrDefault(PanelSize.STANDARD),
         ccCentered = j.optBoolean("ccCentered", false),
+        ccLeft = j.optBoolean("ccLeft", false),
         ccLook = runCatching { CcLook.valueOf(j.optString("ccLook")) }.getOrDefault(CcLook.CLEAR),
         ccOptions = CcOptions.read(j),
         ncLayout = ncLayoutFrom(j.optString("ncLayout").ifEmpty { null }, if (j.has("ncSplit")) j.optBoolean("ncSplit") else null),

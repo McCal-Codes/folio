@@ -14,6 +14,12 @@ internal class ZeroPaddingWidgetHost(context: Context, hostId: Int) : AppWidgetH
     override fun onCreateView(context: Context, appWidgetId: Int,
         appWidget: AppWidgetProviderInfo): AppWidgetHostView =
         ZeroPaddingWidgetHostView(context)
+
+    /** An app that provides widgets was updated or removed: its widgets go blank and come back, or stay "unavailable". */
+    override fun onProvidersChanged() {
+        super.onProvidersChanged()
+        Diagnostics.event("Widget providers changed") // english-only
+    }
 }
 
 private class ZeroPaddingWidgetHostView(context: Context) : AppWidgetHostView(context) {
@@ -30,6 +36,16 @@ private class ZeroPaddingWidgetHostView(context: Context) : AppWidgetHostView(co
                 scheduleSizePublication()
             }
         }
+    }
+
+    /**
+     * The view Android shows when a widget's content cannot be drawn (the provider's views failed to inflate, or its process was gone): the
+     * "can't load widget" a person sees. Noted in the trail with the providing app and the widget's size, so a report says which widget and when.
+     */
+    override fun getErrorView(): android.view.View {
+        Diagnostics.event("Widget ${appWidgetId} (${appWidgetInfo?.provider?.packageName ?: "not bound"}) could not be drawn at " + // english-only
+            "${(width / resources.displayMetrics.density).toInt()}×${(height / resources.displayMetrics.density).toInt()} dp")
+        return super.getErrorView()
     }
 
     override fun setAppWidget(appWidgetId: Int, info: AppWidgetProviderInfo?) {

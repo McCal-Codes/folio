@@ -229,10 +229,11 @@ internal data class CcGrid(val columns: Int, val cellDp: Float, val gapDp: Float
  * A null [heightDp] means no height limit.
  */
 internal fun controlCenterGrid(panelWidthDp: Float, heightDp: Float?, controls: Int, focus: Boolean, sizeCellDp: Float,
-    touchDp: Float = 48f, sidePaddingDp: Float = 32f): CcGrid {
+    touchDp: Float = 48f, sidePaddingDp: Float = 32f, rail: Boolean = true): CcGrid {
     val gap = sizeCellDp * CC_GAP_RATIO
     val strip = touchDp + gap
-    val edge = panelWidthDp >= CC_EDGE_STRIP_PANEL_RATIO * strip
+    // [rail] off (the default in Settings, as on an iPhone): no strip beside the grid, the page dots lie under it or in the header.
+    val edge = rail && panelWidthDp >= CC_EDGE_STRIP_PANEL_RATIO * strip
     // Too short to spend a row of height on the page strip: it moves into the header, between the two buttons, as small dots.
     val inHeader = !edge && heightDp != null && heightDp < CC_STRIP_IN_HEADER_BELOW_DP
     val gridWidth = panelWidthDp - sidePaddingDp - if (edge) strip else 0f

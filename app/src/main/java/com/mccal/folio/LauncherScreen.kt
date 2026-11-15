@@ -34,6 +34,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.FormatListBulleted
+import androidx.compose.material.icons.automirrored.rounded.Redo
 import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.animation.core.Animatable
@@ -264,11 +265,13 @@ fun LauncherScreen(
     var expandedWorkspace by remember(screenConfig) { mutableStateOf(screenConfig.fitsRegularHomeLayout()) }
     /** Where the jiggle bar's Edit button is, so its menu opens right under it. */
     var editPillBounds by remember { mutableStateOf<androidx.compose.ui.unit.IntRect?>(null) }
+    // Where the edit bar's box starts in the window: the strip above it is all the unfolded bar can be lifted into.
+    var barBoxTopPx by remember { mutableFloatStateOf(-1f) }
     // The page left of Home is Folio's Today View, Google Discover when chosen and available, or nothing at all.
     // When the Google app refuses to serve Discover (see DiscoverAvailability) the choice shows Today View instead of an error page.
     val discoverContext = androidx.compose.ui.platform.LocalContext.current
     remember { DiscoverAvailability.load(discoverContext) }
-    val discoverRefused by DiscoverAvailability.refused.collectAsState()
+    val discoverRefused by DiscoverAvailability.refused.collectAsStateWithLifecycle()
     LaunchedEffect(state.leftPage) { if (state.leftPage == "DISCOVER") DiscoverAvailability.refresh(discoverContext) }
     val todayMode = state.leftPage == "TODAY" || (state.leftPage == "DISCOVER" && discoverRefused)
     val discoverMode = state.leftPage == "DISCOVER" && !discoverRefused
@@ -839,6 +842,7 @@ fun LauncherScreen(
             // The page controls under Home (and the Preview bar before Folio is the Home app), measured: the old guess
             // of 44dp, 88dp with the Preview bar, left the App Library's panel under the Preview bar sideways.
             var bottomControlsHeight by remember { mutableStateOf(0.dp) }
+            val windowHeightDp = maxHeight.value
             val geometry = homeGeometry(maxWidth.value, maxHeight.value, preset, state.labels, dockSlots = shownDock.size, statusRail = state.verticalStatus,
                 statusHeight = if (state.verticalStatus) statusHeight + 22f else 0f,
                 labelHeight = with(density) { (LocalLabelSize.current.lineSp * glanceFontFactor(fontScale)).sp.toDp().value } + 6f, inLibrary = inLibrary,
@@ -1224,6 +1228,8 @@ fun LauncherScreen(
             val besideHome = if (geometry.expanded) panelWidth.coerceAtLeast(0.dp) else 0.dp
             OwnMethod { Column(Modifier.align(if (state.leftHanded) Alignment.BottomEnd else Alignment.BottomStart).width(pagerWidth)
                 .onSizeChanged { bottomControlsHeight = with(density) { it.height.toDp() } }
+                // In edit mode the page is pushed down for the bar, so these controls drop a little to stay clear of the last row.
+                .offset(y = animateDpAsState(if (!homeEdit.active) 0.dp else if (geometry.expanded) JIGGLE_BAR_CONTROLS_DROP else JIGGLE_BAR_CONTROLS_DROP_FOLDED, label = "controls drop").value)
                 .padding(start = if (state.leftHanded) 0.dp else besideHome + FolioSpace.LARGE.dp,
                     end = if (state.leftHanded) besideHome + FolioSpace.LARGE.dp else 0.dp, bottom = FolioSpace.SNUG.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 if (!isDefaultHome && !homeEdit.active && !drag.active) PreviewBar(onUseAsHome = { sheet = ""; onMakeDefault() },
@@ -1322,9 +1328,17 @@ fun LauncherScreen(
                     }
                 }
             } }
+            // The Undo pill is a passing offer: it fades after a few seconds. Undo stays in the edit bar, the rail and Home's menu.
+            var undoPillShown by remember { mutableStateOf(false) }
+            LaunchedEffect(state.editRevision, state.canUndoEdit) {
+                undoPillShown = state.canUndoEdit
+                if (state.canUndoEdit) { kotlinx.coroutines.delay(UNDO_PILL_MS); undoPillShown = false }
+            }
             androidx.compose.animation.AnimatedVisibility(
-                visible = state.canUndoEdit && sheet.isEmpty() && !drag.active,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottomControlsHeight + FolioSpace.COMFY.dp),
+                visible = undoPillShown && state.canUndoEdit && sheet.isEmpty() && !drag.active,
+                // Above the dock when it runs along the bottom, not on top of its icons.
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottomControlsHeight + FolioSpace.COMFY.dp +
+                    (if (geometry.horizontalDock && !geometry.dockBesideRail) (geometry.dockBarHeight + 8f).dp else 0.dp)),
                 enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { it / 2 },
                 exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { it / 2 }
             ) {
@@ -1348,37 +1362,92 @@ fun LauncherScreen(
                     }
                 }
             }
+            // Unfolded, a camera off the middle puts the island pill over the far page's edit pills: Done then sits to the right of the pill and
+            // the other pills to its left. Judged from where the pill is and where the bar's pills run, not from the layout that results.
+            val barRightPx = with(density) { pagerWidth.toPx() - FolioSpace.COMFY.dp.toPx() }
+            val barSpanPx = with(density) { JIGGLE_BAR_SPAN.toPx() * LocalDensity.current.fontScale.coerceAtLeast(1f) }
+            val barAroundIsland = geometry.expanded && state.island && homeEdit.active && !state.leftHanded && IslandFootprint.shown &&
+                IslandFootprint.rightPx > barRightPx - barSpanPx && IslandFootprint.leftPx < barRightPx
+            // The lift is as much as the strip above the bar allows, up to JIGGLE_BAR_LIFT: the pills' drawn top sits ~10 dp inside the bar's
+            // box, and keeps 4 dp from the window's top edge. A short, wide window has no strip, so its bar stays on screen and Home gives
+            // way for what the lift falls short by (HomePagePane reads it from here).
+            // Folded, the Side Bar carries Add and Done in edit mode, but only where its column has the room under the dock for two round
+            // controls: a short window (a phone held sideways) has none, and the controls then sat on the dock's last apps, so the bar
+            // at the top carries them there as it does unfolded. Judged from where the dock ends, not from a size class.
+            val editControlsOnRail = state.verticalStatus && !geometry.expanded &&
+                windowHeightDp - (geometry.dockTop + geometry.dockHeight) >= 2 * (dockIconSize(geometry.iconSize).coerceAtLeast(FolioTouch.MIN.toFloat()) + FolioSpace.SMALL) + 24f
+            val barStripDp = if (barBoxTopPx < 0f) JIGGLE_BAR_LIFT else with(density) { barBoxTopPx.toDp() } + 6.dp
+            SideEffect { homeEdit.barLift = barStripDp.coerceIn(0.dp, JIGGLE_BAR_LIFT) }
             androidx.compose.animation.AnimatedVisibility(homeEdit.active && sheet.isEmpty(),
-                // Unfolded, the bar sits in the free strip at the bottom of the Home half beside the page dots, so it neither
-                // covers the widget row nor pushes the grid; folded, it's at the top, clear of the Dynamic Island.
-                Modifier.align(when {
-                    geometry.expanded -> if (state.leftHanded) Alignment.BottomStart else Alignment.BottomEnd
-                    state.leftHanded -> Alignment.TopEnd
-                    else -> Alignment.TopStart
-                }).width(pagerWidth),
-                enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { if (geometry.expanded) it / 2 else -it / 2 },
-                exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { if (geometry.expanded) it / 2 else -it / 2 }) {
+                // At the top in every posture, as on iOS, clear of the Dynamic Island. Unfolded it used to sit at the bottom beside
+                // the page dots and the Library button, where Edit, Undo and Redo crowded them. Unfolded, the pills gather at the
+                // pager's far end, away from the island at the middle of the top edge.
+                Modifier.align(if (state.leftHanded) Alignment.TopEnd else Alignment.TopStart).then(if (barAroundIsland) Modifier.fillMaxWidth() else Modifier.width(pagerWidth))
+                    .onGloballyPositioned { barBoxTopPx = it.positionInWindow().y }
+                    .then(if (geometry.expanded) Modifier.offset(y = -homeEdit.barLift) else Modifier),
+                enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { -it / 2 },
+                exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { -it / 2 }) {
                 Row(Modifier.fillMaxWidth().padding(start = FolioSpace.COMFY.dp, end = FolioSpace.COMFY.dp,
-                    top = if (geometry.expanded) 0.dp else if (state.island) JIGGLE_BAR_ISLAND_GAP else FolioSpace.HAIR.dp).testTag("jiggle-bar"),
-                    horizontalArrangement = if (geometry.expanded) Arrangement.spacedBy(FolioSpace.SMALL.dp, Alignment.End) else Arrangement.Start,
+                    top = if (state.island && !geometry.expanded) JIGGLE_BAR_ISLAND_GAP else FolioSpace.HAIR.dp).testTag("jiggle-bar"),
+                    horizontalArrangement = if (geometry.expanded && !barAroundIsland) Arrangement.spacedBy(FolioSpace.SMALL.dp, Alignment.End) else Arrangement.Start,
                     verticalAlignment = Alignment.CenterVertically) {
                     val editPage = pager.currentPage.coerceIn(0, homePages - 1)
-                    JigglePill("", Icons.Rounded.Add, description = stringResource(R.string.add_widget)) {
-                        picker.slot = model.nextWidgetSlot(); picker.targetIndex = homeCellIndex(editPage, 0); picker.anyApp(); picker.profileSerial = null; sheet = "widgets"
+                    // Folded, the Side Bar carries Add and Done in edit mode (whenever the status rail is on), so the bar keeps only Edit
+                    // rather than showing each of them twice. Unfolded the rail is tall with the dock and its drag handle, so Add and Done
+                    // join Edit in the bar at the top and the rail keeps nothing at its foot to overlap.
+                    val railHasControls = editControlsOnRail
+                    val addPill: @Composable () -> Unit = {
+                        if (!railHasControls) JigglePill("", Icons.Rounded.Add, description = stringResource(R.string.add_widget)) {
+                            picker.slot = model.nextWidgetSlot(); picker.targetIndex = homeCellIndex(editPage, 0); picker.anyApp(); picker.profileSerial = null; sheet = "widgets"
+                        }
                     }
-                    JigglePill(stringResource(R.string.edit), modifier = Modifier.onGloballyPositioned { editPillBounds = it.boundsInWindow().roundToIntRect() }) {
-                        overlays.emptyCell = homeEdit.lastEmptyIndex?.takeIf { homeCellPage(it) == editPage } ?: homeCellIndex(editPage, 0)
+                    // Back and forward beside Edit, as on Apple's: take the last change back, or put it back again. Dimmed when there is nothing to do.
+                    // In the narrow strip beside the page there is no width for them in the row, so they stand under Edit instead.
+                    val stepsBesideEdit = !jiggleBarBesideGrid(geometry.horizontalDock, geometry.dockBesideRail, geometry.homeWidth, geometry.gridWidth, LocalDensity.current.fontScale)
+                    val editPill: @Composable () -> Unit = {
+                        JigglePill(stringResource(R.string.edit), modifier = Modifier.onGloballyPositioned { editPillBounds = it.boundsInWindow().roundToIntRect() }) {
+                            overlays.emptyCell = homeEdit.lastEmptyIndex?.takeIf { homeCellPage(it) == editPage } ?: homeCellIndex(editPage, 0)
+                        }
                     }
-                    // Unfolded, keep all three together at the top right instead of spread across two pages.
-                    if (!geometry.expanded) Spacer(Modifier.weight(1f))
-                    JigglePill(stringResource(R.string.done), emphasized = true) { haptic.perform(FolioHaptic.Commit); homeEdit.stop() }
+                    val stepPills: @Composable () -> Unit = {
+                        JigglePill("", Icons.AutoMirrored.Rounded.Undo, description = stringResource(R.string.undo), enabled = state.canUndoEdit) {
+                            haptic.perform(FolioHaptic.Commit); model.undoEdit()
+                        }
+                        JigglePill("", Icons.AutoMirrored.Rounded.Redo, description = stringResource(R.string.redo), enabled = model.canRedoEdit(state.layout)) {
+                            haptic.perform(FolioHaptic.Commit); model.redoEdit()
+                        }
+                    }
+                    val donePill: @Composable () -> Unit = {
+                        if (!railHasControls) JigglePill(stringResource(R.string.done), emphasized = true) { haptic.perform(FolioHaptic.Commit); homeEdit.stop() }
+                    }
+                    if (barAroundIsland) {
+                        // The pills to the left of the island end beside it, and Done starts beside its far edge.
+                        val gap = JIGGLE_BAR_ISLAND_SIDE_GAP
+                        val leftRoom = with(density) { (IslandFootprint.leftPx - FolioSpace.COMFY.dp.toPx()).toDp() } - gap
+                        Box(Modifier.width(leftRoom.coerceAtLeast(0.dp)), contentAlignment = Alignment.CenterEnd) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
+                                addPill()
+                                if (stepsBesideEdit) { editPill(); stepPills() }
+                                else Column { editPill(); Row { stepPills() } }
+                            }
+                        }
+                        Spacer(Modifier.width(with(density) { (IslandFootprint.rightPx - IslandFootprint.leftPx).toDp() } + gap * 2))
+                        donePill()
+                    } else {
+                        addPill()
+                        if (stepsBesideEdit) { editPill(); stepPills() }
+                        else Column { editPill(); Row { stepPills() } }
+                        // Unfolded, keep all three together at the top right instead of spread across two pages.
+                        if (!geometry.expanded) Spacer(Modifier.weight(1f))
+                        donePill()
+                    }
                 }
             }
             if (!inLibrary && !drag.active) OwnMethod { Column(Modifier.align(railBottom(state.leftHanded)).railEdge(state.leftHanded, 12.dp + caseFitInset).padding(bottom = FolioSpace.SNUG.dp)
                 .width(preset.dockWidth.dp), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
                 val controlSize = dockIconSize(geometry.iconSize).dp
-                if (homeEdit.active && state.verticalStatus) {
+                if (homeEdit.active && editControlsOnRail) {
                     CircleControl(Icons.Rounded.Add, stringResource(R.string.add_widget), "rail-add-widget", controlSize) {
                         val editPage = pager.currentPage.coerceIn(0, homePages - 1)
                         picker.slot = model.nextWidgetSlot()
@@ -1387,17 +1456,13 @@ fun LauncherScreen(
                         picker.profileSerial = null
                         sheet = "widgets"
                     }
-                    if (state.canUndoEdit) {
-                        CircleControl(Icons.AutoMirrored.Rounded.Undo, stringResource(R.string.undo), "rail-undo", controlSize) {
-                            haptic.perform(FolioHaptic.Commit)
-                            model.undoEdit()
-                        }
-                    }
+                    // Undo and Redo live in the top bar. A third rail button used to appear after the first change and push Add
+                    // up over the dock (seen on the Fold's cover screen).
                     CircleControl(Icons.Rounded.Check, stringResource(R.string.done), "rail-done", controlSize) {
                         haptic.perform(FolioHaptic.Commit)
                         homeEdit.stop()
                     }
-                } else {
+                } else if (!(homeEdit.active && geometry.expanded)) {
                     if (pager.currentPage == -1) CircleControl(Icons.Rounded.ArrowForward, stringResource(R.string.back_to_home), "discover-home", controlSize) { scope.launch { pager.animateScrollToPage(0) } }
                     val searchBounds = remember { android.graphics.Rect() }
                     if (!state.searchPill || pager.currentPage !in 0 until homePages) Box(Modifier.onGloballyPositioned { searchBounds.set(it.boundsInWindow().toAndroidBounds()) }) {
@@ -1512,7 +1577,9 @@ fun LauncherScreen(
                                 },
                                 onRemove = { widgets.remove(picker.slot); sheet = "" },
                                 onClose = { sheet = "" },
-                                onCustomize = if (placement.id == BIG_CLOCK_WIDGET && clockCustomize) {{ clockEditSlot = placement.slot; sheet = "" }} else null,
+                                onCustomize = if (placement.id == BIG_CLOCK_WIDGET && clockCustomize) {{ clockEditSlot = placement.slot; sheet = "" }}
+                                    else if (placement.id == PHOTO_WIDGET) {{ PhotoWidgetBus.requestOptions(); sheet = "" }} else null,
+                                onRemovePhoto = if (placement.id == PHOTO_WIDGET && PhotoWidgetStore.load(launcherActivity).uris.isNotEmpty()) {{ PhotoWidgetBus.removeCurrent(launcherActivity); sheet = "" }} else null,
                                 onPlace = if (placement.id == BIG_CLOCK_WIDGET && clockCustomize && !geometry.splitColumns && !(hinge?.let { it.active && !it.vertical } ?: false)) {{ placeSlot = placement.slot; sheet = "" }} else null,
                                 onExpand = if (placement.id in BACKUP_BUILTIN_WIDGETS || placement.id < 0) {{ sheet = "expandedWidget" }} else null)
                         }
@@ -1789,6 +1856,7 @@ fun LauncherScreen(
                                                 SUGGESTIONS_WIDGET -> stringResource(R.string.suggestions)
                                                 BIG_CLOCK_WIDGET -> stringResource(R.string.big_clock)
                                                 MUSIC_WIDGET -> stringResource(R.string.music)
+                                                PHOTO_WIDGET -> stringResource(R.string.photos_widget)
                                                 else -> stringResource(R.string.widget_panel)
                                             }, color = Ink,
                                             textAlign = TextAlign.Center)
@@ -2041,7 +2109,7 @@ fun LauncherScreen(
                 AppIconEditor(app, state.appIconStyles[app.id] ?: AppIconOverride(), onChange = { model.setAppIconStyle(app.id, it) }, onDone = { overlays.iconEditor = null },
                     actions = if (FeatureGate.ICON_ACTIONS.isOpen(launcherActivity) && !SafeMode.active) state.iconActions[app.id] ?: IconActions() else null,
                     // The real apps: while Screenshot Mode swaps them, Home's state carries the stand-ins' names.
-                    apps = model.state.collectAsState().value.apps, onActions = { model.setIconActions(app.id, it) })
+                    apps = model.state.collectAsStateWithLifecycle().value.apps, onActions = { model.setIconActions(app.id, it) })
             }
         }
         appsById[overlays.rename]?.let { app ->

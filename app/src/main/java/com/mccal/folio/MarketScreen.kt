@@ -32,6 +32,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Storefront
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Download
@@ -68,6 +69,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -979,8 +982,11 @@ private fun MarketList(
     val updates = entries.filter { entry ->
         installed[entry.id]?.let { entry.entry.version > it.version } == true
     } + appUpdates
+    // Browse (Packages) can be searched; the other tabs show what they always did.
+    var query by rememberSaveable { mutableStateOf("") }
     val shown = when (tab) {
-        MarketTab.FEATURED, MarketTab.PACKAGES -> entries
+        MarketTab.FEATURED -> entries
+        MarketTab.PACKAGES -> entries.filter { marketMatches(it.name, it.id, it.entry.manifest?.author?.name?.english, it.entry.manifest?.section?.id, query) }
         MarketTab.INSTALLED -> entries.filter { it.id in installed } - updates.toSet()
         MarketTab.SOURCES, MarketTab.SETTINGS -> emptyList()
     }
@@ -994,6 +1000,13 @@ private fun MarketList(
                 if (tab == MarketTab.FEATURED) Text(stringResource(R.string.welcome_to_folio), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
                 Text(stringResource(tab.label), color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold)
             }
+        }
+        if (tab == MarketTab.PACKAGES) item(key = "search") {
+            MarketSearchField(query, { query = it }, Modifier.padding(bottom = FolioSpace.COMPACT.dp))
+        }
+        if (tab == MarketTab.PACKAGES && shown.isEmpty() && entries.isNotEmpty()) item(key = "no-match") {
+            Text(stringResource(R.string.market_no_packages_match), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp,
+                modifier = Modifier.padding(vertical = FolioSpace.LARGE.dp).semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite })
         }
         if (tab == MarketTab.FEATURED && index != null) {
             item(key = "featured") {
@@ -2048,4 +2061,29 @@ internal sealed interface MarketLink {
 internal object MarketBack {
     const val SHIFT = .08f
     const val SHRINK = .1f
+}
+
+/** Whether a package belongs in Browse for [query]: every word typed appears in its name, id, author or section, ignoring case. A blank query matches all. */
+internal fun marketMatches(name: String, id: String, author: String?, section: String?, query: String): Boolean {
+    val words = query.trim().lowercase().split(" ").filter { it.isNotEmpty() }
+    if (words.isEmpty()) return true
+    val haystack = listOfNotNull(name, id, author, section).joinToString(" ").lowercase()
+    return words.all { it in haystack }
+}
+
+/** The search box at the top of Browse, drawn like the Add a Control search so the two read as one kind of field. */
+@Composable
+private fun MarketSearchField(query: String, onQuery: (String) -> Unit, modifier: Modifier = Modifier) {
+    val hint = stringResource(R.string.market_search_packages)
+    Row(modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(Color.White.copy(alpha = .1f))
+        .padding(horizontal = FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(FolioSpace.SNUG.dp)) {
+        Icon(Icons.Rounded.Search, null, tint = FolioGlass.secondary, modifier = Modifier.size(20.dp))
+        Box(Modifier.weight(1f)) {
+            if (query.isEmpty()) Text(hint, color = FolioGlass.secondary, fontSize = FolioType.BODY.sp, modifier = Modifier.clearAndSetSemantics {})
+            androidx.compose.foundation.text.BasicTextField(query, onQuery, singleLine = true, cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.White),
+                textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = FolioType.BODY.sp),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
+                modifier = Modifier.fillMaxWidth().testTag("market-search").semantics { contentDescription = hint })
+        }
+    }
 }

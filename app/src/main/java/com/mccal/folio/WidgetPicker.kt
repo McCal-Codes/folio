@@ -2,6 +2,7 @@ package com.mccal.folio
 
 import androidx.compose.material.icons.rounded.LockClock
 import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.automirrored.rounded.EventNote
 import androidx.compose.ui.res.stringResource
@@ -234,6 +235,8 @@ internal fun VisualWidgetPicker(
     val bigClockLabel = stringResource(R.string.big_clock)
     val musicWidgetLabel = stringResource(R.string.music)
     val musicWidgetOpen = rememberGateOpen(FeatureGate.MUSIC_WIDGET)
+    val photosLabel = stringResource(R.string.photos_widget)
+    val photoWidgetOpen = rememberGateOpen(FeatureGate.PHOTO_WIDGET)
     val upNextLabel = stringResource(R.string.up_next)
     val dateLabel = stringResource(R.string.date)
     val clockLabel = stringResource(R.string.clock)
@@ -264,8 +267,10 @@ internal fun VisualWidgetPicker(
     } }
     val allBuiltins = listOf(Triple(CLOCK_WIDGET, clockLabel, Icons.Rounded.Schedule), Triple(DATE_WIDGET, dateLabel, Icons.Rounded.CalendarToday),
         Triple(UP_NEXT_WIDGET, upNextLabel, androidx.compose.material.icons.Icons.AutoMirrored.Rounded.EventNote), Triple(BIG_CLOCK_WIDGET, bigClockLabel, Icons.Rounded.LockClock), Triple(SUGGESTIONS_WIDGET, suggestionsLabel, androidx.compose.material.icons.Icons.Rounded.AutoAwesome),
-        Triple(MUSIC_WIDGET, musicWidgetLabel, Icons.Rounded.MusicNote), Triple(INFO_WIDGET, widgetPanelLabel, Icons.Rounded.Widgets))
+        Triple(MUSIC_WIDGET, musicWidgetLabel, Icons.Rounded.MusicNote), Triple(PHOTO_WIDGET, photosLabel, Icons.Rounded.PhotoLibrary),
+        Triple(INFO_WIDGET, widgetPanelLabel, Icons.Rounded.Widgets))
         .filter { it.first != MUSIC_WIDGET || musicWidgetOpen }
+        .filter { it.first != PHOTO_WIDGET || photoWidgetOpen }
     // Folio's own widgets are searchable like any app's, and shown with the Folio chip or while browsing.
     val builtins = if ((selectedApp == null || selectedApp == FOLIO_WIDGETS) && selectedProfile.isPersonal)
         allBuiltins.filter { matchesWidgetSearch(words, it.second, folioLabel) } else emptyList()
@@ -275,7 +280,7 @@ internal fun VisualWidgetPicker(
     Surface(Modifier.fillMaxSize().alpha(if (hiddenForDrag) 0f else 1f)
         .then(if (hiddenForDrag) Modifier.clearAndSetSemantics { }.focusProperties { canFocus = false } else Modifier)
         .testTag("visual-widget-picker"),
-        color = Color(0xFF111114).copy(alpha = .97f), contentColor = ink) {
+        color = Color(0xFF111114), contentColor = ink) {
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.folioSafeTop).navigationBarsPadding().padding(horizontal = 18.dp)) {
             Row(Modifier.fillMaxWidth().padding(top = FolioSpace.SNUG.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.widgets), color = ink, fontSize = 32.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
@@ -344,7 +349,7 @@ internal fun VisualWidgetPicker(
                     val cappedFolio = selectedApp == null && FOLIO_WIDGETS !in expandedApps && builtins.size > columns
                     header("duo-widgets", folioLabel, if (cappedFolio) builtins.size else null)
                     items(if (cappedFolio) builtins.take(columns) else builtins, key = { "builtin-${it.first}" }) { (id, label, icon) ->
-                        GalleryCard(label, stringResource(R.string.folio), stringResource(if (id == BIG_CLOCK_WIDGET || id == MUSIC_WIDGET) R.string.wide else R.string.small), Modifier.testTag("widget-builtin-$id")
+                        GalleryCard(label, stringResource(R.string.folio), stringResource(when (id) { BIG_CLOCK_WIDGET, MUSIC_WIDGET -> R.string.wide; PHOTO_WIDGET -> R.string.tall; else -> R.string.small }), Modifier.testTag("widget-builtin-$id")
                             .clickable { focusManager.clearFocus(); keyboard?.hide(); onBuiltin(id) }) {
                             Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(22.dp))
                                 .background(Color.White.copy(alpha = .1f)), contentAlignment = Alignment.Center) {

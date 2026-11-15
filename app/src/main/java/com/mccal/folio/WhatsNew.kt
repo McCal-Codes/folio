@@ -267,9 +267,9 @@ internal const val FEATURES_SHOWN = 4
 
 /** A new feature, Apple's way: the same solid colored tile as What to Test, a bold title and gray text, with no card around it. */
 @androidx.compose.runtime.Composable
-private fun FeatureRow(note: NoteItem) {
+internal fun FeatureRow(note: NoteItem, modifier: androidx.compose.ui.Modifier = androidx.compose.ui.Modifier) {
     androidx.compose.foundation.layout.Row(
-        androidx.compose.ui.Modifier
+        modifier
             .fillMaxWidth()
             .padding(vertical = FolioSpace.SMALL.dp)
             .semantics(mergeDescendants = true) {},
@@ -299,7 +299,7 @@ private fun FeatureRow(note: NoteItem) {
 
 /** A row that opens more below it, with an optional count, like an iOS disclosure row. */
 @androidx.compose.runtime.Composable
-private fun DisclosureRow(label: String, open: Boolean, count: Int? = null, tag: String, onClick: () -> Unit) {
+internal fun DisclosureRow(label: String, open: Boolean, count: Int? = null, tag: String, onClick: () -> Unit) {
     androidx.compose.foundation.layout.Row(androidx.compose.ui.Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(onClick = onClick)
         .padding(horizontal = FolioSpace.LARGE.dp).testTag(tag), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
         androidx.compose.material3.Text(label, color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.CALLOUT.sp,

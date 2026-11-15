@@ -134,6 +134,9 @@ fun homeControlsSpace(isDefaultHome: Boolean, measuredDp: Float): Float =
  */
 const val JIGGLE_BAR_CLUSTER_DP = 124f
 
+/** How long the Undo pill stays after a change to Home, in ms. */
+const val UNDO_PILL_MS = 5000L
+
 /**
  * Whether the edit bar sits beside the page rather than above its first row: the upright unfolded window keeps its grid centered
  * with the dock as a bottom bar, so the grid starts further from the window's edge than the bar's pills reach. Judged from
@@ -144,11 +147,11 @@ fun jiggleBarBesideGrid(horizontalDock: Boolean, dockBesideRail: Boolean, window
 
 /**
  * The room Home keeps under the + / Edit / Done bar in edit mode: only what the bar needs above the first row, none when the bar
- * sits in the strip beside the page, or in the free strip of an expanded window. Pushing a grid down that has no spare height
+ * sits in the strip beside the page. The bar is at the top in every posture; an unfolded window passes the smaller JIGGLE_BAR_BOTTOM_UNFOLDED. Pushing a grid down that has no spare height
  * (F01, 27 Oct sweep) leaves its last row under the dock.
  */
-fun jiggleBarRoom(barBottom: Float, contentTop: Float, expanded: Boolean, besideGrid: Boolean): Float =
-    if (expanded || besideGrid) 0f else (barBottom - contentTop).coerceAtLeast(0f)
+fun jiggleBarRoom(barBottom: Float, contentTop: Float, besideGrid: Boolean): Float =
+    if (besideGrid) 0f else (barBottom - contentTop).coerceAtLeast(0f)
 
 enum class DockPlacement {
     /** Side Bar, or a bar along the bottom when a regular-size screen is upright (iPhone Duo). */
@@ -322,15 +325,15 @@ fun railControlsReserve(count: Int, homeIconSize: Float): Float {
  */
 const val MIN_DOCK_SLOTS = 4
 const val STANDARD_DOCK_SLOTS = 6
-const val MAX_DOCK_SLOTS = 8
+const val MAX_DOCK_SLOTS = 9
 
 /**
  * How many places the dock may have in a window [heightDp] tall: what the Side Bar can stack under the status rail and above
- * the page controls (about 250 dp together) at one dock app's pitch, never fewer than [STANDARD_DOCK_SLOTS] so no window
- * loses what it had, never more than [MAX_DOCK_SLOTS]. A 900 dp phone takes eight, a 780 dp one seven.
+ * the page controls (about 250 dp together, and 16 dp of padding) at one dock app's pitch (its icon and 8 dp, never under the 48 dp a place needs), never fewer than [STANDARD_DOCK_SLOTS] so no window
+ * loses what it had, never more than [MAX_DOCK_SLOTS]. A 780 dp window takes nine, a 740 dp one eight, a 700 dp one seven.
  */
 fun dockCapacity(heightDp: Float, homeIconSize: Float, dockSize: Float = 1f): Int =
-    ((heightDp - 250f) / (dockIconSize(homeIconSize) * dockSize + 22f)).toInt().coerceIn(STANDARD_DOCK_SLOTS, MAX_DOCK_SLOTS)
+    ((heightDp - 266f) / (dockIconSize(homeIconSize) * dockSize + 8f).coerceAtLeast(STANDARD_DOCK_PITCH)).toInt().coerceIn(STANDARD_DOCK_SLOTS, MAX_DOCK_SLOTS)
 
 fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Boolean, statusHeight: Float = 0f, labelHeight: Float = 20f, inLibrary: Boolean = false, homeBottomSpace: Float = 44f,
     /** How many round controls (search, back to Home) sit at the bottom of the rail on the page shown now: 0, 1 or 2. */
@@ -585,7 +588,10 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
     val sizedDockIcon = if (p.dockSize <= 1f) roomyDockIcon * p.dockSize
         else minOf(roomyDockIcon * p.dockSize, maxOf(roomyDockIcon, dockIconRoom))
     // Fit more dock apps: the icon gives way to the room a place has, so a tighter place never crowds it.
-    val dockIcon = if (p.dockCompact) minOf(sizedDockIcon, maxOf(dockIconRoom, 24f)) else sizedDockIcon
+    val fittedDockIcon = if (p.dockCompact) minOf(sizedDockIcon, maxOf(dockIconRoom, 24f)) else sizedDockIcon
+    // A Side Bar holding more than the standard six packs its places at the 48 dp a touch target needs, so its icons give way to leave
+    // 8 dp between them (never under 28 dp) instead of touching. Six or fewer keep the icon they always had.
+    val dockIcon = if (!horizontalDock && shownSlots > STANDARD_DOCK_SLOTS) minOf(fittedDockIcon, maxOf(dockRowHeight - 8f, 28f)) else fittedDockIcon
     val basePitch = dockIcon + 22f
     val dockPitch = if (dockSpace <= 0f) basePitch else minOf(basePitch + dockSpace, maxOf(basePitch, (barRoom - 16f) / slots))
     // With the dock at the bottom and no Side Bar beside the page (upright unfolded, or Full-width Home), the page is

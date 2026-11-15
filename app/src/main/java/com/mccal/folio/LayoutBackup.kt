@@ -49,7 +49,7 @@ data class LayoutImportPreview(
 )
 
 /** The widgets Folio draws itself, which a backup carries by id. A kind missing here is dropped on export and skipped on import. */
-internal val BACKUP_BUILTIN_WIDGETS = setOf(CLOCK_WIDGET, DATE_WIDGET, INFO_WIDGET, UP_NEXT_WIDGET, SUGGESTIONS_WIDGET, BIG_CLOCK_WIDGET, MUSIC_WIDGET)
+internal val BACKUP_BUILTIN_WIDGETS = setOf(CLOCK_WIDGET, DATE_WIDGET, INFO_WIDGET, UP_NEXT_WIDGET, SUGGESTIONS_WIDGET, BIG_CLOCK_WIDGET, MUSIC_WIDGET, PHOTO_WIDGET)
 
 fun layoutBackupScope(context: Context): String {
     val prefs = context.getSharedPreferences("layout_backup_identity", Context.MODE_PRIVATE)

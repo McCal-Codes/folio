@@ -51,6 +51,11 @@ class FeatureGateTest {
             FeatureGate.PRIVATE_RECORDING != FeatureGate.ISLAND_ADJUST && FeatureGate.PRIVATE_RECORDING != FeatureGate.ISLAND_ADVANCED)
     }
 
+    @Test fun `the Control Center editor opens with the 0_7_0 release on a gate of its own`() {
+        assertEquals("0.7.0", FeatureGate.CC_EDITOR.opensIn)
+        assertTrue(FeatureGate.CC_EDITOR != FeatureGate.CC_REORDER)
+    }
+
     @Test fun `moving controls in Control Center opens with this release on a gate of its own`() {
         assertEquals("0.6.9", FeatureGate.CC_REORDER.opensIn)
         assertTrue("it is not the deeper Control Center settings' gate", FeatureGate.CC_REORDER != FeatureGate.CC_PAGES_DEDUPE)

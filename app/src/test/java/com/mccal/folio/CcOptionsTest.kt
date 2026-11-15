@@ -18,6 +18,7 @@ class CcOptionsTest {
         assertTrue(o.mediaPage); assertTrue(o.connectivityPage)
         assertEquals(CcOpenOn.CONTROLS, o.openOn)
         assertTrue("slider ticks stay on", o.sliderTicks)
+        assertFalse("Control Center fills a wide window until compact is chosen", o.compact)
         assertFalse("closing after a tap is off", o.closeAfterToggle)
     }
 
@@ -29,7 +30,7 @@ class CcOptionsTest {
     }
 
     @Test fun `options survive being written and read`() {
-        val o = CcOptions(mediaPage = false, connectivityPage = false, openOn = CcOpenOn.LAST, sliderTicks = false, closeAfterToggle = true)
+        val o = CcOptions(mediaPage = false, connectivityPage = false, openOn = CcOpenOn.LAST, sliderTicks = false, closeAfterToggle = true, compact = true)
         assertEquals(o, CcOptions.read(o.writeTo(JSONObject())))
     }
 
@@ -76,7 +77,8 @@ class CcOptionsTest {
     @Test fun `only the one-shot tiles close Control Center, and only when asked`() {
         val on = CcOptions(closeAfterToggle = true)
         val off = CcOptions()
-        val oneShot = setOf(CcControl.FLASHLIGHT, CcControl.CAMERA, CcControl.CALCULATOR, CcControl.SCREENSHOT, CcControl.SETTINGS, CcControl.LOCK, CcControl.WALLET, CcControl.NOTES)
+        val oneShot = setOf(CcControl.FLASHLIGHT, CcControl.CAMERA, CcControl.CALCULATOR, CcControl.SCREENSHOT, CcControl.SETTINGS, CcControl.LOCK, CcControl.WALLET, CcControl.NOTES,
+            CcControl.CAST, CcControl.DISPLAY, CcControl.ACCESSIBILITY, CcControl.RECORDER, CcControl.LOCATION, CcControl.VPN)
         for (control in CcControl.entries) {
             assertFalse("${control.name} never closes it while the option is off", ccClosesAfterTap(control, off))
             assertEquals(control.name, control in oneShot, ccClosesAfterTap(control, on))
@@ -97,7 +99,7 @@ class CcOptionsTest {
 
     @Test fun `every row on the page can be found in Settings search while its gate is open`() {
         val titles = listOf(R.string.cc_media_page, R.string.cc_connectivity_page, R.string.cc_open_on, R.string.cc_slider_ticks,
-            R.string.cc_close_after, R.string.edit_controls, R.string.cc_reset)
+            R.string.cc_close_after, R.string.cc_wifi_name, R.string.edit_controls, R.string.cc_reset)
         val entries = SettingsEntries.filter { it.third == CustomizationPage.NOTIFICATIONS }.map { it.first }
         titles.forEach { assertTrue("a Settings search entry for ${EnglishStrings.get(it)}", it in entries) }
         assertEquals(titles.toSet(), CC_SETTINGS_V2_ROWS)
@@ -108,7 +110,27 @@ class CcOptionsTest {
         // The old rows are all still on the page (they moved into cards, none was dropped).
         val root = generateSequence(java.io.File("").absoluteFile) { it.parentFile }.first { java.io.File(it, "CHANGELOG.md").exists() }
         val cards = java.io.File(root, "app/src/main/java/com/mccal/folio/ControlCenterSettings.kt").readText()
-        for (name in listOf("control_center_size", "control_center_look", "cc_look_note", "unfolded_control_center_in_the_middle", "to_restyle_samsungs_own_pull_down_colors"))
+        for (name in listOf("control_center_size", "control_center_look", "cc_look_note", "control_center_side", "to_restyle_samsungs_own_pull_down_colors"))
             assertTrue("$name is still on the page", "R.string.$name" in cards)
+    }
+
+    @Test fun `the rail always lists the pages whose switch is on`() {
+        val both = listOf(CcPage.MEDIA, CcPage.CONNECTIVITY)
+        // Roomy first page: nothing is needed, but the rail still shows both.
+        assertEquals(both, ccRailExtraPages(emptyList(), CcOptions(), rail = true))
+        assertEquals(listOf(CcPage.CONNECTIVITY), ccRailExtraPages(emptyList(), CcOptions(mediaPage = false), rail = true))
+        assertEquals(emptyList<CcPage>(), ccRailExtraPages(both, CcOptions(mediaPage = false, connectivityPage = false), rail = true))
+        // No rail: only the pages the first one has to give up, as before.
+        assertEquals(emptyList<CcPage>(), ccRailExtraPages(emptyList(), CcOptions(), rail = false))
+        assertEquals(both, ccRailExtraPages(both, CcOptions(), rail = false))
+    }
+
+    @Test fun `a page thins out as it leaves`() {
+        assertEquals(1f, ccPageAlpha(0f), 0f)
+        assertEquals(.25f, ccPageAlpha(1f), 0.001f)
+        assertEquals(.625f, ccPageAlpha(.5f), 0.001f)
+        // Never past the ends, whatever the pager reports.
+        assertEquals(.25f, ccPageAlpha(3f), 0.001f)
+        assertEquals(1f, ccPageAlpha(-1f), 0.001f)
     }
 }

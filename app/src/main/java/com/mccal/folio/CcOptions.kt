@@ -20,9 +20,13 @@ data class CcOptions(
     val sliderTicks: Boolean = true,
     /** Close Control Center after a tap on a one-shot tile (see [ccClosesAfterTap]). */
     val closeAfterToggle: Boolean = false,
+    /** On a wide window Control Center is a compact panel (about the width of an iPad's) that the side choice can move; off, it fills the window. */
+    val compact: Boolean = false,
+    /** The page rail (battery ring, Wi-Fi, page icons) beside the grid on a wide window. Off by default: like an iPhone, pages are swiped and dots lie under the grid. */
+    val rail: Boolean = false,
 ) {
     fun writeTo(json: JSONObject): JSONObject = json.put(MEDIA_PAGE, mediaPage).put(CONNECTIVITY_PAGE, connectivityPage)
-        .put(OPEN_ON, openOn.name).put(SLIDER_TICKS, sliderTicks).put(CLOSE_AFTER, closeAfterToggle)
+        .put(OPEN_ON, openOn.name).put(SLIDER_TICKS, sliderTicks).put(CLOSE_AFTER, closeAfterToggle).put(COMPACT, compact).put(RAIL, rail)
 
     companion object {
         private const val MEDIA_PAGE = "ccMediaPage"
@@ -30,6 +34,8 @@ data class CcOptions(
         private const val OPEN_ON = "ccOpenOn"
         private const val SLIDER_TICKS = "ccSliderTicks"
         private const val CLOSE_AFTER = "ccCloseAfterToggle"
+        private const val COMPACT = "ccCompact"
+        private const val RAIL = "ccRail"
 
         fun read(json: JSONObject): CcOptions = CcOptions(
             mediaPage = json.optBoolean(MEDIA_PAGE, true),
@@ -37,6 +43,8 @@ data class CcOptions(
             openOn = runCatching { CcOpenOn.valueOf(json.optString(OPEN_ON)) }.getOrDefault(CcOpenOn.CONTROLS),
             sliderTicks = json.optBoolean(SLIDER_TICKS, true),
             closeAfterToggle = json.optBoolean(CLOSE_AFTER, false),
+            compact = json.optBoolean(COMPACT, false),
+            rail = json.optBoolean(RAIL, false),
         )
     }
 }
@@ -52,6 +60,14 @@ internal fun ccShownExtraPages(needed: List<CcPage>, options: CcOptions): List<C
         CcPage.CONTROLS -> true
     }
 }
+
+/**
+ * The pages the rail beside the grid shows (the Duo, the iPhone and the iPad keep it): Media and Connectivity are always there as
+ * page icons when their switch is on, not only when the first page runs out of room. Without the rail it is [ccShownExtraPages].
+ */
+internal fun ccRailExtraPages(needed: List<CcPage>, options: CcOptions, rail: Boolean): List<CcPage> =
+    if (!rail) ccShownExtraPages(needed, options)
+    else listOfNotNull(CcPage.MEDIA.takeIf { options.mediaPage }, CcPage.CONNECTIVITY.takeIf { options.connectivityPage })
 
 /**
  * The position, in the order of [pages] (0 is the first page), Control Center opens on. [CcOpenOn.LAST] returns to the page last used
@@ -71,6 +87,7 @@ internal object CcLastPage {
 internal val CC_ONE_SHOT_CONTROLS: Set<CcControl> = setOf(
     CcControl.FLASHLIGHT, CcControl.CAMERA, CcControl.CALCULATOR, CcControl.SCREENSHOT,
     CcControl.SETTINGS, CcControl.LOCK, CcControl.WALLET, CcControl.NOTES,
+    CcControl.CAST, CcControl.DISPLAY, CcControl.ACCESSIBILITY, CcControl.RECORDER, CcControl.LOCATION, CcControl.VPN,
 )
 
 internal fun ccClosesAfterTap(control: CcControl, options: CcOptions): Boolean = options.closeAfterToggle && control in CC_ONE_SHOT_CONTROLS
@@ -98,3 +115,6 @@ internal object CcEditRequest {
         return fresh
     }
 }
+
+/** The width of Control Center's compact panel on a wide window (about an iPad's, so the grid is four columns). */
+internal const val CC_COMPACT_WIDTH_DP = 520
