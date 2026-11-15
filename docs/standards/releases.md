@@ -125,6 +125,29 @@ what they were testing. Every rule below is aimed at that shape of mistake.
 - **REL-35 MUST** open each line under Added in the Unreleased changelog with a bold title of 40 characters or fewer: What's New
   shows the title as the line. `WhatsNewTest` fails the build otherwise.
 
+### Building a signed beta on Windows
+
+Learned shipping 0.7.0-beta.4 on 14 Nov 2026, where three of these each cost a failed run:
+
+1. **Land the work, then the bump, then tag.** The feature pull request keeps `folioVersion` at the previous beta
+   (REL-13 fails a pull request that moves it and changes code). The bump is its own one-line pull request. `main`
+   squashes every pull request. Run `tools/launch-check-fast.sh emulator-5554` from the merge commit (REL-32), then
+   tag that commit `vX.Y.Z-beta.N` (annotated) and push the tag.
+2. **Make the release checkout with `git worktree add --detach C:/Users/<you>/dev/folio-<version> v<version>`.** Do not
+   remove it with `git worktree remove --force` after a Gradle build: on Windows that can fail halfway, leave a
+   folder that is no longer a worktree, and every git command in it then runs against the repository above it (the
+   release script reads the wrong tag and the wrong tree). Check `git rev-parse --show-toplevel` before trusting any
+   git output there.
+3. **Run `./scripts/release-signed.ps1` from that checkout.** It runs Git Bash, not the `bash` PowerShell finds first,
+   which is WSL's and sees neither the repository nor the signing variables. It checks the tag, the clean tree and the
+   keystore, asks for the passwords as hidden input (they never go on a command line, in a file or in a chat), and
+   compares the APK's certificate with the one every release carries.
+4. **The keystore is `~/folio-release.jks`, alias `folio`, certificate SHA-256
+   `bad8e099557b70c690e71a3fffe13561c8662c20612047ce1e2559a1c14d8441`.** `~/folio-release-2026.jks` was 0.6.5's wrong
+   signer; an APK signed with it does not install over Folio (REL-18).
+5. **`tools/launch-check-fast.sh` needs `MSYS_NO_PATHCONV` unset in Git Bash**, or adb and python receive `/c/...`
+   paths they cannot open.
+
 ### What goes out beside a build
 
 - **REL-22 MUST** publish the APK's SHA-256 next to the download, in whatever message carries the link.
