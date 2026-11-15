@@ -1767,6 +1767,13 @@ fun LauncherScreen(
                         if (widgetSession != null) {
                             leaveTemporaryWidgetPage(); widgetSession = null
                         }
+                    },
+                    destination = when {
+                        picker.toToday -> stringResource(R.string.adding_to_today_view)
+                        picker.stackSlot != null -> stringResource(R.string.adding_to_a_stack)
+                        picker.targetIndex != Int.MIN_VALUE && homeCellPage(picker.targetIndex) >= 0 ->
+                            stringResource(R.string.adding_to_page, homeCellPage(picker.targetIndex) + 1)
+                        else -> null
                     })
                 widgetSession?.let { session ->
                     val placementDensity = LocalDensity.current

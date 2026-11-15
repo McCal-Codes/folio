@@ -9,6 +9,7 @@ import androidx.compose.ui.res.stringResource
 import android.appwidget.AppWidgetProviderInfo
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.CalendarToday
@@ -50,6 +51,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -229,7 +231,10 @@ internal fun VisualWidgetPicker(
     onDrag: (Offset) -> Unit,
     onDrop: () -> Unit,
     onCancelDrag: () -> Unit,
+    /** Where a widget added now will go ("Adding to Home, page 2", "Adding to Today View"), or null when it goes to the first free spot. */
+    destination: String? = null,
 ) {
+    val wide = LocalConfiguration.current.screenWidthDp >= WIDE_PICKER_MIN_DP
     val widgetPanelLabel = stringResource(R.string.widget_panel_title)
     val suggestionsLabel = stringResource(R.string.suggestions)
     val bigClockLabel = stringResource(R.string.big_clock)
@@ -294,6 +299,13 @@ internal fun VisualWidgetPicker(
                     }
                 }
             }
+            destination?.let {
+                // The picker knows where it was opened from; saying so beats adding a widget to a place you did not expect.
+                Text(it, color = LocalAccent.current.ink, fontSize = FolioType.COMPACT.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = FolioSpace.SMALL.dp).clip(CircleShape).background(LocalAccent.current.fill.copy(alpha = .18f))
+                        .padding(horizontal = FolioSpace.MEDIUM.dp, vertical = FolioSpace.SMALL.dp).testTag("widget-picker-destination"))
+            }
             Row(Modifier.fillMaxWidth().padding(vertical = FolioSpace.MEDIUM.dp).clip(RoundedCornerShape(FolioRadius.ROW.dp)).background(Color.White.copy(alpha = .12f))
                 .padding(horizontal = FolioSpace.MEDIUM.dp, vertical = FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.Search, null, tint = secondary, modifier = Modifier.size(20.dp))
@@ -305,7 +317,7 @@ internal fun VisualWidgetPicker(
                         cursorBrush = androidx.compose.ui.graphics.SolidColor(ink))
                 }
             }
-            if (apps.size > 1) WidgetAppRow(apps.map { (key, icon) -> key to icon }, selectedApp, labelOf = { if (it == FOLIO_WIDGETS) folioLabel else it }) { app ->
+            if (apps.size > 1 && !wide) WidgetAppRow(apps.map { (key, icon) -> key to icon }, selectedApp, labelOf = { if (it == FOLIO_WIDGETS) folioLabel else it }) { app ->
                 selectedApp = if (selectedApp == app) null else app
                 focusManager.clearFocus(); keyboard?.hide()
             }
@@ -327,7 +339,15 @@ internal fun VisualWidgetPicker(
                 }
             }
             val catalogState = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
-            BoxWithConstraints(Modifier.fillMaxSize()) {
+            val appCounts = remember(entries, builtins.size) { entries.orEmpty().groupingBy { it.appLabel }.eachCount() }
+            // Unfolded, the apps stand in a list beside the gallery instead of a row above it: no second step, every widget of the app at once.
+            Row(Modifier.fillMaxSize()) {
+            if (wide && apps.size > 1) WidgetAppList(apps, selectedApp, labelOf = { if (it == FOLIO_WIDGETS) folioLabel else it },
+                countOf = { if (it == FOLIO_WIDGETS) allBuiltins.size else appCounts[it] ?: 0 }, allLabel = stringResource(R.string.all_widgets)) { app ->
+                selectedApp = if (app == null || selectedApp == app) null else app
+                focusManager.clearFocus(); keyboard?.hide()
+            }
+            BoxWithConstraints(Modifier.weight(1f).fillMaxHeight()) {
             // The same count GridCells.Adaptive(168.dp) arrives at, so a capped app is exactly one full row.
             val columns = maxOf(((maxWidth + FolioSpace.COMFY.dp) / (168.dp + FolioSpace.COMFY.dp)).toInt(), 1)
             LazyVerticalGrid(GridCells.Adaptive(168.dp), Modifier.fillMaxSize().edgeFade(catalogState).testTag("widget-catalog-list"), state = catalogState,
@@ -385,7 +405,9 @@ internal fun VisualWidgetPicker(
                                 }.clickable(enabled = span != null, onClick = {
                                     focusManager.clearFocus(); keyboard?.hide(); onTap(entry.provider)
                                 }),
-                            dimmed = span == null) {
+                            dimmed = span == null,
+                            // Under a heading that already names the app the widget's own description is more use; a search crosses apps, so it keeps the app name.
+                            description = entry.description.takeIf { words.isEmpty() && !entry.isWork }) {
                             val ratio = span?.let { it.width.toFloat() / it.height } ?: 1f
                             val previewTag = "widget-preview-${entry.provider.provider.flattenToString()}${if (entry.isWork) "-profile-${entry.userSerial}" else ""}"
                             Box(Modifier.fillMaxWidth().aspectRatio(ratio.coerceIn(.7f, 2.2f)).clip(RoundedCornerShape(22.dp)).testTag(previewTag)) {
@@ -400,24 +422,37 @@ internal fun VisualWidgetPicker(
                 }
             }
             }
+            }
         }
     }
 }
 
-/** One widget in the gallery: preview on top, name and app underneath (iOS style). */
+/**
+ * One widget in the gallery, Apple's way: the preview large with no frame around it and a plus in its corner, the name under it, then what
+ * the widget says about itself ([description], or the app's name when it says nothing) and how big it will be. The whole card adds it.
+ */
 @Composable
 private fun GalleryCard(title: String, subtitle: String, detail: String, modifier: Modifier, dimmed: Boolean = false,
-    preview: @Composable () -> Unit) {
-    Column(modifier.alpha(if (dimmed) .45f else 1f).clip(RoundedCornerShape(FolioRadius.PANEL.dp)).background(Color.White.copy(alpha = .06f)).padding(FolioSpace.COMPACT.dp)) {
-        preview()
+    description: String? = null, preview: @Composable () -> Unit) {
+    Column(modifier.alpha(if (dimmed) .45f else 1f).padding(vertical = FolioSpace.SMALL.dp)) {
+        Box {
+            preview()
+            if (!dimmed) Box(Modifier.align(Alignment.BottomEnd).padding(FolioSpace.SMALL.dp).size(28.dp).clip(CircleShape).background(Color.Black.copy(alpha = .55f)),
+                contentAlignment = Alignment.Center) {
+                Icon(Icons.Rounded.Add, null, tint = Color.White, modifier = Modifier.size(18.dp))
+            }
+        }
         Text(title, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, maxLines = 1,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.padding(top = FolioSpace.COMPACT.dp, start = FolioSpace.HAIR.dp))
-        Text(subtitle, color = FolioColors.SecondaryLabel, fontSize = FolioType.FOOTNOTE.sp, maxLines = 1,
+        Text(description?.takeIf { it.isNotBlank() } ?: subtitle, color = FolioColors.SecondaryLabel, fontSize = FolioType.FOOTNOTE.sp, maxLines = 2,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.padding(start = FolioSpace.HAIR.dp))
         // Secondary, not fainter: at .45 on the picker's near-black the size line read about 4.3:1, under AA.
         Text(detail, color = FolioColors.SecondaryLabel, fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1, modifier = Modifier.padding(start = FolioSpace.HAIR.dp, bottom = FolioSpace.HAIR.dp))
     }
 }
+
+/** The window width, in dp, from which the picker puts its app list beside the gallery (an unfolded Fold, a tablet). */
+internal const val WIDE_PICKER_MIN_DP = 720
 
 /** The app row's key for Folio's own widgets: not an app label, so no installed app can be mistaken for it. */
 private const val FOLIO_WIDGETS = "\u0000folio"
@@ -444,6 +479,42 @@ private fun WidgetAppRow(apps: List<Pair<String, Bitmap?>>, selected: String?, l
                 }
                 Text(label, color = if (on) Color.White else FolioColors.SecondaryLabel, fontSize = FolioType.GROUP_LABEL.sp, maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.padding(top = FolioSpace.HAIR.dp, start = 2.dp, end = 2.dp))
+            }
+        }
+    }
+}
+
+/**
+ * The wide picker's app list: "All widgets", then every app with its icon and how many widgets it has. The same keys and test tags as the
+ * [WidgetAppRow] a phone shows, so choosing an app works the same; tapping the chosen one again (or All widgets) shows everything.
+ */
+@Composable
+private fun WidgetAppList(apps: List<Pair<String, Bitmap?>>, selected: String?, labelOf: (String) -> String, countOf: (String) -> Int,
+    allLabel: String, onSelect: (String?) -> Unit) {
+    androidx.compose.foundation.lazy.LazyColumn(Modifier.width(264.dp).fillMaxHeight().padding(end = FolioSpace.MEDIUM.dp).testTag("widget-app-list"),
+        verticalArrangement = Arrangement.spacedBy(2.dp), contentPadding = PaddingValues(bottom = 24.dp)) {
+        item(key = "all") {
+            Row(Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp).clip(RoundedCornerShape(FolioRadius.ROW.dp))
+                .background(if (selected == null) Color.White.copy(alpha = .16f) else Color.Transparent)
+                .selectable(selected == null, onClick = { onSelect(null) }, role = androidx.compose.ui.semantics.Role.Tab)
+                .padding(horizontal = FolioSpace.MEDIUM.dp).testTag("widget-app-all"), verticalAlignment = Alignment.CenterVertically) {
+                Text(allLabel, color = Color.White, fontSize = FolioType.CALLOUT.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            }
+        }
+        items(apps, key = { it.first }) { (key, icon) ->
+            val on = key == selected
+            Row(Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp).clip(RoundedCornerShape(FolioRadius.ROW.dp))
+                .background(if (on) Color.White.copy(alpha = .16f) else Color.Transparent)
+                .selectable(on, onClick = { onSelect(key) }, role = androidx.compose.ui.semantics.Role.Tab)
+                .padding(horizontal = FolioSpace.MEDIUM.dp, vertical = FolioSpace.SMALL.dp)
+                .testTag("widget-app-${if (key == FOLIO_WIDGETS) "folio" else key}"), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(36.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)).background(Color.White.copy(alpha = .1f)), contentAlignment = Alignment.Center) {
+                    icon?.let { Image(it.asImageBitmap(), null, Modifier.fillMaxSize()) }
+                        ?: Icon(Icons.Rounded.Widgets, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                }
+                Text(labelOf(key), color = Color.White, fontSize = FolioType.CALLOUT.sp, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f).padding(horizontal = FolioSpace.MEDIUM.dp))
+                Text("${countOf(key)}", color = FolioColors.SecondaryLabel, fontSize = FolioType.SUBHEAD.sp)
             }
         }
     }

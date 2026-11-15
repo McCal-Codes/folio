@@ -741,6 +741,10 @@
     <string name="not_playing">재생 중이 아님</string>
     <string name="music">음악</string>
     <string name="search_widget_hint">앱, 설정 검색</string>
+    <string name="adding_to_page">홈 %1$d페이지에 추가 중</string>
+    <string name="adding_to_today_view">오늘 보기에 추가 중</string>
+    <string name="adding_to_a_stack">스택에 추가 중</string>
+    <string name="all_widgets">모든 위젯</string>
     <string name="photos_widget">사진</string>
     <string name="photo_n_of">사진 %2$d장 중 %1$d번째</string>
     <string name="add_photos">사진 추가</string>

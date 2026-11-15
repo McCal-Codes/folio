@@ -72,6 +72,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Page effects with more curves:** a page effect package can set curves for more channels (the 0.7.0 format), listed as tweaks.pageEffects.channels. <!-- beta 2 -->
 
 ### Changed
+- **Widget picker:** widgets now show without a grey frame, with a plus in the corner and the widget's own description under its name. Unfolded, the apps stand in a list beside the widgets, and a line at the top says where the widget will be added, such as Home, page 2 or Today View. <!-- beta 5 -->
 - **Reports say more:** a bug report now names the exact build (version code, release or debug, and the build number on Folio Dev), how long Folio had run and its memory, each widget on Home (its app, size, and whether Android still has it bound), and when a widget could not be drawn or an app that provides widgets changed. The log in it skips the window system's own chatter so it reaches back to what Folio said, and the list of recent events holds 80 instead of 40. <!-- beta 4 -->
 - Widgets are managed from Edit on Home only. The Widgets list in Home Screen & Dock settings is gone. <!-- beta 3 -->
 - **Swiping a panel away follows your finger:** Notification Center and Control Center move up with your finger when you swipe up and close when you let go, if you went far enough or flicked. A short pull springs back. They used to close in one jump partway through the swipe. <!-- beta 1 -->
