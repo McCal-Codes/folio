@@ -55,6 +55,44 @@ class ControlCenterLayoutTest {
         assertEquals(slots, ccMove(slots, controls[0], 0, 3, 4, rows))
     }
 
+    @Test fun `a drop on a free place moves, a drop on a same-size control trades places`() {
+        val slots = ccDefaultLayout(4, controls.take(6), focus = true)
+        val rows = 8
+        assertEquals(ccMove(slots, controls[0], 2, 7, 4, rows), ccDrop(slots, controls[0], 2, 7, 4, rows))
+        val a = slots.first { it.id == controls[0] }
+        val b = slots.first { it.id == controls[1] }
+        val traded = ccDrop(slots, controls[0], b.col, b.row, 4, rows)
+        assertEquals(b.col to b.row, traded.first { it.id == controls[0] }.let { it.col to it.row })
+        assertEquals(a.col to a.row, traded.first { it.id == controls[1] }.let { it.col to it.row })
+        assertEquals(slots.map { it.id }, traded.map { it.id })
+        assertTrue(noOverlap(traded, 4))
+        // dropping where it already is changes nothing
+        assertEquals(slots, ccDrop(slots, controls[0], a.col, a.row, 4, rows))
+    }
+
+    @Test fun `a drop that cannot trade changes nothing`() {
+        val slots = ccDefaultLayout(4, controls.take(6), focus = true)
+        val rows = 8
+        // onto a slider or the connectivity block: the small control would overlap its neighbors where the other one has to go
+        assertSame(slots, ccDrop(slots, controls[0], 2, 3, 4, rows))
+        assertSame(slots, ccDrop(slots, controls[0], 0, 0, 4, rows))
+        // off the grid, and an unknown id
+        assertSame(slots, ccDrop(slots, controls[0], 3, 8, 4, rows))
+        assertSame(slots, ccDrop(slots, "nothing", 0, 7, 4, rows))
+    }
+
+    @Test fun `a wide control can trade places with two small ones only when both fit`() {
+        // x is wide at (0, 6); y, z small at (0, 7) and (1, 7). Dropping y on x's right half is a place x covers, but x would land on top of z.
+        val base = ccDefaultLayout(4, controls.take(2), focus = false)
+        val slots = base + CcSlot("x", 0, 6, 2, 1) + CcSlot("y", 0, 7, 1, 1) + CcSlot("z", 1, 7, 1, 1)
+        assertSame(slots, ccDrop(slots, "y", 0, 6, 4, 9))
+        // a free row below lets the wide one go to the small one's place
+        val roomy = base + CcSlot("x", 0, 6, 2, 1) + CcSlot("y", 0, 7, 1, 1)
+        val traded = ccDrop(roomy, "y", 1, 6, 4, 9)
+        assertEquals(CcSlot("y", 1, 6, 1, 1), traded.first { it.id == "y" })
+        assertEquals(CcSlot("x", 0, 7, 2, 1), traded.first { it.id == "x" })
+    }
+
     @Test fun `a control takes only the sizes it can, and only where they fit`() {
         val slots = ccDefaultLayout(4, controls.take(4), focus = false) + CcSlot("x", 0, 6, 1, 1)
         val rows = 8

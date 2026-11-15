@@ -702,6 +702,15 @@
     <string name="display">Display</string>
     <string name="recorder">Recorder</string>
     <string name="vpn">VPN</string>
+    <string name="sound_mode">Sound mode</string>
+    <string name="screen_timeout">Timeout</string>
+    <string name="night_light">Night Light</string>
+    <string name="ringer_ring">Ring</string>
+    <string name="ringer_vibrate">Vibrate</string>
+    <string name="ringer_silent">Silent</string>
+    <string name="timeout_seconds">%1$ds</string>
+    <string name="timeout_never">Never</string>
+    <string name="timeout_minutes">%1$dm</string>
     <string name="settings">Settings</string>
     <string name="more_in_settings">%1$d more in Settings</string>
     <string name="android_quick_settings">Android Quick Settings</string>

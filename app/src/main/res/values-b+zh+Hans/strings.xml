@@ -708,6 +708,15 @@
     <string name="display">显示</string>
     <string name="recorder">录音机</string>
     <string name="vpn">VPN</string>
+    <string name="sound_mode">声音模式</string>
+    <string name="screen_timeout">屏幕超时</string>
+    <string name="night_light">夜间模式</string>
+    <string name="ringer_ring">响铃</string>
+    <string name="ringer_vibrate">振动</string>
+    <string name="ringer_silent">静音</string>
+    <string name="timeout_seconds">%1$d秒</string>
+    <string name="timeout_never">永不</string>
+    <string name="timeout_minutes">%1$d分</string>
     <string name="settings">设置</string>
     <string name="more_in_settings">设置中还有 %1$d 项</string>
     <string name="android_quick_settings">Android 快捷设置</string>

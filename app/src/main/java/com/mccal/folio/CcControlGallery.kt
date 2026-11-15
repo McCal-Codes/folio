@@ -65,7 +65,7 @@ internal data class CcGalleryItem(val id: String, val label: String, val icon: I
 /** The sections the gallery lists controls under (as iOS's Add a Control), in the order shown. */
 internal enum class CcGalleryGroup(@androidx.annotation.StringRes val label: Int, val ids: Set<String>) {
     CONNECTIVITY(R.string.cc_group_connectivity, setOf("HOTSPOT", "CAST", "VPN", "LOCATION")),
-    DISPLAY(R.string.cc_group_display, setOf("DISPLAY", "ROTATION", "DND", "BATTERY_SAVER")),
+    DISPLAY(R.string.cc_group_display, setOf("DISPLAY", "ROTATION", "DND", "BATTERY_SAVER", "SOUND_MODE", "SCREEN_TIMEOUT", "NIGHT_LIGHT")),
     TOOLS(R.string.cc_group_tools, setOf("FLASHLIGHT", "CAMERA", "TIMER", "ALARM", "CALCULATOR", "SCREENSHOT", "RECORDER", "NOTES")),
     SECURITY(R.string.cc_group_security, setOf("WALLET", "LOCK")),
     ACCESSIBILITY(R.string.cc_group_accessibility, setOf("ACCESSIBILITY")),

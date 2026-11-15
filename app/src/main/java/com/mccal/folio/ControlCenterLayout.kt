@@ -71,6 +71,26 @@ internal fun ccMove(slots: List<CcSlot>, id: String, col: Int, row: Int, cols: I
     return if (ccFits(slots, moved, cols, rows)) slots.map { if (it.id == id) moved else it } else slots
 }
 
+/**
+ * What a drop of [id] with its top left corner at ([col], [row]) does: [ccMove] when the place is free; when another control stands there,
+ * the two trade places if each fits where the other was (so a small control can be dropped straight onto another one, as on iOS, instead of
+ * needing a free cell first). Anything else leaves the layout as it was.
+ */
+internal fun ccDrop(slots: List<CcSlot>, id: String, col: Int, row: Int, cols: Int, rows: Int): List<CcSlot> {
+    val slot = slots.firstOrNull { it.id == id } ?: return slots
+    val moved = ccMove(slots, id, col, row, cols, rows)
+    if (moved != slots || (slot.col == col && slot.row == row)) return moved
+    val dropped = slot.copy(col = col, row = row)
+    if (dropped.col < 0 || dropped.row < 0 || dropped.right > cols || dropped.bottom > rows) return slots
+    // The control under the dragged one's top left corner; where the drop covers several, the one the finger is over wins.
+    val other = slots.firstOrNull { it.id != id && col >= it.col && col < it.right && row >= it.row && row < it.bottom } ?: return slots
+    val rest = slots.filter { it.id != id && it.id != other.id }
+    val first = dropped
+    val second = other.copy(col = slot.col, row = slot.row)
+    if (!ccFits(rest, first, cols, rows) || !ccFits(rest + first, second, cols, rows)) return slots
+    return slots.map { if (it.id == id) first else if (it.id == other.id) second else it }
+}
+
 /** Gives [id] the size ([w], [h]) if the control can take it and it fits where it stands; otherwise nothing changes. */
 internal fun ccResize(slots: List<CcSlot>, id: String, w: Int, h: Int, cols: Int, rows: Int): List<CcSlot> {
     val slot = slots.firstOrNull { it.id == id } ?: return slots

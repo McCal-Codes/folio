@@ -5,7 +5,10 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
+import androidx.compose.ui.input.pointer.positionChangeIgnoreConsumed
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.offset
@@ -48,6 +51,37 @@ import kotlin.math.roundToInt
 internal fun ccDragTarget(col: Int, row: Int, dxPx: Float, dyPx: Float, stepPx: Float): Pair<Int, Int> =
     if (stepPx <= 0f) col to row else (col + (dxPx / stepPx).roundToInt()) to (row + (dyPx / stepPx).roundToInt())
 
+/**
+ * A press held still for the long-press time and then dragged: the move gesture. It is [detectDragGesturesAfterLongPress] except that a touch an
+ * ancestor has already consumed does not cancel it. A page that scrolls (a short window) took the press first, and the stock detector then gave
+ * up, so on that page a held control never lifted (14 Nov 2026, emulator). A move past the touch slop before the time is up still cancels, so the
+ * page scrolls under a swipe.
+ */
+private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.detectHeldDrag(
+    onDragStart: () -> Unit, onDrag: (Offset) -> Unit, onDragEnd: () -> Unit, onDragCancel: () -> Unit,
+) {
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false)
+        val timedOut = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+            while (true) {
+                val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: return@withTimeoutOrNull
+                if (change.changedToUpIgnoreConsumed() || (change.position - down.position).getDistance() > viewConfiguration.touchSlop) return@withTimeoutOrNull
+            }
+        } == null
+        if (!timedOut) return@awaitEachGesture
+        onDragStart()
+        // Own loop instead of drag(): on a page that scrolls an ancestor has already consumed the moves, and drag() then reports none of them.
+        var finished = false
+        while (true) {
+            val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
+            if (change.changedToUpIgnoreConsumed()) { change.consume(); finished = true; break }
+            onDrag(change.positionChangeIgnoreConsumed())
+            change.consume()
+        }
+        if (finished) onDragEnd() else onDragCancel()
+    }
+}
+
 /** The size, in cells, a corner dragged ([dxPx], [dyPx]) from a control [w] by [h] reaches; [ccSnapSize] picks the size it lands on. */
 internal fun ccDragSize(w: Int, h: Int, dxPx: Float, dyPx: Float, stepPx: Float): Pair<Float, Float> =
     if (stepPx <= 0f) w.toFloat() to h.toFloat() else (w + dxPx / stepPx) to (h + dyPx / stepPx)
@@ -63,9 +97,10 @@ internal fun ccNextSize(slots: List<CcSlot>, id: String, cols: Int, rows: Int): 
 
 /**
  * Control Center's Controls page as places on a grid (FeatureGate.CC_EDITOR): each of [slots] is drawn at its place and size by [content].
- * While [editing], a press and hold lifts a control to drag it onto a free place, a corner handle resizes it, and a minus takes a control
- * that can be taken off ([removable]). Every change is handed to [onChange] as a whole new list that [ccMove] and [ccResize] have already
- * checked, so a drop on a taken place or a size that does not fit changes nothing. Nothing here draws a control itself.
+ * While [editing], a press and hold lifts a control to drag it onto a free place (or onto another control, which then trades places with it),
+ * a corner handle resizes it, and a minus takes a control that can be taken off ([removable]). Every change is handed to [onChange] as a
+ * whole new list that [ccDrop] and [ccResize] have already checked, so a drop that does not fit changes nothing. The corner handle is a
+ * small 32 dp target so it never covers the middle of a one-cell tile, where a press and hold has to reach the drag. Nothing here draws a control itself.
  *
  * TalkBack gets the same editing as actions (move, change size, remove), since a drag cannot be made without sight.
  */
@@ -141,14 +176,14 @@ internal fun CcSlotGrid(
                     // Above the control, so a held press reaches the drag and never the tile's own press (a tile does nothing while editing).
                     Box(Modifier.matchParentSize()
                         .pointerInput(id) {
-                            detectDragGesturesAfterLongPress(
+                            detectHeldDrag(
                                 onDragStart = { dragging = id; drag = Offset.Zero },
-                                onDrag = { change, by -> change.consume(); drag += by },
+                                onDrag = { by -> drag += by },
                                 onDragEnd = {
                                     val now = latestSlots.firstOrNull { it.id == id }
                                     if (now != null) {
                                         val (c, r) = ccDragTarget(now.col, now.row, drag.x * flip, drag.y, latestStep)
-                                        val moved = ccMove(latestSlots, id, c, r, cols, latestRows)
+                                        val moved = ccDrop(latestSlots, id, c, r, cols, latestRows)
                                         if (moved != latestSlots) latestChange(moved)
                                     }
                                     dragging = null; drag = Offset.Zero
@@ -159,14 +194,22 @@ internal fun CcSlotGrid(
                     // A still outline: the places are being arranged, so nothing else about the control moves or glows.
                     if (lifted || live) Box(Modifier.matchParentSize().border(1.5.dp, Color.White.copy(alpha = .9f), RoundedCornerShape(26.dp)))
                     // Sits on the tile's top-left corner, wholly inside it: further left, the left column's badges were cut in half by the
-                    // grid's edge. It is not centered, so on a small tile it still does not cover the control's icon.
-                    if (removable(id)) Box(Modifier.align(Alignment.TopStart).offset((-11).dp, (-11).dp).size(44.dp)
-                        .pointerInput(id) { detectTapGestures { onRemove(id) } }, contentAlignment = Alignment.Center) {
-                        Box(Modifier.size(22.dp).clip(CircleShape).background(Color.White.copy(alpha = .92f)), contentAlignment = Alignment.Center) {
-                            Box(Modifier.size(10.dp, 2.dp).background(Color.Black.copy(alpha = .75f)))
+                    // grid's edge. It is not centered, so on a small tile it still does not cover the control's icon. Its touch box (36 dp,
+                    // to 28 dp in from the corner) stops short of the middle of a one-cell tile, where a press and hold has to reach the drag:
+                    // at 44 dp it took the middle of a 64 dp tile, so a held press there did nothing (14 Nov 2026, emulator).
+                    // 30 dp from 10 dp outside the corner reaches 20 dp in: a one-cell tile can be 44 dp across, and the box at 36 dp from 8 dp out
+                    // reached 28 dp in, over the tile's middle, so a held press there removed the control instead of lifting it (Cast, 14 Nov 2026).
+                    if (removable(id)) Box(Modifier.align(Alignment.TopStart).offset((-10).dp, (-10).dp).size(30.dp)
+                        .pointerInput(id) { detectTapGestures { onRemove(id) } }, contentAlignment = Alignment.BottomEnd) {
+                        // Small and the same on a big tile as a small one (a big tile should not get a big badge); the 36 dp box around it is the tap target.
+                        val badge = (cell * .4f).coerceIn(16.dp, 20.dp)
+                        // Drawn at the box's inner corner, only 2 dp past the tile's own corner: the tap target reaches out around it, but the badge is not
+                        // cut off at the top of a page that scrolls.
+                        Box(Modifier.offset((-4).dp, (-4).dp).size(badge).clip(CircleShape).background(Color.White.copy(alpha = .92f)), contentAlignment = Alignment.Center) {
+                            Box(Modifier.size(badge * .45f, 2.dp).background(Color.Black.copy(alpha = .75f)))
                         }
                     }
-                    if (ccAllowedSizes(id, cols).size > 1) Box(Modifier.align(Alignment.BottomEnd).offset(10.dp, 10.dp).size(FolioTouch.MIN.dp)
+                    if (ccAllowedSizes(id, cols).size > 1) Box(Modifier.align(Alignment.BottomEnd).offset(12.dp, 12.dp).size(28.dp)
                         .pointerInput(id) {
                             detectDragGestures(
                                 onDragStart = { resizing = id; resize = Offset.Zero },
@@ -184,7 +227,9 @@ internal fun CcSlotGrid(
                             )
                         }, contentAlignment = Alignment.Center) {
                         // A curved handle that follows the control's own corner, as iOS draws it, instead of a dot on the corner.
-                        Canvas(Modifier.size(30.dp)) {
+                        // The touch box sits further out and smaller than before (so the middle of a one-cell tile reaches the move drag), and the arc is drawn
+                        // back where it was, hugging the corner.
+                        Canvas(Modifier.offset((-6).dp, (-6).dp).size(30.dp)) {
                             val stroke = 4.dp.toPx()
                             val r = 26.dp.toPx()
                             val color = Color.White.copy(alpha = if (live) 1f else .85f)
