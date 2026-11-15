@@ -801,6 +801,17 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         CardNote(stringResource(R.string.big_clock_date_next_alarm_battery_and_mu))
                         if (StandByWay.TENT in standByOffered) CardNote(stringResource(R.string.standby_ways_note))
                     }
+                    // What StandBy is waiting for, live, so a phone that never shows it can say why.
+                    if (standByOffered.isNotEmpty()) {
+                        val standByConfig = resolveStandByConfig(state, rememberGateOpen(FeatureGate.STANDBY_2),
+                            onCover = !androidx.compose.ui.platform.LocalConfiguration.current.fitsRegularHomeLayout())
+                        val checkActivity = sheetContext.asActivity()
+                        if (checkActivity != null) StandByReadinessCard(checkActivity, StandByWays(
+                            halfOpen = StandByWay.HALF_OPEN in standByOffered && state.standBy,
+                            charging = StandByWay.CHARGING in standByOffered && state.standByCharging,
+                            tent = StandByWay.TENT in standByOffered && state.standByTent,
+                            offCharger = standByConfig.activePackage && standByConfig.offCharger))
+                    }
                     // StandBy over the lock screen is Android's screen saver set to Folio StandBy: Folio can't choose
                     // it, so the row says whether it's chosen and the setup alert says where to choose it.
                     if (standByMoreOpen) {

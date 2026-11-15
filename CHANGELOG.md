@@ -8,6 +8,7 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.7.0] - Unreleased
 
 ### Added
+- **Is StandBy ready?:** Settings > Fold & Displays > StandBy now shows, for each StandBy way that is switched on, what it is waiting for (plugged in, on its side, set down and still, or the half-open and tent poses), updating live while the page is open and never stored or sent. A phone where StandBy seems never to come on can say which step is missing. The Korean and Chinese text is machine translated.
 - **Tips:** Settings > General > Tips lists every new feature, newest version first, with What's New and, on Folio Dev, This build one tap away. New features appear there with no second list to keep. The Korean and Chinese text is machine translated.
 - **Photos widget:** pick up to 20 photos and Home shows them one at a time, with a soft fade, the date if you like, and a play and pause button. Tap it for Show the date, Shuffle and a speed of 5, 10 or 30 seconds, hold it for Customize and Remove this photo. With Reduce Motion on the photos switch without a fade. The Korean and Chinese text is machine translated.
 - **A calmer widget menu:** holding a widget shows its sizes and everyday actions first, Remove stays pinned at the bottom, and custom size, pages and stack order sit behind More options. Home's side buttons no longer overlap the Undo bar, and unfolded, Add, Edit, Undo, Redo and Done sit together at the top instead of crowding the page dots and the Library button.
