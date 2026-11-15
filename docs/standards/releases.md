@@ -139,7 +139,9 @@ tag edits a file in the repository:
    early access. The notes carry no hash, no "draft" and no date that has not happened: they have the intro paragraph,
    `## What's new`, `## Fixed`, `## Please try first`, `## About the betas` and `## Verify it`, which points at
    `SHA256SUMS.txt` on the release. `scripts/publish-beta.ps1` adds the hashes, the version and the `versionCode` from
-   the build itself.
+   the build itself. Run `python tools/check-release-notes.py <version>` from `main`: it fails on a missing section, a
+   hash, DRAFT or a missing catalog row, and warns about changelog lines the notes never mention and about notes
+   whose lead words appear nowhere in the changelog, the signature of the invented claims in beta 4's first draft.
 3. **Bump in its own one-line pull request.** Run `tools/launch-check-fast.sh emulator-5554` from the merge commit
    (REL-32), then tag that commit `vX.Y.Z-beta.N` (annotated) and push the tag.
 4. **Make the release checkout with `git worktree add --detach C:/Users/<you>/dev/folio-<version> v<version>`.** Do not
