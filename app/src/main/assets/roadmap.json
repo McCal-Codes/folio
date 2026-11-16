@@ -929,6 +929,13 @@
           "status": "exploring"
         },
         {
+          "icon": "grid",
+          "color": "#FF9F0A",
+          "title": "Home Assistant in Control Center",
+          "detail": "A page in Control Center for your smart home, the way Apple's Home controls sit there: lights, switches and scenes from a Home Assistant server you run, as tiles you tap. Early thinking only. Nothing is built yet, and how Folio would sign in to your server safely is still open.",
+          "status": "exploring"
+        },
+        {
           "icon": "headphones",
           "color": "#0A84FF",
           "title": "AirPods in Folio",
