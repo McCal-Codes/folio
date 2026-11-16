@@ -227,6 +227,11 @@ class MarketHostTest {
         for (entry in index.packages) {
             val files = requireNotNull(source.filesFor(entry.id)) { "${entry.id} has no files" }
             val result = installer.installBuiltIn(files)
+            if (com.mccal.folio.market.PackageKind.EXTERNAL_APP in entry.manifest!!.kinds) {
+                // An app of its own is a pointer to a store: the installer refuses it, and Android does the installing.
+                assertTrue("${entry.id}: $result", result is com.mccal.folio.market.InstallResult.Failed)
+                continue
+            }
             assertTrue("${entry.id}: $result", result is com.mccal.folio.market.InstallResult.Installed)
             assertTrue(installer.remove(entry.id))
         }

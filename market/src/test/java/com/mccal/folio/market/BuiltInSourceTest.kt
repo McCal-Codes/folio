@@ -24,17 +24,18 @@ class BuiltInSourceTest {
     @Test fun `the bundled index lists every package Folio ships`() {
         val index = requireNotNull(source.index()) { "the bundled index is missing" }
         assertEquals("Folio", index.name.english)
-        assertEquals(11, index.packages.size)
+        assertEquals(12, index.packages.size)
         assertTrue("every package can be read", index.packages.all { it.manifest != null && it.needs.isEmpty() })
         assertEquals(7, index.packages.count { it.manifest?.section == Section.TWEAKS })
         assertEquals(4, index.packages.count { it.manifest?.section == Section.THEMES })
+        assertEquals(1, index.packages.count { it.manifest?.section == Section.APPS })
         // Built-in packages have nothing to download.
         assertTrue(index.packages.none { it.installable })
     }
 
     @Test fun `every package's files are there, and its id matches its manifest`() {
         val packages = source.packages()
-        assertEquals(11, packages.size)
+        assertEquals(12, packages.size)
         assertEquals(source.index()!!.packages.map { it.id }.toSet(), packages.keys)
         for ((id, files) in packages) {
             assertTrue("$id has a manifest", PackageArchive.MANIFEST in files)
@@ -62,6 +63,19 @@ class BuiltInSourceTest {
         }
         assertTrue("the source points at some images", wanted.isNotEmpty())
         for (path in wanted) assertNotNull("missing image: $path", source.asset(path))
+    }
+
+    @Test fun `a featured app is an apps listing that only points at its store`() {
+        val index = requireNotNull(source.index())
+        val manifest = requireNotNull(index.packages.single { it.id == "com.bunsoootchi.performatively" }.manifest)
+        assertEquals(Section.APPS, manifest.section)
+        assertEquals(setOf(PackageKind.EXTERNAL_APP), manifest.kinds)
+        // Nothing to apply, and the one place it installs from is Google Play, under its own package name.
+        assertTrue(manifest.permissions.isEmpty())
+        assertEquals(
+            listOf(ExternalSource(ExternalSource.Store.PLAY_STORE, "com.bunsoootchi.performatively", null)),
+            manifest.via,
+        )
     }
 
     @Test fun `a built-in package installs without a download`() {
