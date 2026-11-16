@@ -1,12 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="500" viewBox="0 0 1024 500">
   <rect width="1024" height="500" fill="#D7302A"/>
-  <circle cx="130" cy="430" r="230" fill="#fff" opacity=".08"/>
-  <circle cx="910" cy="50" r="190" fill="#fff" opacity=".08"/>
-  <g transform="translate(291 29) scale(2.3)">
-    <rect x="30" y="44" width="36" height="36" rx="10" fill="#fff"/>
-        <rect x="78" y="44" width="36" height="36" rx="10" fill="#fff" opacity=".6"/>
-        <rect x="126" y="44" width="36" height="36" rx="10" fill="#fff" opacity=".6"/>
-        <rect x="30" y="98" width="132" height="26" rx="9" fill="#fff" opacity=".92"/>
-        <rect x="30" y="134" width="132" height="26" rx="9" fill="#fff" opacity=".55"/>
-  </g>
+  <rect x="312" y="48" width="400" height="520" rx="44" fill="#1c1c1e"/>
+  <rect x="326" y="62" width="372" height="520" rx="34" fill="#000"/>
+  <rect x="350" y="96" width="52" height="52" rx="14" fill="#5E5CE6"/>
+        <rect x="414" y="96" width="52" height="52" rx="14" fill="#30B0C7"/>
+        <rect x="478" y="96" width="52" height="52" rx="14" fill="#FF9F0A"/>
+        <rect x="542" y="96" width="52" height="52" rx="14" fill="#34C759"/>
+        <circle cx="394" cy="98" r="13" fill="#FF3B30"/><circle cx="394" cy="98" r="5" fill="#fff"/>
+        <rect x="350" y="172" width="324" height="64" rx="16" fill="#fff" opacity=".14"/>
+        <rect x="350" y="248" width="324" height="64" rx="16" fill="#fff" opacity=".14"/>
+        <rect x="350" y="324" width="324" height="64" rx="16" fill="#fff" opacity=".14"/>
+        <rect x="366" y="190" width="28" height="28" rx="8" fill="#5E5CE6"/>
+        <rect x="366" y="266" width="28" height="28" rx="8" fill="#5E5CE6"/>
+        <rect x="366" y="342" width="28" height="28" rx="8" fill="#30B0C7"/>
+        <rect x="410" y="194" width="150" height="8" rx="4" fill="#fff" opacity=".8"/>
+        <rect x="410" y="270" width="170" height="8" rx="4" fill="#fff" opacity=".8"/>
+        <rect x="410" y="346" width="130" height="8" rx="4" fill="#fff" opacity=".8"/>
 </svg>
