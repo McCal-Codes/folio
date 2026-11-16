@@ -936,6 +936,13 @@
           "status": "exploring"
         },
         {
+          "icon": "clock",
+          "color": "#30B0C7",
+          "title": "Watch support",
+          "detail": "Folio on your wrist. Apple does not support pairing an Apple Watch with an Android phone, but community projects are trying it. They are early: they need a rooted phone and work on one phone model, and calls and health data do not work. So the realistic path is a Wear OS watch, such as a Galaxy Watch, with Folio's notifications and a few Control Center toggles on it, while Apple Watch is watched from a distance. Early thinking only. Nothing is built yet, and whether it is worth a separate watch app is still open.",
+          "status": "exploring"
+        },
+        {
           "icon": "headphones",
           "color": "#0A84FF",
           "title": "AirPods in Folio",
