@@ -1342,6 +1342,7 @@
     <string name="performance_status_done">중지됨: %1$d분 기록</string>
     <string name="performance_note">켜져 있는 동안 몇 초마다 Folio의 CPU 사용량, 메모리, 프레임 시간, 배터리를 읽고, 6시간이 지나면 저절로 멈춥니다. 보고서를 직접 복사하거나 공유하지 않는 한 휴대전화 밖으로 나가지 않습니다.</string>
     <string name="the_report_couldn_t_be_opened">보고서를 열지 못했습니다. 설정 › 도움말 › 버그 신고에서도 찾을 수 있습니다.</string>
+    <string name="whats_new_in_1_s">%1$s의 새로운 기능</string>
     <string name="what_s_new">새로운 기능</string>
     <string name="support_folio">Folio 후원</string>
     <string name="change_wallpaper">배경화면 변경</string>
