@@ -325,6 +325,11 @@ different things wearing one name. Folio never picks between them quietly.
   Which one they meant is theirs to decide.
 - **Folio's own Featured banners only ever resolve to Folio's own packages**, so a source can't put itself in
   Folio's window by reusing an id.
+- **A Featured banner with an `image` is that picture and nothing else**: Folio draws it across the card and writes
+  no text over it, so the picture carries its own words (Folio reads the `label` and the package's name aloud for
+  TalkBack). Make it about twice as wide as it is tall, 1024 x 500 for example, with what matters near the middle,
+  because the card crops to the window's width. A banner without an `image` is a color card with the label, name and
+  description.
 
 ### Who wrote it, and who is handing it over
 

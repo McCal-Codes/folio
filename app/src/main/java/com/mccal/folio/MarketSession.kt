@@ -198,6 +198,14 @@ internal class MarketSession(
         return (installer.readFiles(files) as? PackageInstaller.ReadResult.Ok)?.pkg
     }
 
+    /**
+     * The page a built-in listing wrote, read as words and pictures only. [read] can't give it for an app of its own:
+     * that is not a package Folio applies, so the installer turns it away, and its page came up empty.
+     */
+    fun depictionOf(id: String): com.mccal.folio.market.Depiction? =
+        source.filesFor(id)?.get("depiction.json")?.decodeToString()
+            ?.let { (com.mccal.folio.market.Depiction.parse(it) as? com.mccal.folio.market.ParseResult.Ok)?.value }
+
     fun get(entry: IndexPackage): InstallResult {
         val files = source.filesFor(entry.id) ?: return InstallResult.Failed(InstallResult.Reason.ARCHIVE, appContext.getString(R.string.folio_couldn_t_find_that_package))
         return installer.installBuiltIn(files)

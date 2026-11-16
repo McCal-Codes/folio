@@ -965,7 +965,11 @@ private fun MarketFlatGroup(modifier: Modifier = Modifier, content: @Composable 
  * package header. Each value can wrap to two lines, so large text and a long source name never cut one off.
  */
 @Composable
-private fun MarketStats(version: String, source: String, screens: Set<com.mccal.folio.market.Screen>, modifier: Modifier = Modifier) {
+private fun MarketStats(
+    version: String, source: String, screens: Set<com.mccal.folio.market.Screen>, modifier: Modifier = Modifier,
+    /** An app of its own has no version of ours to show: its first cell says where to get it instead. */
+    versionLabel: String = stringResource(R.string.market_stat_version),
+) {
     val line = Color.White.copy(alpha = .12f)
     val works = when {
         screens.size > 1 -> stringResource(R.string.market_cover_and_inner)
@@ -979,7 +983,7 @@ private fun MarketStats(version: String, source: String, screens: Set<com.mccal.
         },
     ) {
         val cells = listOf(
-            stringResource(R.string.market_stat_version) to version,
+            versionLabel to version,
             stringResource(R.string.market_stat_source) to source,
             stringResource(R.string.market_stat_works_on) to works,
         )
@@ -1079,6 +1083,7 @@ private fun MarketList(
                     packages = index.packages,
                     calm = style == FeaturedStyle.CALM,
                     onOpen = onOpen,
+                    picture = { path, modifier -> MarketImage(session, session.builtIn, path, modifier, framed = false) },
                 )
             }
         }
@@ -1456,7 +1461,7 @@ private fun MarketPackagePage(
     // set of blocks as Folio's own; what the safety sheet says still comes from the signed index alone.
     val sourcePage by produceState<com.mccal.folio.market.Depiction?>(null, source.url, entry.id, entry.version) {
         val path = entry.manifest?.depiction
-        value = if (source.kind == Source.Kind.BUILT_IN || path == null) null else withContext(session.io) {
+        value = if (path == null) null else if (source.kind == Source.Kind.BUILT_IN) withContext(session.io) { session.depictionOf(entry.id) } else withContext(session.io) {
             session.sources.fetch(source, path, com.mccal.folio.market.Depiction.MAX_CHARS) { _, _ -> }
                 ?.decodeToString()
                 ?.let { (com.mccal.folio.market.Depiction.parse(it) as? com.mccal.folio.market.ParseResult.Ok)?.value }
@@ -1474,6 +1479,8 @@ private fun MarketPackagePage(
     val compat = remember(checks) { compatLines(checks) }
     // The same verdict the installer refuses on, and the install sheet and package row read.
     val verdict = remember(checks) { com.mccal.folio.market.PackageCompatibility.verdict(checks) }
+    // The color the author gave the page (its `tint`) colors the band, as a Sileo page opens on its package's color; a page without one keeps its section's.
+    val pageTint = (pkg?.depiction ?: sourcePage)?.tint?.let { Color(it) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = FolioSpace.LARGE.dp)) {
         if (showBack) {
             Row(Modifier.fillMaxWidth().clickable(onClickLabel = backLabel, onClick = onBack).padding(vertical = FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1485,7 +1492,7 @@ private fun MarketPackagePage(
         // A band in the section's color behind the icon and name, the way Sileo's page opens on the package's tint.
         Row(
             Modifier.padding(top = FolioSpace.COMPACT.dp).fillMaxWidth().clip(RoundedCornerShape(FolioRadius.GROUP.dp))
-                .background(sectionColor(entry.manifest?.section).copy(alpha = .16f)).padding(FolioSpace.MEDIUM.dp),
+                .background((pageTint ?: sectionColor(entry.manifest?.section)).copy(alpha = .16f)).padding(FolioSpace.MEDIUM.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             PackageIcon(session, MarketEntry(entry, source), 64.dp)
@@ -1553,6 +1560,8 @@ private fun MarketPackagePage(
                     appUpdate != null -> "${appUpdate.versionName} → ${entry.version}"
                     updateAvailable -> "${installed?.version} → ${entry.version}"
                     installed != null -> stringResource(R.string.version_1, installed.version)
+                    // An app of its own is not built into Folio; the strip below says where it comes from.
+                    external -> ""
                     source.kind == Source.Kind.BUILT_IN -> stringResource(R.string.built_in)
                     else -> stringResource(R.string.version_1, entry.version.text)
                 },
@@ -1560,7 +1569,9 @@ private fun MarketPackagePage(
             )
         }
         MarketStats(
-            version = (installed?.version ?: entry.version).text,
+            version = if (external) entry.manifest?.via.orEmpty().map { stringResource(MarketExternalApp.label(it.store)) }.joinToString()
+                else (installed?.version ?: entry.version).text,
+            versionLabel = stringResource(if (external) R.string.market_stat_get_on else R.string.market_stat_version),
             source = source.label,
             screens = entry.manifest?.screens ?: com.mccal.folio.market.Screen.entries.toSet(),
             modifier = Modifier.padding(bottom = FolioSpace.COMPACT.dp),
@@ -1791,13 +1802,14 @@ internal fun sheetForAppIcon(linkedPage: CustomizationPage?, currentPage: Custom
  * package from a source names a path on that source's host, which [MarketImages] fetches through Folio's own client.
  */
 @Composable
-private fun MarketImage(session: MarketSession, source: Source, path: String, modifier: Modifier) {
+private fun MarketImage(session: MarketSession, source: Source, path: String, modifier: Modifier, framed: Boolean = true) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val url = remember(source.url, path) { MarketImages.urlFor(source, path) }
     val bundled = remember(path, url) {
         if (url != null) null else MarketImages.bundled(session.source::asset, path)
     }
-    Box(modifier.padding(bottom = FolioSpace.COMPACT.dp).clip(RoundedCornerShape(FolioRadius.ROW.dp)).background(Color.White.copy(alpha = .06f))) {
+    // Framed on a package's page (rounded, with room below); a banner is clipped and colored by the card it fills.
+    Box(if (framed) modifier.padding(bottom = FolioSpace.COMPACT.dp).clip(RoundedCornerShape(FolioRadius.ROW.dp)).background(Color.White.copy(alpha = .06f)) else modifier) {
         when {
             bundled != null -> androidx.compose.foundation.Image(
                 bitmap = bundled,

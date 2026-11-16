@@ -9,6 +9,7 @@
   },
   "minFolio": "0.7.0",
   "section": "apps",
+  "icon": "assets/icons/performatively.png",
   "kind": [
     "externalApp"
   ],
