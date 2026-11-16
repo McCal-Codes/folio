@@ -2714,4 +2714,5 @@
     <string name="market_stat_source">Source</string>
     <string name="market_stat_works_on">Works on</string>
     <string name="market_cover_and_inner">Cover and inner</string>
+    <string name="market_stat_get_on">Get it on</string>
 </resources>

@@ -2648,4 +2648,5 @@
     <string name="market_stat_source">来源</string>
     <string name="market_stat_works_on">适用于</string>
     <string name="market_cover_and_inner">外屏和内屏</string>
+    <string name="market_stat_get_on">获取渠道</string>
 </resources>

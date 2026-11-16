@@ -965,7 +965,11 @@ private fun MarketFlatGroup(modifier: Modifier = Modifier, content: @Composable 
  * package header. Each value can wrap to two lines, so large text and a long source name never cut one off.
  */
 @Composable
-private fun MarketStats(version: String, source: String, screens: Set<com.mccal.folio.market.Screen>, modifier: Modifier = Modifier) {
+private fun MarketStats(
+    version: String, source: String, screens: Set<com.mccal.folio.market.Screen>, modifier: Modifier = Modifier,
+    /** An app of its own has no version of ours to show: its first cell says where to get it instead. */
+    versionLabel: String = stringResource(R.string.market_stat_version),
+) {
     val line = Color.White.copy(alpha = .12f)
     val works = when {
         screens.size > 1 -> stringResource(R.string.market_cover_and_inner)
@@ -979,7 +983,7 @@ private fun MarketStats(version: String, source: String, screens: Set<com.mccal.
         },
     ) {
         val cells = listOf(
-            stringResource(R.string.market_stat_version) to version,
+            versionLabel to version,
             stringResource(R.string.market_stat_source) to source,
             stringResource(R.string.market_stat_works_on) to works,
         )
@@ -1556,6 +1560,8 @@ private fun MarketPackagePage(
                     appUpdate != null -> "${appUpdate.versionName} → ${entry.version}"
                     updateAvailable -> "${installed?.version} → ${entry.version}"
                     installed != null -> stringResource(R.string.version_1, installed.version)
+                    // An app of its own is not built into Folio; the strip below says where it comes from.
+                    external -> ""
                     source.kind == Source.Kind.BUILT_IN -> stringResource(R.string.built_in)
                     else -> stringResource(R.string.version_1, entry.version.text)
                 },
@@ -1563,7 +1569,9 @@ private fun MarketPackagePage(
             )
         }
         MarketStats(
-            version = (installed?.version ?: entry.version).text,
+            version = if (external) entry.manifest?.via.orEmpty().map { stringResource(MarketExternalApp.label(it.store)) }.joinToString()
+                else (installed?.version ?: entry.version).text,
+            versionLabel = stringResource(if (external) R.string.market_stat_get_on else R.string.market_stat_version),
             source = source.label,
             screens = entry.manifest?.screens ?: com.mccal.folio.market.Screen.entries.toSet(),
             modifier = Modifier.padding(bottom = FolioSpace.COMPACT.dp),
