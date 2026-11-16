@@ -936,6 +936,13 @@
           "status": "exploring"
         },
         {
+          "icon": "clock",
+          "color": "#30B0C7",
+          "title": "Watch support",
+          "detail": "Folio on your wrist. Apple Watch needs an iPhone to set up and run, so it cannot pair with an Android phone; the realistic path is a Wear OS watch, such as a Galaxy Watch, with Folio's notifications and a few Control Center toggles on it. Early thinking only. Nothing is built yet, and whether it is worth a separate watch app is still open.",
+          "status": "exploring"
+        },
+        {
           "icon": "headphones",
           "color": "#0A84FF",
           "title": "AirPods in Folio",
