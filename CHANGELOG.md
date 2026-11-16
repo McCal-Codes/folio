@@ -8,6 +8,7 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.7.0] - Unreleased
 
 ### Added
+- **New icons for Folio's own packages:** the icons in the Market for Cabinet, Harborline, Roll Call, Palette, Colored Albums, Flipbook, Duet and the four themes are shaded from top to bottom with a soft highlight, and the picture on each is lifted off the tile, so they have some depth in a list. <!-- beta 5 -->
 - **Tweak pages open on a picture:** Cabinet, Colored Albums, Duet, Flipbook, Harborline, Palette and Roll Call each have a still picture at the top of their Market page, in the tweak's own color with its icon drawn large, so a page no longer starts with plain text. Pages in the Folio source also say "color" instead of "colour". <!-- beta 5 -->
 - **Roadmap: watch support:** the roadmap now lists, under Exploring, Folio on a watch. Apple does not support pairing an Apple Watch with Android and community attempts are early, so the idea is a Wear OS watch such as a Galaxy Watch. Nothing is built yet. <!-- beta 5 -->
 - **Performatively on Featured:** the app's own banner, "Be seen reading Performatively", now sits in the Featured carousel, and its page opens on the same picture with a second one showing a cover dressed with stickers beside a book open on the inner screen. A Featured banner that has a picture now shows just that picture, with nothing written over it. A built-in app's page now shows its own text and pictures; before, it came up with only a line. <!-- beta 5 -->
