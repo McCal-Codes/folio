@@ -1262,10 +1262,12 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                                     CC_CONNECTIVITY ->
                                         // The open list is wider and taller than the 2 by 2 place it came from, so it is measured without that place's limits
                                         // (it wrapped "Cellular Data" onto three lines and ran over Focus and Rotation) and slid left to stay inside the grid.
+                                        // It also stands over Not Playing, Focus and the sliders, so it is drawn on a solid surface, not the see-through tile:
+                                        // the iPhone blurs what is behind it, and without a blur the neighbors' names ran through its own ("Airplane Mode" over "Not Playing").
                                         if (slotConnectivityOpen && !edit.active) Module(Modifier.wrapContentSize(Alignment.TopStart, unbounded = true)
                                             .offset(x = -((cell + gap) * maxOf(0, slot.col + minOf(cols, 4) - cols)))
                                             .width(span(minOf(cols, 4))).wrapContentHeight(unbounded = true)
-                                            .combinedClickable(onClick = { slotConnectivityOpen = false }, onLongClick = { slotConnectivityOpen = false })) {
+                                            .combinedClickable(onClick = { slotConnectivityOpen = false }, onLongClick = { slotConnectivityOpen = false }), color = FolioColors.MenuSurface) {
                                             ConnectivityList(connectivity, Modifier.fillMaxWidth().padding(vertical = FolioSpace.SMALL.dp))
                                         } else Module(Modifier.fillMaxSize().combinedClickable(onClick = {}, enabled = !edit.active, onLongClick = {
                                             haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress); slotConnectivityOpen = true
