@@ -40,7 +40,7 @@ Limits:
 | `version` | string | dpkg ordering: `[epoch:]upstream[-revision]`; `~` sorts before release (`1.0~beta1` < `1.0`). |
 | `author` | object | `{ "name": text, "url"?: https URL }`. |
 | `minFolio` | string | Oldest Folio version it supports, e.g. `0.7.0`. |
-| `section` | enum | `themes`, `tweaks`, `layouts`, `wallpapers`, `scripts`. |
+| `section` | enum | `themes`, `tweaks`, `layouts`, `wallpapers`, `scripts`, `apps` *(0.7.0)*: an app of its own that the Market lists and points to a store for. |
 | `kind` | array of enum | One or more of the kinds below. |
 | `permissions` | array of enum | See [Permissions](#permissions). Empty means "appearance only". |
 | `screens` | array of enum | `cover`, `inner`. Both if omitted. |

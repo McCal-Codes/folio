@@ -230,7 +230,9 @@ data class FolioMinor(val major: Int, val minor: Int) : Comparable<FolioMinor> {
 }
 
 enum class Section(val id: String) {
-    THEMES("themes"), TWEAKS("tweaks"), LAYOUTS("layouts"), WALLPAPERS("wallpapers"), SCRIPTS("scripts");
+    THEMES("themes"), TWEAKS("tweaks"), LAYOUTS("layouts"), WALLPAPERS("wallpapers"), SCRIPTS("scripts"),
+    /** Apps of their own that Folio lists and points to (Play, F-Droid, Obtainium), such as a friend's app. Format 0.7.0. */
+    APPS("apps");
 
     companion object {
         fun from(id: String) = entries.firstOrNull { it.id == id }

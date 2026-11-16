@@ -1,0 +1,34 @@
+{
+  "$schema": "https://folio.mccal.dev/schema/v1/depiction.schema.json",
+  "format": 1,
+  "tint": "#30B0C7",
+  "blocks": [
+    {
+      "type": "markdown",
+      "text": "Performatively is an Android app made by a friend of Folio, and Folio is happy to point to it.\n\nGet opens its page on Google Play. Folio does not install it for you, does not change it, and shares nothing with it: the Play Store tells you who made it and what it asks for before anything is installed."
+    },
+    {
+      "type": "featureList",
+      "items": [
+        "Opens on Google Play",
+        "Installed by Android, not by Folio",
+        "Nothing is shared with the app when you tap Get"
+      ]
+    },
+    {
+      "type": "changelog",
+      "entries": [
+        {
+          "version": "1.0.0",
+          "date": "2026-11-16",
+          "notes": "Listed in the Folio Market."
+        }
+      ]
+    },
+    {
+      "type": "link",
+      "title": "Performatively on Google Play",
+      "url": "https://play.google.com/store/apps/details?id=com.bunsoootchi.performatively"
+    }
+  ]
+}

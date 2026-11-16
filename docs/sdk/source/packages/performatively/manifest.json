@@ -1,0 +1,28 @@
+{
+  "$schema": "https://folio.mccal.dev/schema/v1/manifest.schema.json",
+  "format": 1,
+  "id": "com.bunsoootchi.performatively",
+  "name": "Performatively",
+  "version": "1.0.0",
+  "author": {
+    "name": "bunsoootchi"
+  },
+  "minFolio": "0.7.0",
+  "section": "apps",
+  "kind": [
+    "externalApp"
+  ],
+  "permissions": [],
+  "screens": [
+    "cover",
+    "inner"
+  ],
+  "depiction": "depiction.json",
+  "description": "An app from a friend of Folio, on Google Play.",
+  "via": [
+    {
+      "store": "playStore",
+      "id": "com.bunsoootchi.performatively"
+    }
+  ]
+}

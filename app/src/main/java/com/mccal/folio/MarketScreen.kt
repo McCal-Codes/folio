@@ -1933,6 +1933,7 @@ private fun sectionColor(section: com.mccal.folio.market.Section?): Color = when
     com.mccal.folio.market.Section.LAYOUTS -> FolioColors.Green
     com.mccal.folio.market.Section.WALLPAPERS -> FolioColors.Orange
     com.mccal.folio.market.Section.SCRIPTS -> FolioColors.Pink
+    com.mccal.folio.market.Section.APPS -> FolioColors.Teal
     null -> FolioColors.Gray
 }
 
