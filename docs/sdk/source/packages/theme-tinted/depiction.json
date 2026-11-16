@@ -4,14 +4,14 @@
   "blocks": [
     {
       "type": "markdown",
-      "text": "Icons tinted from the wallpaper, the way iOS does it, so the Home screen takes its colour from the picture behind it and changes when that does.\n\nBadges are tinted too, each one in its own app's colour rather than red, which keeps them readable against icons that have all gone the same shade.\n\nA built-in Folio theme. Applying it changes how Folio draws your Home screen and nothing else - it never touches other apps, and every setting it changes can be changed back by hand in Settings."
+      "text": "Icons tinted from the wallpaper, the way iOS does it, so the Home screen takes its color from the picture behind it and changes when that does.\n\nBadges are tinted too, each one in its own app's color rather than red, which keeps them readable against icons that have all gone the same shade.\n\nA built-in Folio theme. Applying it changes how Folio draws your Home screen and nothing else - it never touches other apps, and every setting it changes can be changed back by hand in Settings."
     },
     {
       "type": "featureList",
       "items": [
         "Icons tinted from your wallpaper",
         "Retinted when the wallpaper changes",
-        "Badges in each app's own colour",
+        "Badges in each app's own color",
         "Tinted glass"
       ]
     },

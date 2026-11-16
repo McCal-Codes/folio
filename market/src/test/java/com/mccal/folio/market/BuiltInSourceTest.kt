@@ -90,6 +90,18 @@ class BuiltInSourceTest {
         assertEquals(listOf("com.bunsoootchi.performatively"), index.featured.filter { it.image != null }.map { it.packageId })
     }
 
+    @Test fun `every tweak's page opens on a picture, and no page says colour`() {
+        for ((id, files) in source.packages()) {
+            val manifest = (PackageManifest.parse(files.getValue(PackageArchive.MANIFEST).decodeToString()) as ParseResult.Ok).value
+            val text = files.getValue("depiction.json").decodeToString()
+            val page = (Depiction.parse(text) as ParseResult.Ok).value
+            if (manifest.section == Section.TWEAKS) {
+                assertTrue("$id opens on a hero", page.blocks.first() is DepictionBlock.Hero)
+            }
+            assertTrue("$id says colour", !text.contains("colour", ignoreCase = true))
+        }
+    }
+
     @Test fun `a built-in package installs without a download`() {
         val host = object : PackageHost {
             override val capabilities = Capability.entries.toSet()

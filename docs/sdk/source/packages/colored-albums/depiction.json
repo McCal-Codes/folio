@@ -4,15 +4,19 @@
   "tint": "#FF375F",
   "blocks": [
     {
+      "type": "hero",
+      "image": "assets/heroes/colored-albums.webp"
+    },
+    {
       "type": "markdown",
-      "text": "The Now Playing card takes the album art's colour, and the sound bars in the island take a lighter version of it, so whatever is playing colours both of the places Folio shows it.\n\nFolio reads the strongest colour out of the artwork and mixes it into the card's glass, fading from one track's colour to the next rather than snapping. Artwork with no real colour in it - a grey cover, a black-and-white photograph - leaves the card and the bars as they are.\n\nLike every tweak it has its own page in Settings › Tweaks, with a switch for the cover screen and a switch for the inner one, so it can be on where it helps and off where it doesn't.\n\nInspired by ColorFlow by David Goldman. Re-created from scratch for Folio; no tweak code is included."
+      "text": "The Now Playing card takes the album art's color, and the sound bars in the island take a lighter version of it, so whatever is playing colors both of the places Folio shows it.\n\nFolio reads the strongest color out of the artwork and mixes it into the card's glass, fading from one track's color to the next rather than snapping. Artwork with no real color in it - a grey cover, a black-and-white photograph - leaves the card and the bars as they are.\n\nLike every tweak it has its own page in Settings › Tweaks, with a switch for the cover screen and a switch for the inner one, so it can be on where it helps and off where it doesn't.\n\nInspired by ColorFlow by David Goldman. Re-created from scratch for Folio; no tweak code is included."
     },
     {
       "type": "featureList",
       "items": [
-        "Now Playing takes the album art's colour",
+        "Now Playing takes the album art's color",
         "The island's sound bars follow, a shade lighter",
-        "It fades from one track's colour to the next",
+        "It fades from one track's color to the next",
         "Grey artwork is left alone"
       ]
     },

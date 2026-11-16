@@ -4,13 +4,13 @@
   "blocks": [
     {
       "type": "markdown",
-      "text": "Every icon darkened, badges in softer colours, and a heavier rail behind the status area, for a Home screen that sits back at night.\n\nIcons are darkened by Folio, so apps that never shipped a dark icon get one too. Everything else - the shape of the icons, the date, the live clock - stays where Classic left it.\n\nA built-in Folio theme. Applying it changes how Folio draws your Home screen and nothing else - it never touches other apps, and every setting it changes can be changed back by hand in Settings."
+      "text": "Every icon darkened, badges in softer colors, and a heavier rail behind the status area, for a Home screen that sits back at night.\n\nIcons are darkened by Folio, so apps that never shipped a dark icon get one too. Everything else - the shape of the icons, the date, the live clock - stays where Classic left it.\n\nA built-in Folio theme. Applying it changes how Folio draws your Home screen and nothing else - it never touches other apps, and every setting it changes can be changed back by hand in Settings."
     },
     {
       "type": "featureList",
       "items": [
         "Dark icons, including for apps that ship none",
-        "Softer badge colours",
+        "Softer badge colors",
         "A dimmer, heavier status rail",
         "Tinted glass"
       ]

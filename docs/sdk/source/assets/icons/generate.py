@@ -4,7 +4,8 @@
 One rounded tile per package, in its section's iOS color, with a white glyph that shows what the package does. The
 SVG is the source; ImageMagick rasterises it to the PNG the source publishes. Re-run after editing a glyph:
 
-    python3 docs/sdk/source/assets/icons/generate.py
+    python3 docs/sdk/source/assets/icons/generate.py            # the icons
+    python3 docs/sdk/source/assets/icons/generate.py --heroes   # the pictures at the top of each tweak's page
 
 Requires ImageMagick (`brew install imagemagick`). The PNGs are checked in, so a build never needs it.
 """
@@ -99,6 +100,132 @@ def svg(top: str, bottom: str, glyph: str) -> str:
 """
 
 
+HERO_W, HERO_H = 1024, 500
+HERO_DIR = HERE.parent / "heroes"
+# The tweaks get a picture on their page; themes and apps bring their own. Two looks: a screen showing the feature
+# (SCENES), and a bold two-tone picture with the icon's glyph running off the edge (everything else).
+HERO_FOR = ["cabinet", "colored-albums", "duet", "flipbook", "harborline", "palette", "roll-call"]
+
+
+def shade(color: str, keep: float) -> str:
+    """The color darkened toward black; keep=1 is unchanged."""
+    r, g, b = (int(color[i:i + 2], 16) for i in (1, 3, 5))
+    return "#%02X%02X%02X" % (round(r * keep), round(g * keep), round(b * keep))
+
+
+def phone(screen: str) -> str:
+    """A phone body that runs off the bottom of the picture, with the screen's own shapes inside it."""
+    return f"""<rect x="312" y="48" width="400" height="520" rx="44" fill="#1c1c1e"/>
+  <rect x="326" y="62" width="372" height="520" rx="34" fill="#000"/>
+  {screen.strip()}"""
+
+
+# Each scene is drawn on the phone's screen: x 350 to 674, from y 96 down. Flat shapes, no words, nothing that moves.
+SCENES = {
+    "roll-call": """
+        <rect x="350" y="96" width="52" height="52" rx="14" fill="#5E5CE6"/>
+        <rect x="414" y="96" width="52" height="52" rx="14" fill="#30B0C7"/>
+        <rect x="478" y="96" width="52" height="52" rx="14" fill="#FF9F0A"/>
+        <rect x="542" y="96" width="52" height="52" rx="14" fill="#34C759"/>
+        <circle cx="394" cy="98" r="13" fill="#FF3B30"/><circle cx="394" cy="98" r="5" fill="#fff"/>
+        <rect x="350" y="172" width="324" height="64" rx="16" fill="#fff" opacity=".14"/>
+        <rect x="350" y="248" width="324" height="64" rx="16" fill="#fff" opacity=".14"/>
+        <rect x="350" y="324" width="324" height="64" rx="16" fill="#fff" opacity=".14"/>
+        <rect x="366" y="190" width="28" height="28" rx="8" fill="#5E5CE6"/>
+        <rect x="366" y="266" width="28" height="28" rx="8" fill="#5E5CE6"/>
+        <rect x="366" y="342" width="28" height="28" rx="8" fill="#30B0C7"/>
+        <rect x="410" y="194" width="150" height="8" rx="4" fill="#fff" opacity=".8"/>
+        <rect x="410" y="270" width="170" height="8" rx="4" fill="#fff" opacity=".8"/>
+        <rect x="410" y="346" width="130" height="8" rx="4" fill="#fff" opacity=".8"/>
+    """,
+    "cabinet": """
+        <rect x="350" y="96" width="52" height="52" rx="14" fill="#fff" opacity=".22"/>
+        <rect x="414" y="96" width="52" height="52" rx="14" fill="#3DA2FF"/>
+        <rect x="478" y="96" width="52" height="52" rx="14" fill="#fff" opacity=".22"/>
+        <rect x="542" y="96" width="52" height="52" rx="14" fill="#fff" opacity=".22"/>
+        <rect x="350" y="392" width="52" height="52" rx="14" fill="#fff" opacity=".22"/>
+        <rect x="414" y="392" width="52" height="52" rx="14" fill="#fff" opacity=".22"/>
+        <rect x="360" y="164" width="304" height="196" rx="22" fill="#2C2C2E"/>
+        <rect x="378" y="182" width="44" height="44" rx="10" fill="#FF375F"/>
+        <rect x="436" y="190" width="120" height="8" rx="4" fill="#fff" opacity=".9"/>
+        <rect x="436" y="208" width="80" height="8" rx="4" fill="#fff" opacity=".5"/>
+        <circle cx="610" cy="204" r="14" fill="#fff"/>
+        <rect x="378" y="240" width="268" height="34" rx="10" fill="#fff" opacity=".12"/>
+        <rect x="378" y="284" width="268" height="34" rx="10" fill="#fff" opacity=".12"/>
+        <rect x="378" y="328" width="56" height="20" rx="10" fill="#0A84FF"/>
+        <rect x="442" y="328" width="56" height="20" rx="10" fill="#0A84FF" opacity=".7"/>
+        <rect x="506" y="328" width="56" height="20" rx="10" fill="#0A84FF" opacity=".5"/>
+    """,
+    "palette": """
+        <rect x="350" y="96" width="324" height="76" rx="18" fill="#5E5CE6" opacity=".55"/>
+        <rect x="350" y="184" width="324" height="76" rx="18" fill="#34C759" opacity=".5"/>
+        <rect x="350" y="272" width="324" height="76" rx="18" fill="#FF375F" opacity=".5"/>
+        <rect x="350" y="360" width="324" height="76" rx="18" fill="#30B0C7" opacity=".5"/>
+        <rect x="368" y="114" width="40" height="40" rx="11" fill="#5E5CE6"/>
+        <rect x="368" y="202" width="40" height="40" rx="11" fill="#34C759"/>
+        <rect x="368" y="290" width="40" height="40" rx="11" fill="#FF375F"/>
+        <rect x="368" y="378" width="40" height="40" rx="11" fill="#30B0C7"/>
+        <rect x="424" y="118" width="170" height="9" rx="4" fill="#fff" opacity=".9"/><rect x="424" y="138" width="120" height="8" rx="4" fill="#fff" opacity=".55"/>
+        <rect x="424" y="206" width="150" height="9" rx="4" fill="#fff" opacity=".9"/><rect x="424" y="226" width="110" height="8" rx="4" fill="#fff" opacity=".55"/>
+        <rect x="424" y="294" width="180" height="9" rx="4" fill="#fff" opacity=".9"/><rect x="424" y="314" width="130" height="8" rx="4" fill="#fff" opacity=".55"/>
+        <rect x="424" y="382" width="140" height="9" rx="4" fill="#fff" opacity=".9"/><rect x="424" y="402" width="100" height="8" rx="4" fill="#fff" opacity=".55"/>
+    """,
+    "colored-albums": """
+        <rect x="350" y="96" width="324" height="250" rx="26" fill="#E01E4E" opacity=".75"/>
+        <rect x="372" y="118" width="108" height="108" rx="18" fill="#FF6A8A"/>
+        <circle cx="426" cy="172" r="26" fill="#E01E4E"/>
+        <rect x="500" y="130" width="140" height="10" rx="5" fill="#fff" opacity=".95"/>
+        <rect x="500" y="152" width="100" height="8" rx="4" fill="#fff" opacity=".6"/>
+        <rect x="500" y="190" width="10" height="36" rx="5" fill="#FF9DB4"/>
+        <rect x="518" y="170" width="10" height="56" rx="5" fill="#FF9DB4" opacity=".85"/>
+        <rect x="536" y="198" width="10" height="28" rx="5" fill="#FF9DB4" opacity=".7"/>
+        <rect x="554" y="180" width="10" height="46" rx="5" fill="#FF9DB4" opacity=".85"/>
+        <rect x="372" y="254" width="280" height="8" rx="4" fill="#fff" opacity=".3"/>
+        <rect x="372" y="254" width="150" height="8" rx="4" fill="#fff" opacity=".9"/>
+        <circle cx="428" cy="304" r="14" fill="#fff" opacity=".9"/><circle cx="498" cy="304" r="20" fill="#fff"/><circle cx="568" cy="304" r="14" fill="#fff" opacity=".9"/>
+    """,
+}
+
+
+def hero_svg(name: str, bottom: str, glyph: str) -> str:
+    """A still, flat picture about twice as wide as tall, in the tweak's own color. No words in it (the page says those,
+    in the reader's language) and nothing that moves."""
+    head = f'<svg xmlns="http://www.w3.org/2000/svg" width="{HERO_W}" height="{HERO_H}" viewBox="0 0 {HERO_W} {HERO_H}">'
+    if name in SCENES:
+        return f"""{head}
+  <rect width="{HERO_W}" height="{HERO_H}" fill="{bottom}"/>
+  {phone(SCENES[name])}
+</svg>
+"""
+    # Two tones, the glyph large and running off the right edge, and a few quiet bars where a title would sit.
+    return f"""{head}
+  <rect width="{HERO_W}" height="{HERO_H}" fill="{shade(bottom, .72)}"/>
+  <rect x="440" width="{HERO_W - 440}" height="{HERO_H}" fill="{bottom}"/>
+  <g transform="translate(520 -20) scale(3.4)">
+    {glyph.strip()}
+  </g>
+  <g transform="translate(70 150)" fill="#fff">
+    <rect width="300" height="22" rx="11" opacity=".9"/>
+    <rect y="40" width="220" height="14" rx="7" opacity=".45"/>
+    <rect y="66" width="170" height="14" rx="7" opacity=".3"/>
+  </g>
+</svg>
+"""
+
+
+def heroes() -> None:
+    """Writes `assets/heroes/<name>.svg`; rasterise each to a 1024x500 `.webp` next to it with ImageMagick."""
+    HERO_DIR.mkdir(exist_ok=True)
+    for name in HERO_FOR:
+        _top, bottom, glyph = ICONS[name]
+        (HERO_DIR / f"{name}.svg").write_text(hero_svg(name, bottom, glyph))
+        subprocess.run(
+            ["magick", "-background", "none", str(HERO_DIR / f"{name}.svg"), "-quality", "88", str(HERO_DIR / f"{name}.webp")],
+            check=True,
+        )
+        print("wrote", name + ".webp")
+
+
 def main() -> None:
     for name, (top, bottom, glyph) in ICONS.items():
         source = HERE / f"{name}.svg"
@@ -111,4 +238,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+
+    heroes() if "--heroes" in sys.argv else main()
