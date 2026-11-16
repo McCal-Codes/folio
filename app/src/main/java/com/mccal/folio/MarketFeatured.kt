@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -49,6 +50,8 @@ internal fun MarketFeatured(
     packages: List<IndexPackage>,
     calm: Boolean,
     onOpen: (String) -> Unit,
+    /** Draws one of the index's pictures (a path on the source) to fill the modifier. Folio's own index, so its own files. */
+    picture: @Composable (String, Modifier) -> Unit = { _, _ -> },
 ) {
     val banners = featured.mapNotNull { item -> packages.firstOrNull { it.id == item.packageId }?.let { item to it } }
     if (banners.isEmpty()) return
@@ -97,18 +100,34 @@ internal fun MarketFeatured(
             }
         }
     }
+    // A picture is about twice as wide as tall, so the card follows the width, between the old 148 dp and a cap that keeps
+    // it from filling an unfolded screen. Every page takes the same height so the carousel does not jump between them.
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+    val bannerHeight = (maxWidth / 2.05f).coerceIn(148.dp, 200.dp)
     HorizontalPager(
         state = pager,
         contentPadding = PaddingValues(end = 0.dp),
         pageSpacing = 10.dp,
-        // 148 dp at the normal size; the banner grows with the text, which at 200% font scale was cut off below the title.
-        modifier = Modifier.fillMaxWidth().heightIn(min = 148.dp),
+        // At least the banner's height; a text banner grows with the text, which at 200% font scale was cut off below the title.
+        modifier = Modifier.fillMaxWidth().heightIn(min = bannerHeight),
     ) { page ->
         val (item, entry) = banners[page]
         val name = entry.manifest?.name?.english ?: entry.id
         val openLabel = stringResource(R.string.open_1_s, name)
+        val image = item.image
+        if (image != null) {
+            // The picture is the banner and carries its own words, so nothing is written over it; TalkBack gets them here.
+            val said = listOfNotNull(item.label?.english, name).joinToString(", ")
+            Box(
+                Modifier.fillMaxWidth().height(bannerHeight).clip(RoundedCornerShape(FolioRadius.GROUP.dp))
+                    .background(bannerColor(page))
+                    .clickable(onClickLabel = openLabel) { onOpen(entry.id) }
+                    .semantics { contentDescription = said },
+            ) { picture(image, Modifier.fillMaxSize()) }
+            return@HorizontalPager
+        }
         Column(
-            Modifier.fillMaxWidth().heightIn(min = 148.dp).clip(RoundedCornerShape(FolioRadius.GROUP.dp))
+            Modifier.fillMaxWidth().heightIn(min = bannerHeight).clip(RoundedCornerShape(FolioRadius.GROUP.dp))
                 .background(bannerColor(page))
                 .clickable(onClickLabel = openLabel) { onOpen(entry.id) }
                 .padding(FolioSpace.LARGE.dp),
@@ -121,6 +140,7 @@ internal fun MarketFeatured(
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             }
         }
+    }
     }
     if (banners.size > 1) {
         // One control, not one per dot: you swipe the carousel, and the dots say where you are. The words are read

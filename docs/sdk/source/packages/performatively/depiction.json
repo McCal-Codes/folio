@@ -4,6 +4,16 @@
   "tint": "#30B0C7",
   "blocks": [
     {
+      "type": "hero",
+      "image": "assets/performatively-banner.webp"
+    },
+    {
+      "type": "screenshots",
+      "images": [
+        "assets/performatively-pack.webp"
+      ]
+    },
+    {
       "type": "markdown",
       "text": "Read on the inner screen while your book's cover shows on the outer screen, decorated with stickers.\n\nPerformatively is an Android app made by a friend of Folio, and Folio is happy to point to it.\n\nGet opens its page on Google Play. Folio does not install it for you, does not change it, and shares nothing with it: the Play Store tells you who made it and what it asks for before anything is installed."
     },

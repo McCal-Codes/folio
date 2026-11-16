@@ -8,12 +8,16 @@
   "featured": [
     {
       "package": "com.mccal.folio.theme.clear",
-      "label": "Theme of the week",
-      "image": "assets/home-clear.webp"
+      "label": "Theme of the week"
     },
     {
       "package": "com.mccal.folio.cabinet",
       "label": "Built-in tweak"
+    },
+    {
+      "package": "com.bunsoootchi.performatively",
+      "label": "From a friend of Folio",
+      "image": "assets/performatively-banner.webp"
     }
   ],
   "packages": [

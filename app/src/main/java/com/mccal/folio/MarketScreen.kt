@@ -1079,6 +1079,7 @@ private fun MarketList(
                     packages = index.packages,
                     calm = style == FeaturedStyle.CALM,
                     onOpen = onOpen,
+                    picture = { path, modifier -> MarketImage(session, session.builtIn, path, modifier, framed = false) },
                 )
             }
         }
@@ -1791,13 +1792,14 @@ internal fun sheetForAppIcon(linkedPage: CustomizationPage?, currentPage: Custom
  * package from a source names a path on that source's host, which [MarketImages] fetches through Folio's own client.
  */
 @Composable
-private fun MarketImage(session: MarketSession, source: Source, path: String, modifier: Modifier) {
+private fun MarketImage(session: MarketSession, source: Source, path: String, modifier: Modifier, framed: Boolean = true) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val url = remember(source.url, path) { MarketImages.urlFor(source, path) }
     val bundled = remember(path, url) {
         if (url != null) null else MarketImages.bundled(session.source::asset, path)
     }
-    Box(modifier.padding(bottom = FolioSpace.COMPACT.dp).clip(RoundedCornerShape(FolioRadius.ROW.dp)).background(Color.White.copy(alpha = .06f))) {
+    // Framed on a package's page (rounded, with room below); a banner is clipped and colored by the card it fills.
+    Box(if (framed) modifier.padding(bottom = FolioSpace.COMPACT.dp).clip(RoundedCornerShape(FolioRadius.ROW.dp)).background(Color.White.copy(alpha = .06f)) else modifier) {
         when {
             bundled != null -> androidx.compose.foundation.Image(
                 bitmap = bundled,

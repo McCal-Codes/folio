@@ -78,6 +78,17 @@ class BuiltInSourceTest {
         )
     }
 
+    @Test fun `a featured banner with a picture points at one that exists, and only packages Folio ships`() {
+        val index = requireNotNull(source.index())
+        val shipped = index.packages.map { it.id }.toSet()
+        assertTrue("every banner is for a package in this index", index.featured.all { it.packageId in shipped })
+        val perf = index.featured.single { it.packageId == "com.bunsoootchi.performatively" }
+        assertEquals("assets/performatively-banner.webp", perf.image)
+        assertNotNull(source.asset(perf.image!!))
+        // A themed banner keeps its colors and words: only the app's own banner is a picture.
+        assertEquals(listOf("com.bunsoootchi.performatively"), index.featured.filter { it.image != null }.map { it.packageId })
+    }
+
     @Test fun `a built-in package installs without a download`() {
         val host = object : PackageHost {
             override val capabilities = Capability.entries.toSet()

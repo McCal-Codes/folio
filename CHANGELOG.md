@@ -8,6 +8,7 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.7.0] - Unreleased
 
 ### Added
+- **Performatively on Featured:** the app's own banner, "Be seen reading Performatively", now sits in the Featured carousel, and its page opens on the same picture with a second one showing a cover dressed with stickers beside a book open on the inner screen. A Featured banner that has a picture now shows just that picture, with nothing written over it. <!-- beta 5 -->
 - **Apps in the Market:** the Market has an Apps section for apps of their own that Folio points to, from Google Play, F-Droid or Obtainium. Get opens the store; Folio does not install them for you or share anything with them. The first one is Performatively, a friend's app. <!-- beta 5 -->
 - **Duet is a package in the Market:** the fold animation now has its own page in the Folio source, like Cabinet, Harborline, Roll Call, Palette, Afterglow and Flipbook, so the Market lists it with its own page and version. Duet itself works as before. <!-- beta 5 -->
 - **Search widget:** a Search box for Home, from the widget picker under Folio. The strip is one row; two rows tall it adds one-tap shortcuts to Wi-Fi, Bluetooth and Display. Tapping it opens Spotlight, which finds apps, contacts and the phone's settings. Early access first, like the other new widgets. <!-- beta 5 -->
