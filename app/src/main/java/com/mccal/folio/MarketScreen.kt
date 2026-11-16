@@ -1654,10 +1654,16 @@ private fun MarketPackagePage(
 
         // The page the author wrote: Folio draws each block itself, and skips any it doesn't know.
         val blocks = (pkg?.depiction ?: sourcePage)?.blocks.orEmpty()
+        // The newest line of the changelog, said up top the way a Sileo page opens on what changed; the full list stays below.
+        val newest = blocks.filterIsInstance<DepictionBlock.Changelog>().flatMap { it.entries }.maxByOrNull { it.version }
         if (blocks.none { it is DepictionBlock.Hero || it is DepictionBlock.Screenshots }) NoScreenshots()
+        if (newest != null && blocks.none { it is DepictionBlock.Hero }) WhatsNewLine(newest.version.text, newest.notes.english)
         blocks.forEach { block ->
             when (block) {
-                is DepictionBlock.Hero -> MarketImage(session, source, block.image, Modifier.fillMaxWidth().height(160.dp))
+                is DepictionBlock.Hero -> {
+                    MarketImage(session, source, block.image, Modifier.fillMaxWidth().height(160.dp))
+                    if (newest != null) WhatsNewLine(newest.version.text, newest.notes.english)
+                }
                 is DepictionBlock.Screenshots -> Row(
                     Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = FolioSpace.COMPACT.dp),
                     horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp),
@@ -2103,6 +2109,21 @@ private fun sectionColor(section: com.mccal.folio.market.Section?): Color = when
  * What a package page shows where its pictures would be. A gap reads as something that failed to load, so Folio says
  * it plainly - and the line is aimed at whoever published the package as much as at the person reading it.
  */
+/** "New in 1.0.0" and what changed, in the page's accent, under the picture. One look at it says whether the package moved. */
+@Composable
+private fun WhatsNewLine(version: String, notes: String) {
+    Column(Modifier.fillMaxWidth().padding(top = FolioSpace.SMALL.dp, bottom = FolioSpace.MEDIUM.dp)) {
+        Text(
+            stringResource(R.string.whats_new_in_1_s, version),
+            color = LocalAccent.current.ink, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            notes, color = Color.White.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, maxLines = 2,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+        )
+    }
+}
+
 @Composable
 private fun NoScreenshots() {
     Row(
