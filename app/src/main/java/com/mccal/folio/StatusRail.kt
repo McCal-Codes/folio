@@ -167,6 +167,11 @@ private const val GAUGE_READING_PAD = .055f
 private const val GAUGE_FAN_ORIGIN = .56f
 private const val GAUGE_SEARCH_ORIGIN = .60f
 
+/** The status gauge never draws smaller than this (or the rail's own width, if narrower); compact windows are short, so a little less. */
+internal val STATUS_GLYPH_MIN = 40.dp
+internal val STATUS_GLYPH_MIN_COMPACT = 36.dp
+internal val STATUS_GLYPH_MAX_COMPACT = 36.dp
+
 /** Shared capsule look for the side rail (status, dock, island). */
 
 @Composable
@@ -285,7 +290,9 @@ fun StatusRail(
         .then(if (onOpen != null) Modifier.clip(capsule).clickable(interactionSource = press, indication = null, onClickLabel = openLabel, role = androidx.compose.ui.semantics.Role.Button, onClick = onOpen) else Modifier)
         .semantics(mergeDescendants = true) { contentDescription = description }) {
         val availableWidth = (maxWidth - 16.dp).coerceAtLeast(28.dp)
-        val visualSize = minOf(iconSize * .9f, availableWidth, if (compact) 34.dp else 44.dp)
+        // The gauge is a glanceable readout (battery number, signal rings, dots inside it), so it follows the rail's width and keeps a floor
+        // of its own instead of shrinking with a small Home icon: a flip's cover had a 26 dp gauge with a reading too small to read.
+        val visualSize = minOf(maxOf(iconSize * .9f, if (compact) STATUS_GLYPH_MIN_COMPACT else STATUS_GLYPH_MIN), availableWidth, if (compact) STATUS_GLYPH_MAX_COMPACT else 44.dp)
         val timeSize = minOf(17f, availableWidth.value / (2.5f * fontScale)).sp
         val detailSize = minOf(11f, availableWidth.value / (3.3f * fontScale)).sp
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally,

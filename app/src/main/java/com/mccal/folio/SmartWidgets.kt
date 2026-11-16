@@ -41,6 +41,8 @@ const val UP_NEXT_WIDGET = -6
 const val SUGGESTIONS_WIDGET = -7
 const val BIG_CLOCK_WIDGET = -8
 const val MUSIC_WIDGET = -9
+/** Home's Search widget (SearchWidget.kt). -10 is the Photos widget (PhotoWidgetModel.kt). */
+const val SEARCH_WIDGET = -11
 
 /** The size of a Home icon in dp, for widgets that show apps and must never draw them bigger than Home does. */
 internal val LocalHomeIconSize = staticCompositionLocalOf { 66f }

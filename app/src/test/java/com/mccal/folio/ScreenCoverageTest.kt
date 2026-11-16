@@ -132,10 +132,57 @@ class ScreenCoverageTest {
     })
 
     /** Tier C: micro flip covers still produce a valid layout (touch targets kept, the page scrolls). */
+    @Test fun `the dock ends above the rail buttons under it`() {
+        val bad = mutableListOf<String>()
+        for (w in 320..640 step 8) for (h in 320..900 step 8) for (count in 1..2) {
+            if (isMicroWindow(w.toFloat(), h.toFloat())) continue
+            val g = homeGeometry(w.toFloat(), h.toFloat(), LayoutPreset(), true, statusHeight = 160f, railControls = count, homeRailControls = count)
+            if (g.horizontalDock || g.splitColumns) continue
+            // Each button takes a whole touch target, with FolioSpace.SMALL between them and FolioSpace.SNUG under the last.
+            val stack = count * FolioTouch.MIN + (count - 1) * FolioSpace.SMALL + FolioSpace.SNUG
+            // Four dock places are the least the dock ever shows; a window too short for them and the buttons scrolls instead.
+            if (g.dockHeight > 4f * STANDARD_DOCK_PITCH + 16f + .5f && g.dockTop + g.dockHeight > h - stack + .5f)
+                bad += "${w}x$h count=$count dock ends ${g.dockTop + g.dockHeight}, buttons start ${h - stack}"
+        }
+        assertTrue("dock over its rail buttons, e.g.\n${bad.take(12).joinToString("\n")}", bad.isEmpty())
+    }
+
+    @Test fun `page control glyphs grow on short windows and stay put on tall ones`() {
+        val bad = mutableListOf<String>()
+        for (w in 320..640 step 8) for (h in 320..900 step 8) {
+            if (isMicroWindow(w.toFloat(), h.toFloat())) continue
+            val g = homeGeometry(w.toFloat(), h.toFloat(), LayoutPreset(), true, statusHeight = 160f)
+            val want = if (h < TIER_A_MIN_HEIGHT) PAGE_CONTROL_GLYPH_LEGIBLE else PAGE_CONTROL_GLYPH
+            if (g.controlGlyph != want) bad += "${w}x$h glyph ${g.controlGlyph} != $want"
+            if (g.controlGlyph > FolioTouch.MIN) bad += "${w}x$h glyph past its touch target"
+            // The shelf is there exactly when the page scrolls under the controls.
+            if (g.controlShelf != (h < TIER_A_MIN_HEIGHT)) bad += "${w}x$h shelf ${g.controlShelf}"
+        }
+        assertTrue("page control glyph, e.g.\n${bad.take(12).joinToString("\n")}", bad.isEmpty())
+    }
+
     @Test fun `micro cover windows stay valid`() = sweep("micro", sequence {
         for ((w, h) in listOf(240f to 260f, 260f to 240f, 280f to 280f, 300f to 300f))
             yield(Triple(w, h) { problems(w, h).filter { it.startsWith("invalid") || it.startsWith("dock row") || it.startsWith("row") } })
     })
+
+    /**
+     * Tier B (under 480 dp high) scrolls instead of shrinking a stacked page's icons to fit: Home's icons stay at MIN_ROW_ICON or what
+     * the column allows, and the dock's at MIN_DOCK_ICON or Home's own size. A flip's cover screen (about 360 x 374 dp) had icons of
+     * 32 dp and a dock of 23.
+     */
+    @Test fun `short windows keep legible icons and scroll instead`() {
+        val bad = mutableListOf<String>()
+        for (w in 320..640 step 4) for (h in 320..476 step 4) for (labels in listOf(true, false)) {
+            if (isMicroWindow(w.toFloat(), h.toFloat())) continue
+            val g = homeGeometry(w.toFloat(), h.toFloat(), LayoutPreset(), labels, statusHeight = 160f)
+            if (g.splitColumns) continue
+            val floor = minOf(MIN_ROW_ICON, g.cellWidth * .8f)
+            if (g.iconSize < floor - .01f) bad += "${w}x$h labels=$labels icon ${g.iconSize} < $floor"
+            if (g.dockIcon < minOf(MIN_DOCK_ICON, g.iconSize * DUO_DOCK_RATIO) - .01f) bad += "${w}x$h dock ${g.dockIcon}"
+        }
+        assertTrue("small icons on a short window, e.g.\n${bad.take(12).joinToString("\n")}", bad.isEmpty())
+    }
 
     @Test fun `micro cover mode covers only tiny windows and its apps always fit`() {
         for ((w, h) in listOf(240f to 260f, 260f to 260f, 280f to 280f, 300f to 300f, 320f to 320f, 300f to 420f))

@@ -55,6 +55,7 @@ class LeadingWidgetInteractionIntegrationTest {
         openCatalogAt(index)
         compose.onNodeWithTag("widget-catalog-search").performTextInput("Instant Conditions")
         compose.onNodeWithTag(providerTag()).performScrollTo().performClick()
+        compose.continueToPlacement()
         compose.onNodeWithTag("widget-placement-preview").assert(
             SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Ready to place"))
         compose.onNodeWithTag("widget-placement-apply").assertIsEnabled().performClick()
@@ -276,6 +277,7 @@ class LeadingWidgetInteractionIntegrationTest {
             openCatalogAt(-24)
             compose.onNodeWithTag("widget-catalog-search").performTextInput("Instant Conditions")
             compose.onNodeWithTag(providerTag()).performScrollTo().performClick()
+            compose.continueToPlacement()
             compose.onNodeWithTag("widget-placement-mode").assertExists()
             compose.onNodeWithTag("widget-placement-preview").assertIsDisplayed()
             assertEquals(idsBefore, controller().host.appWidgetIds.toSet())
@@ -298,6 +300,7 @@ class LeadingWidgetInteractionIntegrationTest {
             compose.onNodeWithTag("visual-widget-picker").assertIsDisplayed()
             compose.onNodeWithTag("widget-catalog-search").performTextInput("Instant Conditions")
             compose.onNodeWithTag(providerTag()).performScrollTo().performClick()
+            compose.continueToPlacement()
             compose.onNodeWithTag("widget-placement-preview").assertIsDisplayed()
             assertTrue("Fresh normal-page request must target Screen 1 cell 0",
                 compose.onNodeWithTag("widget-placement-preview").fetchSemanticsNode().boundsInRoot.contains(center("home-cell-0")))

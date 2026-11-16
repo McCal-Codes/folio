@@ -97,6 +97,7 @@ class WidgetPickerE2ETest {
         compose.onNodeWithTag("widget-catalog-search").performTextInput(
             provider(simpleName).loadLabel(compose.activity.packageManager).toString())
         compose.onNodeWithTag(providerTag(simpleName), useUnmergedTree = true).performScrollTo().performClick()
+        compose.continueToPlacement()
         compose.onNodeWithTag("widget-placement-preview")
             .assert(SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.StateDescription, "Ready to place"))
         compose.onNodeWithTag("widget-placement-apply").assertIsEnabled().performClick()
@@ -155,6 +156,7 @@ class WidgetPickerE2ETest {
 
             compose.onNodeWithTag(providerTag("ModernTargetWidgetProvider"), useUnmergedTree = true)
                 .performScrollTo().performClick()
+            compose.continueToPlacement()
             compose.onNodeWithTag("widget-placement-preview").assertIsDisplayed()
             compose.onNodeWithTag("widget-placement-cancel").performClick()
             assertEquals("Canceling before drop must not bind or allocate",
@@ -262,6 +264,7 @@ class WidgetPickerE2ETest {
             compose.onNodeWithTag("widget-catalog-search").performTextInput("Instant Conditions")
             compose.onNodeWithTag(providerTag("OptionalConfigWidgetProvider"), useUnmergedTree = true)
                 .performScrollTo().performClick()
+            compose.continueToPlacement()
             compose.onNodeWithContentDescription("Next home page").performClick()
             compose.waitUntil(5_000) {
                 runCatching { compose.onNode(SemanticsMatcher.expectValue(

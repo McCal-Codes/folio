@@ -136,5 +136,13 @@ fun builtinWidgetConstraints(id: Int): WidgetSpanConstraints? = when (id) {
     PHOTO_WIDGET -> WidgetSpanConstraints(
         preferred = WidgetSpan(2, 3), minimum = WidgetSpan(2, 1), maximum = WidgetSpan(GRID_COLUMNS, 4),
         canResizeHorizontally = true, canResizeVertically = true)
+    // Search: a strip (4 x 1) by default, a card with settings shortcuts from two rows up.
+    SEARCH_WIDGET -> WidgetSpanConstraints(
+        preferred = WidgetSpan(GRID_COLUMNS, 1), minimum = WidgetSpan(3, 1), maximum = WidgetSpan(GRID_COLUMNS, 2),
+        canResizeHorizontally = true, canResizeVertically = true)
     else -> null
 }
+
+/** The size a built-in widget starts at: its own preferred size, or the Clock's and Date's 2 × 2 (the Big Clock is as wide as the page). */
+fun builtinDefaultSpan(id: Int): WidgetSpan =
+    builtinWidgetConstraints(id)?.preferred ?: WidgetSpan(if (id == BIG_CLOCK_WIDGET) GRID_COLUMNS else 2, 2)

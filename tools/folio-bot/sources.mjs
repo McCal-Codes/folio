@@ -42,7 +42,9 @@ export const sources = {
       const heading = block.slice(0, block.indexOf('\n'))
       const match = /^\[?([0-9]+\.[0-9]+\.[0-9]+[^\]\s]*)\]?\s*(?:-|–)?\s*([0-9]{4}-[0-9]{2}-[0-9]{2})?/.exec(heading)
       if (!match) continue
-      entries.push({ version: match[1], date: match[2] ?? '', body: block.slice(heading.length).trim() })
+      // A line may end in a hidden `<!-- beta N -->` that the app's What's New reads; people reading the bot's post must not see it.
+      const body = block.slice(heading.length).replace(/[ 	]*<!--\s*beta\s+\d+\s*-->/g, '').trim()
+      entries.push({ version: match[1], date: match[2] ?? '', body })
     }
     return entries
   },

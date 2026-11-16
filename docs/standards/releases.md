@@ -124,6 +124,10 @@ what they were testing. Every rule below is aimed at that shape of mistake.
   higher `versionCode`, which is the next family (`SoftwareUpdate.offerable`). The steps are in [the rollback runbook](../releases/rollback.md).
 - **REL-35 MUST** open each line under Added in the Unreleased changelog with a bold title of 40 characters or fewer: What's New
   shows the title as the line. `WhatsNewTest` fails the build otherwise.
+- **REL-36 MUST** end every line in the Unreleased changelog with a hidden `<!-- beta N -->`, where N is the beta that first
+  ships it (the one being written, until its bump). A beta's What's New shows only the lines tagged with its own number and
+  keeps the earlier betas under Version History; the stable shows the whole release. Never retag a line when a later beta
+  edits it, and never edit the tag of a shipped one. `WhatsNewTest` fails the build when a line is untagged.
 
 ### Building a signed beta on Windows
 

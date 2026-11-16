@@ -1,4 +1,4 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 
 package com.mccal.folio
 
@@ -1229,16 +1229,27 @@ fun LauncherScreen(
             OwnMethod { Column(Modifier.align(if (state.leftHanded) Alignment.BottomEnd else Alignment.BottomStart).width(pagerWidth)
                 .onSizeChanged { bottomControlsHeight = with(density) { it.height.toDp() } }
                 // In edit mode the page is pushed down for the bar, so these controls drop a little to stay clear of the last row.
-                .offset(y = animateDpAsState(if (!homeEdit.active) 0.dp else if (geometry.expanded) JIGGLE_BAR_CONTROLS_DROP else JIGGLE_BAR_CONTROLS_DROP_FOLDED, label = "controls drop").value)
+                // Not on a window whose page scrolls: the last row is reached by scrolling, and a dropped shelf would run into the
+                // system gesture bar and sit under a widget's remove badge.
+                .offset(y = animateDpAsState(if (!homeEdit.active || geometry.controlShelf) 0.dp else if (geometry.expanded) JIGGLE_BAR_CONTROLS_DROP else JIGGLE_BAR_CONTROLS_DROP_FOLDED, label = "controls drop").value)
                 .padding(start = if (state.leftHanded) 0.dp else besideHome + FolioSpace.LARGE.dp,
                     end = if (state.leftHanded) besideHome + FolioSpace.LARGE.dp else 0.dp, bottom = FolioSpace.SNUG.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 if (!isDefaultHome && !homeEdit.active && !drag.active) PreviewBar(onUseAsHome = { sheet = ""; onMakeDefault() },
                     onExit = { launcherActivity.moveTaskToBack(true) })
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                // A page that scrolls runs under these controls, so on such a window they rest on a glass shelf tinted against Home's
+                // ink (a dark tint under white icons, a light one under dark icons): they stay readable over any widget or wallpaper
+                // without a blur, and the shelf's strength follows the Glass setting.
+                val shelfInk = LocalHomeInk.current
+                val shelfGlass = LocalGlassLook.current
+                Row(if (!geometry.controlShelf) Modifier else Modifier.testTag("control-shelf")
+                    .background(if (shelfInk.dark) Color.White.copy(alpha = (shelfGlass.widget * 2.4f).coerceAtMost(.68f))
+                        else Color.Black.copy(alpha = (shelfGlass.widget * 2.6f).coerceAtMost(.68f)), CircleShape)
+                    .border(1.dp, shelfGlass.outlineColor, CircleShape).padding(horizontal = FolioSpace.SMALL.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
                     // Only when there is a page to the left of Home: with Today View and Discover both off, the
                     // button led nowhere (reported on r/GalaxyFold, 18 Sep 2026).
                     if (!drag.active && (firstHome > 0 || discoverMode)) IconButton(onClick = openDiscover, Modifier.size(FolioTouch.MIN.dp).testTag("discover-page-link")) {
-                        Icon(Icons.Rounded.Explore, stringResource(R.string.discover), tint = LocalHomeInk.current.primary.copy(alpha = .65f), modifier = Modifier.size(17.dp))
+                        Icon(Icons.Rounded.Explore, stringResource(R.string.discover), tint = LocalHomeInk.current.primary.copy(alpha = .65f), modifier = Modifier.size(geometry.controlGlyph.dp))
                     }
                     // iOS: a "Search" capsule where the page dots are; the dots come back while paging or editing.
                     // iOS: drag sideways along the Search pill or the dots to scrub through Home pages, a tick per page.
@@ -1324,7 +1335,7 @@ fun LauncherScreen(
                         }
                     }
                     IconButton(onClick = openLibrary, Modifier.size(FolioTouch.MIN.dp).testTag("library-page-link")) {
-                        Icon(Icons.AutoMirrored.Rounded.FormatListBulleted, stringResource(R.string.all_apps_page), tint = LocalHomeInk.current.primary.copy(alpha = if (pager.currentPage == homePages) 1f else .6f), modifier = Modifier.size(17.dp))
+                        Icon(Icons.AutoMirrored.Rounded.FormatListBulleted, stringResource(R.string.all_apps_page), tint = LocalHomeInk.current.primary.copy(alpha = if (pager.currentPage == homePages) 1f else .6f), modifier = Modifier.size(geometry.controlGlyph.dp))
                     }
                 }
             } }
@@ -1387,10 +1398,14 @@ fun LauncherScreen(
                     .then(if (geometry.expanded) Modifier.offset(y = -homeEdit.barLift) else Modifier),
                 enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { -it / 2 },
                 exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { -it / 2 }) {
-                Row(Modifier.fillMaxWidth().padding(start = FolioSpace.COMFY.dp, end = FolioSpace.COMFY.dp,
-                    top = if (state.island && !geometry.expanded) JIGGLE_BAR_ISLAND_GAP else FolioSpace.HAIR.dp).testTag("jiggle-bar"),
-                    horizontalArrangement = if (geometry.expanded && !barAroundIsland) Arrangement.spacedBy(FolioSpace.SMALL.dp, Alignment.End) else Arrangement.Start,
-                    verticalAlignment = Alignment.CenterVertically) {
+                val barTop = if (state.island && !geometry.expanded) JIGGLE_BAR_ISLAND_GAP else FolioSpace.HAIR.dp
+                // A narrow window (a flip's cover screen is about 360 dp wide, less the Side Bar) cannot hold Add, Edit, Undo, Redo and Done in
+                // one row: Done was squeezed into a column of single letters. The pills wrap to a second row there instead, and Home gives
+                // way for the height (the bar's own height beyond one row of pills, measured here and read by HomeWorkspace).
+                val barModifier = Modifier.fillMaxWidth().padding(start = FolioSpace.COMFY.dp, end = FolioSpace.COMFY.dp, top = barTop)
+                    .onGloballyPositioned { homeEdit.barExtra = (with(density) { it.size.height.toDp() } - barTop - JIGGLE_BAR_ROW).coerceAtLeast(0.dp) }
+                    .testTag("jiggle-bar")
+                run {
                     val editPage = pager.currentPage.coerceIn(0, homePages - 1)
                     // Folded, the Side Bar carries Add and Done in edit mode (whenever the status rail is on), so the bar keeps only Edit
                     // rather than showing each of them twice. Unfolded the rail is tall with the dock and its drag handle, so Add and Done
@@ -1420,7 +1435,7 @@ fun LauncherScreen(
                     val donePill: @Composable () -> Unit = {
                         if (!railHasControls) JigglePill(stringResource(R.string.done), emphasized = true) { haptic.perform(FolioHaptic.Commit); homeEdit.stop() }
                     }
-                    if (barAroundIsland) {
+                    if (barAroundIsland) Row(barModifier, verticalAlignment = Alignment.CenterVertically) {
                         // The pills to the left of the island end beside it, and Done starts beside its far edge.
                         val gap = JIGGLE_BAR_ISLAND_SIDE_GAP
                         val leftRoom = with(density) { (IslandFootprint.leftPx - FolioSpace.COMFY.dp.toPx()).toDp() } - gap
@@ -1433,7 +1448,9 @@ fun LauncherScreen(
                         }
                         Spacer(Modifier.width(with(density) { (IslandFootprint.rightPx - IslandFootprint.leftPx).toDp() } + gap * 2))
                         donePill()
-                    } else {
+                    } else FlowRow(barModifier,
+                        horizontalArrangement = if (geometry.expanded) Arrangement.spacedBy(FolioSpace.SMALL.dp, Alignment.End) else Arrangement.Start,
+                        itemVerticalAlignment = Alignment.CenterVertically) {
                         addPill()
                         if (stepsBesideEdit) { editPill(); stepPills() }
                         else Column { editPill(); Row { stepPills() } }
@@ -1645,10 +1662,43 @@ fun LauncherScreen(
                 val footprint: (AppWidgetProviderInfo) -> WidgetSpan? = { provider ->
                     widgets.sizing(provider, pickerSizing)?.takeIf { it.minimumFitsGrid }?.preferred
                 }
+                // The second step draws the page the widget is going to; the Today View and stacks have no page to draw, and a replacement
+                // below the six-row grid is locked to where it already is, so those keep the placement mode.
+                var placeSpan by remember { mutableStateOf<WidgetSpan?>(null) }
+                val existingPlacement = model.placement(picker.slot)
+                val pickerPlacement = if (picker.toToday || picker.stackSlot != null || (existingPlacement != null && existingPlacement.row + existingPlacement.spanY > GRID_ROWS)) null else {
+                    val first = if (expandedWorkspace) -1 else 0
+                    fun free(page: Int, span: WidgetSpan, exact: Boolean) = (0 until HOME_CELLS).map { homeCellIndex(page, it) }
+                        .firstOrNull { widgetCandidate(state.layout, picker.slot, it, span.width, span.height, if (exact) pageRows(page) else visibleRows) != null }
+                    val start = existingPlacement?.let { homeCellIndex(it.page, it.row * GRID_COLUMNS + it.column) }
+                        ?: picker.targetIndex.takeUnless { it == Int.MIN_VALUE } ?: 0
+                    PickerPlacement(first, homePages, start,
+                        rows = { page -> pageRows(page) },
+                        taken = { page -> buildSet {
+                            state.layout.slotsForPage(page).forEachIndexed { local, id -> if (id != null) add(local) }
+                            state.widgetPlacements.filter { it.page == page && it.slot != picker.slot }.forEach { w -> w.coveredIndices().forEach { add(homeCellLocal(it)) } }
+                        } },
+                        fits = { index, span -> draftAt(index, span, picker.slot) != null },
+                        contentSize = { span, row -> pickerSizing.contentSize(0, row.coerceIn(0, GRID_ROWS - 1), span.width, span.height) },
+                        freeOnPage = { page, span -> free(page, span, exact = true) },
+                        firstFree = { span, page -> (listOf(page) + (first..homePages).filter { it != page }).firstNotNullOfOrNull { free(it, span, exact = false) } })
+                }
                 VisualWidgetPicker(catalog, catalogProfiles.ifEmpty { listOf(selectedProfile) }, selectedProfile,
                     onSelectProfile = { picker.profileSerial = it.userSerial; widgetPlacementMessage = null },
                     onTurnOnWork = { model.turnOnWork(it) }, hiddenForDrag = widgetSession != null,
                     footprint = footprint,
+                    constraintsOf = { provider -> widgets.sizing(provider, pickerSizing) },
+                    placement = pickerPlacement,
+                    onPlaceSize = { placeSpan = it },
+                    onAddAt = { provider, builtinId, index, span ->
+                        val draft = draftAt(index, span, picker.slot)
+                        if (draft == null) widgetPlacementMessage = launcherActivity.getString(R.string.there_isn_t_room_there_try_another_space)
+                        else {
+                            if (provider != null) widgets.add(draft, provider, pickerSizing)
+                            else if (builtinId != null) widgets.setBuiltin(draft.copy(id = builtinId))
+                            widgetPlacementMessage = null; sheet = ""; picker.packageName = null
+                        }
+                    },
                     onBack = widgetPickerBack,
                     onTap = tap@{ provider ->
                         if (picker.toToday) {
@@ -1668,15 +1718,18 @@ fun LauncherScreen(
                             }
                             return@tap
                         }
-                        footprint(provider)?.let { preferredSpan ->
+                        footprint(provider)?.let { defaultSpan ->
                             val existing = model.placement(picker.slot)
                             val constraints = widgets.sizing(provider, pickerSizing)
-                            val span = existing?.let { placement ->
+                            // A size chosen in the picker's second step wins over the old footprint and the widget's own.
+                            val chosenSpan = placeSpan?.takeIf { constraints == null || constraints.accepts(it) }
+                            placeSpan = null
+                            val span = chosenSpan ?: existing?.let { placement ->
                                 WidgetSpan(placement.spanX, placement.spanY).takeIf {
                                     constraints != null && it.width in constraints.minimum.width..constraints.maximum.width &&
                                         it.height in constraints.minimum.height..constraints.maximum.height
                                 }
-                            } ?: preferredSpan
+                            } ?: defaultSpan
                             val special = existing?.takeIf { it.row + it.spanY > GRID_ROWS }
                             if (special != null) {
                                 widgetSession = WidgetPickerSession(provider, picker.slot,
@@ -1716,9 +1769,10 @@ fun LauncherScreen(
                         val limits = builtinWidgetConstraints(builtinId)
                         // Replacing keeps the old footprint only when the new widget accepts it: a narrow Suggestions slot is
                         // too small for the Music widget, which then starts at its own preferred size.
-                        val span = existing?.let { WidgetSpan(it.spanX, it.spanY) }?.takeIf { limits == null || limits.accepts(it) }
-                            ?: limits?.preferred
-                            ?: WidgetSpan(if (builtinId == BIG_CLOCK_WIDGET) 4 else 2, 2)
+                        val chosenSpan = placeSpan?.takeIf { limits == null || limits.accepts(it) }
+                        placeSpan = null
+                        val span = chosenSpan ?: existing?.let { WidgetSpan(it.spanX, it.spanY) }?.takeIf { limits == null || limits.accepts(it) }
+                            ?: builtinDefaultSpan(builtinId)
                         if (special != null) {
                             widgetSession = WidgetPickerSession(null, picker.slot, span, Offset.Zero,
                                 dragging = false, candidate = special, builtinId = builtinId)
@@ -1767,6 +1821,13 @@ fun LauncherScreen(
                         if (widgetSession != null) {
                             leaveTemporaryWidgetPage(); widgetSession = null
                         }
+                    },
+                    destination = when {
+                        picker.toToday -> stringResource(R.string.adding_to_today_view)
+                        picker.stackSlot != null -> stringResource(R.string.adding_to_a_stack)
+                        picker.targetIndex != Int.MIN_VALUE && homeCellPage(picker.targetIndex) >= 0 ->
+                            stringResource(R.string.adding_to_page, homeCellPage(picker.targetIndex) + 1)
+                        else -> null
                     })
                 widgetSession?.let { session ->
                     val placementDensity = LocalDensity.current
@@ -1790,40 +1851,6 @@ fun LauncherScreen(
                                 cell?.let { widgetSession = session.copy(pointer = point, targetIndex = it.index) }
                             }
                         } else Modifier)) {
-                        Row(Modifier.align(Alignment.TopCenter).windowInsetsPadding(WindowInsets.folioSafeTop).padding(top = FolioSpace.SMALL.dp)
-                            .background(Glass.copy(alpha = .97f), RoundedCornerShape(22.dp))
-                            .testTag("widget-placement-toolbar"), verticalAlignment = Alignment.CenterVertically) {
-                            TextButton(onClick = widgetPickerBack) { Text(stringResource(R.string.back_to_widgets)) }
-                            if (session.candidate != null) Text(stringResource(R.string.replace_here), color = Ink,
-                                modifier = Modifier.testTag("widget-replacement-locked"))
-                            val targetPage = homeCellPage(session.targetIndex ?: 0)
-                            if (!session.dragging && session.candidate == null) IconButton(
-                                enabled = targetPage > if (expandedWorkspace) -1 else 0, onClick = {
-                                val local = homeCellLocal(session.targetIndex ?: 0)
-                                val page = targetPage - 1
-                                widgetSession = session.copy(targetIndex = homeCellIndex(page, local))
-                                scope.launch { pager.animateScrollToPage(page.coerceAtLeast(0)) }
-                            }) { Icon(Icons.Rounded.ChevronLeft, stringResource(R.string.previous_home_page)) }
-                            Text("${session.span.width} × ${session.span.height}", color = Ink)
-                            if (!session.dragging && session.candidate == null) IconButton(enabled = targetPage < homePages, onClick = {
-                                val local = homeCellLocal(session.targetIndex ?: 0)
-                                val page = (targetPage + 1).coerceAtMost(homePages)
-                                widgetSession = session.copy(targetIndex = homeCellIndex(page, local))
-                                scope.launch { pager.animateScrollToPage(page.coerceAtLeast(0)) }
-                            }) { Icon(Icons.Rounded.ChevronRight, stringResource(R.string.next_home_page)) }
-                            if (!session.dragging) TextButton(enabled = widgetDraft != null, onClick = {
-                                widgetDraft?.let { draft ->
-                                    val contentSize = specialAnchor?.let { bounds -> with(placementDensity) {
-                                        WidgetContentSize(bounds.width.toDp().value, bounds.height.toDp().value)
-                                    } }
-                                    session.provider?.let { widgets.add(draft, it, pickerSizing, contentSize) }
-                                        ?: session.builtinId?.let { widgets.setBuiltin(draft.copy(id = it)) }
-                                    widgetSession = null; sheet = ""; picker.packageName = null
-                                }
-                            }, modifier = Modifier.testTag("widget-placement-apply")) { Text(stringResource(R.string.place)) }
-                            TextButton(onClick = { leaveTemporaryWidgetPage(); widgetSession = null; sheet = ""; picker.packageName = null },
-                                modifier = Modifier.testTag("widget-placement-cancel")) { Text(stringResource(R.string.cancel)) }
-                        }
                         if (anchor != null) {
                             val density = LocalDensity.current
                             val cellWidthPx = with(density) { geometry.cellWidth.dp.toPx() }
@@ -1857,6 +1884,7 @@ fun LauncherScreen(
                                                 BIG_CLOCK_WIDGET -> stringResource(R.string.big_clock)
                                                 MUSIC_WIDGET -> stringResource(R.string.music)
                                                 PHOTO_WIDGET -> stringResource(R.string.photos_widget)
+                                                SEARCH_WIDGET -> stringResource(R.string.search)
                                                 else -> stringResource(R.string.widget_panel)
                                             }, color = Ink,
                                             textAlign = TextAlign.Center)
@@ -1881,6 +1909,41 @@ fun LauncherScreen(
                                         contentAlignment = Alignment.Center) { Text(stringResource(R.string.no_room_here), color = Color.White) }
                                 }
                             }
+                        }
+                        // Last, so it stays on top of the ghost and Cancel / Place always get the tap.
+                        Row(Modifier.align(Alignment.TopCenter).windowInsetsPadding(WindowInsets.folioSafeTop).padding(top = FolioSpace.SMALL.dp)
+                            .background(Glass.copy(alpha = .97f), RoundedCornerShape(22.dp))
+                            .testTag("widget-placement-toolbar"), verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(onClick = widgetPickerBack) { Text(stringResource(R.string.back_to_widgets)) }
+                            if (session.candidate != null) Text(stringResource(R.string.replace_here), color = Ink,
+                                modifier = Modifier.testTag("widget-replacement-locked"))
+                            val targetPage = homeCellPage(session.targetIndex ?: 0)
+                            if (!session.dragging && session.candidate == null) IconButton(
+                                enabled = targetPage > if (expandedWorkspace) -1 else 0, onClick = {
+                                val local = homeCellLocal(session.targetIndex ?: 0)
+                                val page = targetPage - 1
+                                widgetSession = session.copy(targetIndex = homeCellIndex(page, local))
+                                scope.launch { pager.animateScrollToPage(page.coerceAtLeast(0)) }
+                            }) { Icon(Icons.Rounded.ChevronLeft, stringResource(R.string.previous_home_page)) }
+                            Text("${session.span.width} × ${session.span.height}", color = Ink)
+                            if (!session.dragging && session.candidate == null) IconButton(enabled = targetPage < homePages, onClick = {
+                                val local = homeCellLocal(session.targetIndex ?: 0)
+                                val page = (targetPage + 1).coerceAtMost(homePages)
+                                widgetSession = session.copy(targetIndex = homeCellIndex(page, local))
+                                scope.launch { pager.animateScrollToPage(page.coerceAtLeast(0)) }
+                            }) { Icon(Icons.Rounded.ChevronRight, stringResource(R.string.next_home_page)) }
+                            if (!session.dragging) TextButton(enabled = widgetDraft != null, onClick = {
+                                widgetDraft?.let { draft ->
+                                    val contentSize = specialAnchor?.let { bounds -> with(placementDensity) {
+                                        WidgetContentSize(bounds.width.toDp().value, bounds.height.toDp().value)
+                                    } }
+                                    session.provider?.let { widgets.add(draft, it, pickerSizing, contentSize) }
+                                        ?: session.builtinId?.let { widgets.setBuiltin(draft.copy(id = it)) }
+                                    widgetSession = null; sheet = ""; picker.packageName = null
+                                }
+                            }, modifier = Modifier.testTag("widget-placement-apply")) { Text(stringResource(R.string.place)) }
+                            TextButton(onClick = { leaveTemporaryWidgetPage(); widgetSession = null; sheet = ""; picker.packageName = null },
+                                modifier = Modifier.testTag("widget-placement-cancel")) { Text(stringResource(R.string.cancel)) }
                         }
                     }
                 }

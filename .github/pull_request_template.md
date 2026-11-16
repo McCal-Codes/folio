@@ -11,7 +11,7 @@
 - [ ] Screenshots don't show personal info (notifications, accounts, contacts, work data)
 - [ ] New themes in `themes/` pass `CommunityThemesTest` and have `"iconPack": null`
 - [ ] No GPL code and nothing that needs root
-- [ ] What a person will see is written as a line in the `## [x.y.z] - Unreleased` section of [CHANGELOG.md](../CHANGELOG.md), or this changes nothing they can see and the pull request is labelled `no-changelog` ([REL-7](../docs/standards/releases.md))
+- [ ] What a person will see is written as a line in the `## [x.y.z] - Unreleased` section of [CHANGELOG.md](../CHANGELOG.md), ending in the hidden `<!-- beta N -->` of the beta that will ship it ([REL-36](../docs/standards/releases.md)), or this changes nothing they can see and the pull request is labelled `no-changelog` ([REL-7](../docs/standards/releases.md))
 - [ ] Follows the [Folio Standards](../docs/standards/README.md); rule IDs it touches: <!-- e.g. ADP-1, DYN-11 -->
 
 <!--

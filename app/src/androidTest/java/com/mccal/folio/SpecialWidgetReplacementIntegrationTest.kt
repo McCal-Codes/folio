@@ -36,6 +36,7 @@ class SpecialWidgetReplacementIntegrationTest {
             provider.loadLabel(compose.activity.packageManager).toString())
         val tag = "widget-provider-${provider.provider.flattenToString()}"
         compose.onNodeWithTag(tag).performScrollTo().performClick()
+        compose.continueToPlacement()
         if (locked) {
             compose.onNodeWithTag("widget-replacement-locked").assertIsDisplayed().assertTextContains("Replace here")
             compose.onNodeWithContentDescription("Previous home page").assertDoesNotExist()
