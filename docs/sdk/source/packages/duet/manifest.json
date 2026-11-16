@@ -1,0 +1,32 @@
+{
+  "$schema": "https://folio.mccal.dev/schema/v1/manifest.schema.json",
+  "format": 1,
+  "id": "com.mccal.folio.duet",
+  "name": "Duet",
+  "version": "1.0.0",
+  "author": {
+    "name": "Folio",
+    "url": "https://github.com/McCal-Codes/folio"
+  },
+  "minFolio": "0.6.8",
+  "section": "tweaks",
+  "kind": [
+    "tweakBundle"
+  ],
+  "permissions": [
+    "tweaks"
+  ],
+  "screens": [
+    "cover",
+    "inner"
+  ],
+  "icon": "assets/icons/duet.png",
+  "depiction": "depiction.json",
+  "license": "MIT",
+  "description": "The fold animation follows your hinge as you open and close the phone.",
+  "requires": {
+    "features": [
+      "tweaks.foldTransition"
+    ]
+  }
+}

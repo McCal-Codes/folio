@@ -24,6 +24,7 @@ packages/<name>/
 | Palette | tweaks | `tweaks.tintNotifications` |
 | Afterglow | tweaks | `tweaks.tintMedia` |
 | Flipbook | tweaks | `tweaks.pageEffects` |
+| Duet | tweaks | `tweaks.foldTransition` |
 | Classic, Dark, Tinted and Clear themes | themes | `theme` |
 
 These ship inside the app, so their index entries have no `url`, `sha256` or `size`: there's nothing to download.

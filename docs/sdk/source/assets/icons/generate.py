@@ -53,6 +53,11 @@ ICONS = {
         <rect x="112" y="64" width="34" height="8" rx="4" fill="#1A8599" opacity=".55"/>
         <rect x="112" y="80" width="24" height="8" rx="4" fill="#1A8599" opacity=".4"/>
     """),
+    "duet": ("#5E5CE6", "#3F3DB8", """
+        <rect x="30" y="44" width="62" height="104" rx="12" fill="#fff"/>
+        <path d="M104 52 L152 40 Q162 38 162 48 L162 144 Q162 154 152 152 L104 140 Z" fill="#fff" opacity=".6"/>
+        <rect x="94" y="40" width="10" height="112" rx="5" fill="#fff" opacity=".9"/>
+    """),
     "theme-classic": ("#9BA0A8", "#5C626B", """
         <rect x="38" y="38" width="52" height="52" rx="14" fill="#fff"/>
         <rect x="102" y="38" width="52" height="52" rx="14" fill="#fff" opacity=".75"/>
