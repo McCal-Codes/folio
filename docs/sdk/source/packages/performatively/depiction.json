@@ -1,11 +1,20 @@
 {
   "$schema": "https://folio.mccal.dev/schema/v1/depiction.schema.json",
   "format": 1,
-  "tint": "#30B0C7",
+  "tint": "#D4A84B",
   "blocks": [
     {
       "type": "hero",
       "image": "assets/performatively-banner.webp"
+    },
+    {
+      "type": "featureList",
+      "items": [
+        "Read on the inner screen",
+        "Your book's cover shows on the outer screen",
+        "Decorate the cover with stickers",
+        "The cover shows on regular phones too"
+      ]
     },
     {
       "type": "screenshots",
@@ -15,25 +24,7 @@
     },
     {
       "type": "markdown",
-      "text": "Read on the inner screen while your book's cover shows on the outer screen, decorated with stickers.\n\nPerformatively is an Android app made by a friend of Folio, and Folio is happy to point to it.\n\nGet opens its page on Google Play. Folio does not install it for you, does not change it, and shares nothing with it: the Play Store tells you who made it and what it asks for before anything is installed."
-    },
-    {
-      "type": "featureList",
-      "items": [
-        "Opens on Google Play",
-        "Installed by Android, not by Folio",
-        "Nothing is shared with the app when you tap Get"
-      ]
-    },
-    {
-      "type": "changelog",
-      "entries": [
-        {
-          "version": "1.0.0",
-          "date": "2026-11-16",
-          "notes": "Listed in the Folio Market."
-        }
-      ]
+      "text": "A friend of Folio made Performatively. Get opens it on Google Play, where Android installs it; Folio does not install it, change it, or share anything with it."
     },
     {
       "type": "link",

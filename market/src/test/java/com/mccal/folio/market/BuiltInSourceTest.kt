@@ -52,6 +52,7 @@ class BuiltInSourceTest {
         val wanted = buildList {
             index.icon?.let(::add)
             index.featured.mapNotNull { it.image }.forEach(::add)
+            index.packages.mapNotNull { it.manifest?.icon }.forEach(::add)
             for (files in source.packages().values) {
                 val page = files["depiction.json"]?.decodeToString()?.let { Depiction.parse(it) as? ParseResult.Ok }?.value ?: continue
                 for (block in page.blocks) when (block) {

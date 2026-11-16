@@ -1475,6 +1475,8 @@ private fun MarketPackagePage(
     val compat = remember(checks) { compatLines(checks) }
     // The same verdict the installer refuses on, and the install sheet and package row read.
     val verdict = remember(checks) { com.mccal.folio.market.PackageCompatibility.verdict(checks) }
+    // The color the author gave the page (its `tint`) colors the band, as a Sileo page opens on its package's color; a page without one keeps its section's.
+    val pageTint = (pkg?.depiction ?: sourcePage)?.tint?.let { Color(it) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = FolioSpace.LARGE.dp)) {
         if (showBack) {
             Row(Modifier.fillMaxWidth().clickable(onClickLabel = backLabel, onClick = onBack).padding(vertical = FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1486,7 +1488,7 @@ private fun MarketPackagePage(
         // A band in the section's color behind the icon and name, the way Sileo's page opens on the package's tint.
         Row(
             Modifier.padding(top = FolioSpace.COMPACT.dp).fillMaxWidth().clip(RoundedCornerShape(FolioRadius.GROUP.dp))
-                .background(sectionColor(entry.manifest?.section).copy(alpha = .16f)).padding(FolioSpace.MEDIUM.dp),
+                .background((pageTint ?: sectionColor(entry.manifest?.section)).copy(alpha = .16f)).padding(FolioSpace.MEDIUM.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             PackageIcon(session, MarketEntry(entry, source), 64.dp)
