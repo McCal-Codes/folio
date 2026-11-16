@@ -2666,4 +2666,8 @@
     <string name="cc_gallery_move_down">아래로 이동</string>
     <string name="cc_compact_note">꺼짐: 제어 센터가 넓은 창을 채우며 이동하지 않습니다. 켬: 더 작은 패널이 되고 오른쪽, 가운데, 왼쪽이 위쪽 모서리 아래에 배치합니다.</string>
     <string name="cc_rail_mark">%1$s, %2$s</string>
+    <string name="market_stat_version">버전</string>
+    <string name="market_stat_source">소스</string>
+    <string name="market_stat_works_on">지원 화면</string>
+    <string name="market_cover_and_inner">커버 및 내부</string>
 </resources>

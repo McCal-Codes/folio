@@ -2644,4 +2644,8 @@
     <string name="cc_gallery_move_down">向下移动</string>
     <string name="cc_compact_note">关闭时，控制中心会铺满宽屏窗口，无法移动。开启后它是较小的面板，右侧、居中和左侧会将其放在顶角下方。</string>
     <string name="cc_rail_mark">%1$s，%2$s</string>
+    <string name="market_stat_version">版本</string>
+    <string name="market_stat_source">来源</string>
+    <string name="market_stat_works_on">适用于</string>
+    <string name="market_cover_and_inner">外屏和内屏</string>
 </resources>
