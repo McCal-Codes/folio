@@ -17,6 +17,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.WindowInsets
@@ -62,6 +67,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -477,6 +483,11 @@ internal fun MarketScreen(
         // Kept here rather than in the list, so coming Back from a package lands where the list was, per tab.
         val listState = rememberSaveable(tab, saver = LazyListState.Saver) { LazyListState() }
         androidx.compose.runtime.SideEffect { listBeside = beside }
+        // Tapping the tab you are on takes you back to the top of its list, as it does in Sileo and the App Store.
+        val selectTab: (MarketTab) -> Unit = { picked ->
+            if (picked == tab && openId == null) scope.launch { listState.animateScrollToItem(0) }
+            tab = picked; openId = null; openSourceUrl = null
+        }
         val listPane: @Composable (Modifier, Boolean) -> Unit = { paneModifier, narrow ->
             BoxWithConstraints(paneModifier) {
                         MarketList(
@@ -647,9 +658,9 @@ internal fun MarketScreen(
                     onDismiss = { message = null; offer = null },
                 )
             }
-            if (tabs == TabPlacement.BOTTOM) MarketTabs(tab) { tab = it; openId = null; openSourceUrl = null }
+            if (tabs == TabPlacement.BOTTOM) MarketTabs(tab, selectTab)
         }
-        if (tabs == TabPlacement.RAIL) MarketRail(tab) { tab = it; openId = null; openSourceUrl = null }
+        if (tabs == TabPlacement.RAIL) MarketRail(tab, selectTab)
         }
         importing?.let { (bytes, pkg) ->
             Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .6f)).clickable { MarketImport.pending = null }) {
@@ -1009,6 +1020,9 @@ private fun Modifier.marketRowDivider(inset: androidx.compose.ui.unit.Dp) = draw
     drawLine(Color.White.copy(alpha = .10f), Offset(inset.toPx(), y), Offset(size.width, y), strokeWidth = 1.dp.toPx())
 }
 
+/** A full-width hairline along the bottom edge: what separates the package page's top bar from the page. */
+private fun Modifier.marketBottomHairline() = marketRowDivider(0.dp)
+
 @Composable
 private fun MarketList(
     session: MarketSession,
@@ -1261,7 +1275,16 @@ private fun MarketRow(
             .padding(vertical = FolioSpace.COMPACT.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        PackageIcon(session, entry, 44.dp)
+        Box {
+            PackageIcon(session, entry, 44.dp)
+            // Sileo's trick: what you have of this shows on its icon, so the row reads at a glance.
+            val badge = when {
+                update || appUpdate != null -> MarketBadge.UPDATE
+                installed != null && !entry.unavailable && !external -> MarketBadge.INSTALLED
+                else -> null
+            }
+            if (badge != null) MarketStateBadge(badge, Modifier.align(Alignment.BottomEnd).offset(x = 4.dp, y = 4.dp))
+        }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(name, color = Color.White, fontSize = FolioType.CALLOUT.sp)
@@ -1323,6 +1346,26 @@ private fun MarketRow(
             installed != null -> MarketActionButton(R.string.remove, name, onRemove)
             else -> MarketActionButton(R.string.get, name, onGet)
         }
+    }
+}
+
+/** What a row says about a package you have: Sileo's round badge on the icon's corner. */
+private enum class MarketBadge(val color: Color, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    INSTALLED(FolioColors.Green, Icons.Rounded.Check),
+    UPDATE(FolioColors.Blue, Icons.Rounded.ArrowUpward),
+}
+
+/**
+ * The badge only repeats what the row's button already says in words (Remove, Update), so it is hidden from
+ * TalkBack. It is a still circle: nothing in it moves.
+ */
+@Composable
+private fun MarketStateBadge(badge: MarketBadge, modifier: Modifier = Modifier) {
+    Box(
+        modifier.size(18.dp).border(2.dp, Color.Black, CircleShape).padding(2.dp).clip(CircleShape).background(badge.color),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(badge.icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(10.dp))
     }
 }
 
@@ -1481,7 +1524,39 @@ private fun MarketPackagePage(
     val verdict = remember(checks) { com.mccal.folio.market.PackageCompatibility.verdict(checks) }
     // The color the author gave the page (its `tint`) colors the band, as a Sileo page opens on its package's color; a page without one keeps its section's.
     val pageTint = (pkg?.depiction ?: sourcePage)?.tint?.let { Color(it) }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = FolioSpace.LARGE.dp)) {
+    // Get, Update, Remove or the ring: one answer, shown in the page's row and again in the top bar once that row scrolls away.
+    val getAction: @Composable () -> Unit = {
+        val justInstalled = rememberJustInstalled(MarketWork.busyId == entry.id, installed != null)
+        when {
+            // Pulled by its source. Removing what's already on is still allowed; getting it is not.
+            revoked != null && installed == null -> Column(Modifier.testTag("package-unavailable")) {
+                Text(stringResource(R.string.unavailable), color = FolioColors.Warning, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.its_source_pulled_it_1_s, revoked), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
+            }
+            // Known not to work with this Folio: the same place and weight as a pulled one, with its own words.
+            incompatible != null && installed == null -> Column(Modifier.testTag("package-incompatible")) {
+                Text(stringResource(R.string.unavailable), color = FolioColors.Warning, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.doesn_t_work_with_this_folio_1_s, incompatible), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
+            }
+            MarketWork.busyId == entry.id -> InstallProgress(MarketWork.progress, words = true, name = name)
+            justInstalled -> InstallDonePop()
+            appUpdate != null -> MarketActionButton(R.string.update, name, onGet)
+            external -> MarketActionButton(if (onPhone != null) R.string.open else R.string.get, name, onGet)
+            // A listing this Folio could not read has no page of its own to install from: it says so, as its row does.
+            entry.needs.isNotEmpty() && installed == null ->
+                Text(stringResource(R.string.needs_a_newer_folio), color = Color.White.copy(alpha = .55f), fontSize = FolioType.SUBHEAD.sp)
+            updateAvailable && entry.needs.isEmpty() && !verdict.stopsGet && revoked == null && incompatible == null ->
+                MarketActionButton(R.string.update, name, onGet)
+            installed != null -> MarketActionButton(R.string.remove, name, onRemove)
+            // Off while the tweak it adds to is missing; the note below says why and offers the tweak.
+            else -> MarketActionButton(R.string.get, name, onGet, enabled = host?.onPhone != false && !verdict.stopsGet)
+        }
+    }
+    val scroll = rememberScrollState()
+    // Where the Get row ends, inside the scrolling column; past that the row is out of sight and the top bar takes over.
+    var getBottom by remember { mutableIntStateOf(Int.MAX_VALUE) }
+    Box(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(horizontal = FolioSpace.LARGE.dp)) {
         if (showBack) {
             Row(Modifier.fillMaxWidth().clickable(onClickLabel = backLabel, onClick = onBack).padding(vertical = FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.ChevronLeft, contentDescription = null, tint = LocalAccent.current.ink, modifier = Modifier.mirroredForRtl().size(18.dp))
@@ -1526,32 +1601,11 @@ private fun MarketPackagePage(
             }
         }
 
-        Row(Modifier.padding(vertical = FolioSpace.MEDIUM.dp), verticalAlignment = Alignment.CenterVertically) {
-            val justInstalled = rememberJustInstalled(MarketWork.busyId == entry.id, installed != null)
-            when {
-                // Pulled by its source. Removing what's already on is still allowed; getting it is not.
-                revoked != null && installed == null -> Column(Modifier.testTag("package-unavailable")) {
-                    Text(stringResource(R.string.unavailable), color = FolioColors.Warning, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
-                    Text(stringResource(R.string.its_source_pulled_it_1_s, revoked), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
-                }
-                // Known not to work with this Folio: the same place and weight as a pulled one, with its own words.
-                incompatible != null && installed == null -> Column(Modifier.testTag("package-incompatible")) {
-                    Text(stringResource(R.string.unavailable), color = FolioColors.Warning, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
-                    Text(stringResource(R.string.doesn_t_work_with_this_folio_1_s, incompatible), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
-                }
-                MarketWork.busyId == entry.id -> InstallProgress(MarketWork.progress, words = true, name = name)
-                justInstalled -> InstallDonePop()
-                appUpdate != null -> MarketActionButton(R.string.update, name, onGet)
-                external -> MarketActionButton(if (onPhone != null) R.string.open else R.string.get, name, onGet)
-                // A listing this Folio could not read has no page of its own to install from: it says so, as its row does.
-                entry.needs.isNotEmpty() && installed == null ->
-                    Text(stringResource(R.string.needs_a_newer_folio), color = Color.White.copy(alpha = .55f), fontSize = FolioType.SUBHEAD.sp)
-                updateAvailable && entry.needs.isEmpty() && !verdict.stopsGet && revoked == null && incompatible == null ->
-                    MarketActionButton(R.string.update, name, onGet)
-                installed != null -> MarketActionButton(R.string.remove, name, onRemove)
-                // Off while the tweak it adds to is missing; the note below says why and offers the tweak.
-                else -> MarketActionButton(R.string.get, name, onGet, enabled = host?.onPhone != false && !verdict.stopsGet)
-            }
+        Row(
+            Modifier.padding(vertical = FolioSpace.MEDIUM.dp).onGloballyPositioned { getBottom = (it.positionInParent().y + it.size.height).toInt() },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            getAction()
             Spacer(Modifier.width(8.dp))
             // The version beside the button. "Built in" belongs to Folio's own packages; a listing from a source
             // that isn't installed yet was being called built in too, which is the one thing it certainly isn't.
@@ -1727,6 +1781,26 @@ private fun MarketPackagePage(
                 }
             }
         }
+    }
+    // The small Get, as Sileo's page does once the big one has scrolled away. A still bar: it appears, it does not slide.
+    if (scroll.value > getBottom) {
+        Row(
+            Modifier.align(Alignment.TopCenter).fillMaxWidth().background(Color.Black)
+                .marketBottomHairline().padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.COMPACT.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (showBack) {
+                Icon(
+                    Icons.Rounded.ChevronLeft, contentDescription = backLabel, tint = LocalAccent.current.ink,
+                    modifier = Modifier.mirroredForRtl().size(28.dp).clickable(onClick = onBack).padding(end = FolioSpace.TINY.dp),
+                )
+            }
+            PackageIcon(session, MarketEntry(entry, source), 30.dp)
+            Spacer(Modifier.width(10.dp))
+            Text(name, color = Color.White, fontSize = FolioType.CALLOUT.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            getAction()
+        }
+    }
     }
 }
 
