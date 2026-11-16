@@ -91,7 +91,7 @@ ICONS["palette"] = ("#FFC15E", "#E08600", """
 """)
 
 
-GLYPH_SCALE = 1.15
+GLYPH_SCALE = 1.0
 
 
 def svg(top: str, bottom: str, glyph: str, uid: str = "i") -> str:

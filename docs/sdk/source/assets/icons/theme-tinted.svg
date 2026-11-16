@@ -7,7 +7,7 @@
   </defs>
   <rect width="192" height="192" rx="44" fill="url(#t-theme-tinted)"/>
   <g clip-path="url(#c-theme-tinted)"><ellipse cx="96" cy="-30" rx="140" ry="92" fill="url(#h-theme-tinted)"/></g>
-  <g filter="url(#s-theme-tinted)"><g transform="translate(-14.4 -14.4) scale(1.15)">
+  <g filter="url(#s-theme-tinted)"><g transform="translate(0.0 0.0) scale(1.0)">
     <path d="M96 32c26 30 42 50 42 68a42 42 0 0 1-84 0c0-18 16-38 42-68Z" fill="#fff"/>
         <circle cx="96" cy="104" r="16" fill="#7B3FD1" opacity=".55"/>
   </g></g>

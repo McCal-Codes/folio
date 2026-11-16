@@ -7,7 +7,7 @@
   </defs>
   <rect width="192" height="192" rx="44" fill="url(#t-theme-clear)"/>
   <g clip-path="url(#c-theme-clear)"><ellipse cx="96" cy="-30" rx="140" ry="92" fill="url(#h-theme-clear)"/></g>
-  <g filter="url(#s-theme-clear)"><g transform="translate(-14.4 -14.4) scale(1.15)">
+  <g filter="url(#s-theme-clear)"><g transform="translate(0.0 0.0) scale(1.0)">
     <rect x="34" y="34" width="124" height="124" rx="34" fill="#fff" opacity=".28"/>
         <rect x="56" y="56" width="80" height="80" rx="24" fill="#fff" opacity=".85"/>
         <circle cx="132" cy="60" r="16" fill="#fff"/>

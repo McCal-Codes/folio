@@ -7,7 +7,7 @@
   </defs>
   <rect width="192" height="192" rx="44" fill="url(#t-palette)"/>
   <g clip-path="url(#c-palette)"><ellipse cx="96" cy="-30" rx="140" ry="92" fill="url(#h-palette)"/></g>
-  <g filter="url(#s-palette)"><g transform="translate(-14.4 -14.4) scale(1.15)">
+  <g filter="url(#s-palette)"><g transform="translate(0.0 0.0) scale(1.0)">
     <rect x="32" y="52" width="128" height="30" rx="11" fill="#fff"/>
     <rect x="32" y="92" width="128" height="30" rx="11" fill="#fff" opacity=".75"/>
     <rect x="32" y="132" width="128" height="30" rx="11" fill="#fff" opacity=".5"/>

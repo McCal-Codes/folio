@@ -7,7 +7,7 @@
   </defs>
   <rect width="192" height="192" rx="44" fill="url(#t-cabinet)"/>
   <g clip-path="url(#c-cabinet)"><ellipse cx="96" cy="-30" rx="140" ry="92" fill="url(#h-cabinet)"/></g>
-  <g filter="url(#s-cabinet)"><g transform="translate(-14.4 -14.4) scale(1.15)">
+  <g filter="url(#s-cabinet)"><g transform="translate(0.0 0.0) scale(1.0)">
     <rect x="66" y="34" width="60" height="60" rx="16" fill="#fff"/>
         <rect x="44" y="106" width="104" height="54" rx="14" fill="#fff" opacity=".92"/>
         <rect x="58" y="120" width="34" height="8" rx="4" fill="#0A6FE0"/>

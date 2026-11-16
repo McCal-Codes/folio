@@ -7,7 +7,7 @@
   </defs>
   <rect width="192" height="192" rx="44" fill="url(#t-harborline)"/>
   <g clip-path="url(#c-harborline)"><ellipse cx="96" cy="-30" rx="140" ry="92" fill="url(#h-harborline)"/></g>
-  <g filter="url(#s-harborline)"><g transform="translate(-14.4 -14.4) scale(1.15)">
+  <g filter="url(#s-harborline)"><g transform="translate(0.0 0.0) scale(1.0)">
     <circle cx="48" cy="118" r="12" fill="#fff" opacity=".7"/>
         <circle cx="78" cy="108" r="17" fill="#fff" opacity=".85"/>
         <circle cx="116" cy="95" r="25" fill="#fff"/>

@@ -7,7 +7,7 @@
   </defs>
   <rect width="192" height="192" rx="44" fill="url(#t-duet)"/>
   <g clip-path="url(#c-duet)"><ellipse cx="96" cy="-30" rx="140" ry="92" fill="url(#h-duet)"/></g>
-  <g filter="url(#s-duet)"><g transform="translate(-14.4 -14.4) scale(1.15)">
+  <g filter="url(#s-duet)"><g transform="translate(0.0 0.0) scale(1.0)">
     <rect x="30" y="44" width="62" height="104" rx="12" fill="#fff"/>
         <path d="M104 52 L152 40 Q162 38 162 48 L162 144 Q162 154 152 152 L104 140 Z" fill="#fff" opacity=".6"/>
         <rect x="94" y="40" width="10" height="112" rx="5" fill="#fff" opacity=".9"/>
