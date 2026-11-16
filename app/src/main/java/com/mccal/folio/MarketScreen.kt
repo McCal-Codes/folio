@@ -1457,7 +1457,7 @@ private fun MarketPackagePage(
     // set of blocks as Folio's own; what the safety sheet says still comes from the signed index alone.
     val sourcePage by produceState<com.mccal.folio.market.Depiction?>(null, source.url, entry.id, entry.version) {
         val path = entry.manifest?.depiction
-        value = if (source.kind == Source.Kind.BUILT_IN || path == null) null else withContext(session.io) {
+        value = if (path == null) null else if (source.kind == Source.Kind.BUILT_IN) withContext(session.io) { session.depictionOf(entry.id) } else withContext(session.io) {
             session.sources.fetch(source, path, com.mccal.folio.market.Depiction.MAX_CHARS) { _, _ -> }
                 ?.decodeToString()
                 ?.let { (com.mccal.folio.market.Depiction.parse(it) as? com.mccal.folio.market.ParseResult.Ok)?.value }
