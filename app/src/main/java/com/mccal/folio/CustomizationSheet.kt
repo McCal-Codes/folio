@@ -320,6 +320,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
     // page pushed over it with Back.
     val split = settingsSplits(maxWidth.value, maxHeight.value, androidx.compose.ui.platform.LocalConfiguration.current.classScale,
         keyboardDp, LocalSettingsMaxColumns.current)
+    val shortWindow = maxHeight.value * androidx.compose.ui.platform.LocalConfiguration.current.classScale < TIER_A_MIN_HEIGHT
     // Takes the page to draw rather than reading the open one, so the split view can show a list and the thing you
     // picked from it side by side. Inside, `page` means "the page this column is drawing".
     val pageContent: @Composable ColumnScope.(CustomizationPage) -> Unit = { page ->
@@ -330,12 +331,15 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     MiniHomePreview(backgrounds.previewBitmap, state, 260.dp)
                 } else {
                     // Like iOS Settings: the header gets out of the way while searching.
-                    if (settingsQuery.isBlank()) TweakBanner()
+                    // A short window (a flip's cover screen, a phone on its side) gets the banner as one line and no Home preview, so the
+                    // first screen is the search field and the first rows, not a header (ADP-5).
+                    val short = shortWindow
+                    if (settingsQuery.isBlank()) TweakBanner(compact = short)
                     SettingsSearchField(settingsQuery) { settingsQuery = it }
                     if (settingsQuery.isNotBlank()) SettingsSearchResults(settingsQuery, onOpen = { page, row -> settingsQuery = ""; SettingsFocus.label = row; if (page == CustomizationPage.FOLD_TWEAK) tweakId = DUET_ID; onPage(page) }, onOpenTweak = { settingsQuery = ""; openTweak(it) })
                     else {
                         overviewActions()
-                        MiniHomePreview(backgrounds.previewBitmap, state, 176.dp)
+                        if (!short) MiniHomePreview(backgrounds.previewBitmap, state, 176.dp)
                         overviewRows(null, false)
                         }
                 }
@@ -1368,9 +1372,21 @@ private fun HelpTip(icon: ImageVector, color: Long, title: String, detail: Strin
 
 
 /** Tweak-style header: Folio's icon, name and version, like a jailbreak tweak's preference banner. */
-@Composable private fun TweakBanner() {
+@Composable private fun TweakBanner(compact: Boolean = false) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val version = remember { runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "" }
+    if (compact) {
+        // The same three things on one line: the icon, then the name over the version line.
+        Row(Modifier.fillMaxWidth().padding(bottom = FolioSpace.TINY.dp), verticalAlignment = Alignment.CenterVertically) {
+            val icon = remember { folioIconBitmap(context) }
+            if (icon != null) androidx.compose.foundation.Image(icon, null, Modifier.size(44.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)))
+            Column(Modifier.padding(start = FolioSpace.COMPACT.dp)) {
+                Text(stringResource(R.string.folio), color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.TITLE3.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.iphone_duo_for_your_fold_v, version), color = androidx.compose.ui.graphics.Color.White.copy(alpha = .55f), fontSize = FolioType.COMPACT.sp)
+            }
+        }
+        return
+    }
     Column(Modifier.fillMaxWidth().padding(top = FolioSpace.TINY.dp, bottom = FolioSpace.SNUG.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         // Folio's own launcher icon, like a tweak's preference banner.
         val icon = remember { folioIconBitmap(context) }
