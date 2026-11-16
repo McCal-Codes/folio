@@ -4,6 +4,10 @@
   "tint": "#5E5CE6",
   "blocks": [
     {
+      "type": "hero",
+      "image": "assets/heroes/harborline.webp"
+    },
+    {
       "type": "screenshots",
       "images": [
         "assets/screenshots/harborline-dock.webp"

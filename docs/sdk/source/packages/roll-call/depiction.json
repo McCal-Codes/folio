@@ -4,6 +4,10 @@
   "tint": "#FF3B30",
   "blocks": [
     {
+      "type": "hero",
+      "image": "assets/heroes/roll-call.webp"
+    },
+    {
       "type": "markdown",
       "text": "Notification Center puts a row of app icons above the list, one for every app with something waiting, and a red count on any app with more than one.\n\nTap an icon and the list narrows to that app; tap it again and everything comes back. The chosen icon lifts and the rest fade, so it is clear what you are looking at. The row only appears when two or more apps have notifications - with one there is nothing to choose between.\n\nLike every tweak it has its own page in Settings › Tweaks, with a switch for the cover screen and a switch for the inner one, so it can be on where it helps and off where it doesn't.\n\nInspired by Axon by Nepeta. Re-created from scratch for Folio; no tweak code is included."
     },

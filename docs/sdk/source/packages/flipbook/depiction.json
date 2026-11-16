@@ -4,6 +4,10 @@
   "tint": "#30B0C7",
   "blocks": [
     {
+      "type": "hero",
+      "image": "assets/heroes/flipbook.webp"
+    },
+    {
       "type": "screenshots",
       "images": [
         "assets/screenshots/flipbook-swipe.webp"

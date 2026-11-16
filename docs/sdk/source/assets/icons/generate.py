@@ -4,7 +4,8 @@
 One rounded tile per package, in its section's iOS color, with a white glyph that shows what the package does. The
 SVG is the source; ImageMagick rasterises it to the PNG the source publishes. Re-run after editing a glyph:
 
-    python3 docs/sdk/source/assets/icons/generate.py
+    python3 docs/sdk/source/assets/icons/generate.py            # the icons
+    python3 docs/sdk/source/assets/icons/generate.py --heroes   # the pictures at the top of each tweak's page
 
 Requires ImageMagick (`brew install imagemagick`). The PNGs are checked in, so a build never needs it.
 """
@@ -99,6 +100,42 @@ def svg(top: str, bottom: str, glyph: str) -> str:
 """
 
 
+HERO_W, HERO_H = 1024, 500
+HERO_DIR = HERE.parent / "heroes"
+# The tweaks get a picture on their page; themes and apps bring their own.
+HERO_FOR = ["cabinet", "colored-albums", "duet", "flipbook", "harborline", "palette", "roll-call"]
+
+
+def hero_svg(bottom: str, glyph: str) -> str:
+    """A still, flat picture about twice as wide as tall: the tweak's own glyph, large, on its darker color. No words in
+    it (the page says those, in the reader's language) and nothing that moves."""
+    scale = 2.3
+    x = (HERO_W - 192 * scale) / 2
+    y = (HERO_H - 192 * scale) / 2
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{HERO_W}" height="{HERO_H}" viewBox="0 0 {HERO_W} {HERO_H}">
+  <rect width="{HERO_W}" height="{HERO_H}" fill="{bottom}"/>
+  <circle cx="130" cy="430" r="230" fill="#fff" opacity=".08"/>
+  <circle cx="910" cy="50" r="190" fill="#fff" opacity=".08"/>
+  <g transform="translate({x:.0f} {y:.0f}) scale({scale})">
+    {glyph.strip()}
+  </g>
+</svg>
+"""
+
+
+def heroes() -> None:
+    """Writes `assets/heroes/<name>.svg`; rasterise each to a 1024x500 `.webp` next to it with ImageMagick."""
+    HERO_DIR.mkdir(exist_ok=True)
+    for name in HERO_FOR:
+        _top, bottom, glyph = ICONS[name]
+        (HERO_DIR / f"{name}.svg").write_text(hero_svg(bottom, glyph))
+        subprocess.run(
+            ["magick", "-background", "none", str(HERO_DIR / f"{name}.svg"), "-quality", "88", str(HERO_DIR / f"{name}.webp")],
+            check=True,
+        )
+        print("wrote", name + ".webp")
+
+
 def main() -> None:
     for name, (top, bottom, glyph) in ICONS.items():
         source = HERE / f"{name}.svg"
@@ -111,4 +148,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+
+    heroes() if "--heroes" in sys.argv else main()

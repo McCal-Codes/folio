@@ -4,6 +4,10 @@
   "tint": "#5E5CE6",
   "blocks": [
     {
+      "type": "hero",
+      "image": "assets/heroes/duet.webp"
+    },
+    {
       "type": "markdown",
       "text": "Open or close the phone and the screen folds with it: frosted glass on the half that is moving, and your cover screen waiting on the inner one, following the hinge as it turns.\n\nPick a Style on Duet's page in Settings › Tweaks: iPhone Duo, Duo, Classic Glass, Deep, Subtle or Minimal. Plays When chooses opening, closing or both, and Frost, Shade and Tilt tune the glass beside Intensity and the live preview. A package can also set Duet's look, and an update only changes what its new version changes, never what you already set yourself.\n\nIt stays calm when it should: Reduce Motion turns it off, and nothing in it flashes.\n\nStyles use code from Duo Fold Live by joeconsorti and contributors, hingewave by Ant-lib and FoldFX by Gary Keeler, all MIT, credited under Settings › Credits. Inspired by Duo Open."
     },
