@@ -1583,22 +1583,62 @@ private fun RailReadouts(status: DeviceStatus) {
 /** The four connections as rows, each with its switch and its state: the long-press view on the Controls page and the whole Connectivity page. */
 @Composable
 private fun ConnectivityList(items: List<ConnectivityItem>, modifier: Modifier) {
-    Column(modifier) {
-        items.forEach { item ->
-            Row(Modifier.fillMaxWidth().clickable(onClick = item.onClick).padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.SMALL.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                RoundToggle(item.icon, item.label, item.on, item.accent, 44.dp, item.onClick)
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(item.label, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
-                    // The name of the network or carrier, sliding sideways when it is too long for the row (ellipsized when motion is reduced).
-                    val reduce = LocalReduceMotion.current
-                    val name = item.detail?.takeIf { item.on }
-                    Text(name ?: stringResource(if (item.on) R.string.state_on else R.string.state_off), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp,
-                        maxLines = 1, overflow = if (reduce) TextOverflow.Ellipsis else TextOverflow.Clip,
-                        modifier = if (name == null || reduce) Modifier else Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 600, velocity = 24.dp))
+    // The open connectivity block, as the iPhone Duo draws it: two columns of glass tiles, each with its icon above its name and state. Where a column is
+    // wide enough (150 dp) the first row is two slim pills (icon beside the text), the way the Duo shows Airplane Mode and Personal Hotspot; on a narrow
+    // window, such as a flip's cover, every control is a tile, because a pill's text would have 30 dp. Two rows of tiles are about 210 dp tall, so the
+    // block fits a short window that the old four-row list ran off the bottom of (the last row's state was cut).
+    BoxWithConstraints(modifier) {
+        val pills = (maxWidth - FolioSpace.SMALL.dp * 3) / 2 >= CC_CONNECTIVITY_PILL_MIN_WIDTH.dp
+        Column(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.SMALL.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
+            items.chunked(2).forEachIndexed { row, pair ->
+                Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
+                    pair.forEach { item ->
+                        if (pills && row == 0) ConnectivityPill(item, Modifier.weight(1f)) else ConnectivityTile(item, Modifier.weight(1f))
+                    }
+                    if (pair.size == 1) Spacer(Modifier.weight(1f))
                 }
             }
+        }
+    }
+}
+
+/** A column is wide enough for a pill (icon beside two lines of text) from this many dp. */
+private const val CC_CONNECTIVITY_PILL_MIN_WIDTH = 150
+
+/** The name of a control's network or carrier, sliding sideways when it is too long for its place (ellipsized when motion is reduced), else On or Off. */
+@Composable
+private fun ConnectivityState(item: ConnectivityItem) {
+    val reduce = LocalReduceMotion.current
+    val name = item.detail?.takeIf { item.on }
+    Text(name ?: stringResource(if (item.on) R.string.state_on else R.string.state_off), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp,
+        maxLines = 1, overflow = if (reduce) TextOverflow.Ellipsis else TextOverflow.Clip,
+        modifier = if (name == null || reduce) Modifier else Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 600, velocity = 24.dp))
+}
+
+/** A big glass tile: the round toggle at the top left, the name and state at the bottom left. */
+@Composable
+private fun ConnectivityTile(item: ConnectivityItem, modifier: Modifier) {
+    Column(modifier.fillMaxHeight().heightIn(min = 92.dp).clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(Color.White.copy(alpha = .10f))
+        .clickable(onClick = item.onClick).padding(FolioSpace.COMPACT.dp), verticalArrangement = Arrangement.SpaceBetween) {
+        RoundToggle(item.icon, item.label, item.on, item.accent, 36.dp, item.onClick)
+        // "Airplane Mode" and "Cellular Data" take two lines in a narrow tile, as they do on the Duo; "Bluetooth" is one word and fits.
+        Column(Modifier.padding(top = FolioSpace.SNUG.dp)) {
+            Text(item.label, color = Color.White, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold, lineHeight = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            ConnectivityState(item)
+        }
+    }
+}
+
+/** A slim glass pill: the round toggle, then the name and state beside it. */
+@Composable
+private fun ConnectivityPill(item: ConnectivityItem, modifier: Modifier) {
+    Row(modifier.heightIn(min = 56.dp).clip(RoundedCornerShape(FolioRadius.RAIL.dp)).background(Color.White.copy(alpha = .10f))
+        .clickable(onClick = item.onClick).padding(FolioSpace.SNUG.dp), verticalAlignment = Alignment.CenterVertically) {
+        RoundToggle(item.icon, item.label, item.on, item.accent, 44.dp, item.onClick)
+        Spacer(Modifier.width(FolioSpace.COMPACT.dp))
+        Column(Modifier.weight(1f)) {
+            Text(item.label, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            ConnectivityState(item)
         }
     }
 }
