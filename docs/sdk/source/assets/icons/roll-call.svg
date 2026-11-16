@@ -1,8 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
-  <rect width="192" height="192" rx="44" fill="#FF5F56"/>
-  <rect x="30" y="44" width="36" height="36" rx="10" fill="#fff"/>
+  <defs>
+    <linearGradient id="t-roll-call" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF5F56"/><stop offset="1" stop-color="#D7302A"/></linearGradient>
+    <linearGradient id="h-roll-call" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".38"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <filter id="s-roll-call" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#000" flood-opacity=".28"/></filter>
+    <clipPath id="c-roll-call"><rect width="192" height="192" rx="44"/></clipPath>
+  </defs>
+  <rect width="192" height="192" rx="44" fill="url(#t-roll-call)"/>
+  <g clip-path="url(#c-roll-call)"><ellipse cx="96" cy="-30" rx="140" ry="92" fill="url(#h-roll-call)"/></g>
+  <g filter="url(#s-roll-call)"><g transform="translate(-14.4 -14.4) scale(1.15)">
+    <rect x="30" y="44" width="36" height="36" rx="10" fill="#fff"/>
         <rect x="78" y="44" width="36" height="36" rx="10" fill="#fff" opacity=".6"/>
         <rect x="126" y="44" width="36" height="36" rx="10" fill="#fff" opacity=".6"/>
         <rect x="30" y="98" width="132" height="26" rx="9" fill="#fff" opacity=".92"/>
         <rect x="30" y="134" width="132" height="26" rx="9" fill="#fff" opacity=".55"/>
+  </g></g>
+  <rect x=".75" y=".75" width="190.5" height="190.5" rx="43.5" fill="none" stroke="#fff" stroke-opacity=".28" stroke-width="1.5"/>
 </svg>

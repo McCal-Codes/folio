@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Draws the icon for each of Folio's own packages.
 
-One rounded tile per package, in its section's iOS color, with a white glyph that shows what the package does. The
+One rounded tile per package, in its section's iOS color, shaded top to bottom, with a white glyph that shows what the
+package does. The
 SVG is the source; ImageMagick rasterises it to the PNG the source publishes. Re-run after editing a glyph:
 
     python3 docs/sdk/source/assets/icons/generate.py            # the icons
@@ -26,11 +27,11 @@ ICONS = {
         <rect x="58" y="136" width="62" height="8" rx="4" fill="#0A6FE0" opacity=".55"/>
     """),
     "harborline": ("#7D7BFF", "#4D4AD6", """
-        <circle cx="42" cy="118" r="14" fill="#fff" opacity=".7"/>
-        <circle cx="76" cy="108" r="20" fill="#fff" opacity=".85"/>
-        <circle cx="120" cy="94" r="28" fill="#fff"/>
-        <circle cx="164" cy="112" r="16" fill="#fff" opacity=".8"/>
-        <rect x="24" y="150" width="144" height="8" rx="4" fill="#fff" opacity=".55"/>
+        <circle cx="48" cy="118" r="12" fill="#fff" opacity=".7"/>
+        <circle cx="78" cy="108" r="17" fill="#fff" opacity=".85"/>
+        <circle cx="116" cy="95" r="25" fill="#fff"/>
+        <circle cx="152" cy="112" r="13" fill="#fff" opacity=".8"/>
+        <rect x="34" y="148" width="124" height="8" rx="4" fill="#fff" opacity=".55"/>
     """),
     "roll-call": ("#FF5F56", "#D7302A", """
         <rect x="30" y="44" width="36" height="36" rx="10" fill="#fff"/>
@@ -90,12 +91,27 @@ ICONS["palette"] = ("#FFC15E", "#E08600", """
 """)
 
 
-def svg(top: str, bottom: str, glyph: str) -> str:
-    """One flat color, like the colored squares in Folio Settings: at 44 dp a gradient is noise, and the
-    rasteriser ignores SVG gradients anyway. `bottom` is kept for the glyph shapes that sit on the tile."""
+GLYPH_SCALE = 1.15
+
+
+def svg(top: str, bottom: str, glyph: str, uid: str = "i") -> str:
+    """The tile in its section's color, shaded from `top` to `bottom`, with a soft highlight along the top edge, a hairline
+    around it, and the glyph lifted off it by a shadow. The glyph is scaled about the tile's center. Needs a renderer that
+    draws gradients and filters: ImageMagick does when it has librsvg (`brew install imagemagick librsvg`)."""
+    shift = 96 * (1 - GLYPH_SCALE)
     return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{SIZE}" height="{SIZE}" viewBox="0 0 192 192">
-  <rect width="192" height="192" rx="44" fill="{top}"/>
-  {glyph.strip()}
+  <defs>
+    <linearGradient id="t-{uid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{top}"/><stop offset="1" stop-color="{bottom}"/></linearGradient>
+    <linearGradient id="h-{uid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".38"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <filter id="s-{uid}" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#000" flood-opacity=".28"/></filter>
+    <clipPath id="c-{uid}"><rect width="192" height="192" rx="44"/></clipPath>
+  </defs>
+  <rect width="192" height="192" rx="44" fill="url(#t-{uid})"/>
+  <g clip-path="url(#c-{uid})"><ellipse cx="96" cy="-30" rx="140" ry="92" fill="url(#h-{uid})"/></g>
+  <g filter="url(#s-{uid})"><g transform="translate({shift:.1f} {shift:.1f}) scale({GLYPH_SCALE})">
+    {glyph.strip()}
+  </g></g>
+  <rect x=".75" y=".75" width="190.5" height="190.5" rx="43.5" fill="none" stroke="#fff" stroke-opacity=".28" stroke-width="1.5"/>
 </svg>
 """
 
@@ -229,7 +245,7 @@ def heroes() -> None:
 def main() -> None:
     for name, (top, bottom, glyph) in ICONS.items():
         source = HERE / f"{name}.svg"
-        source.write_text(svg(top, bottom, glyph))
+        source.write_text(svg(top, bottom, glyph, name))
         subprocess.run(
             ["magick", "-background", "none", str(source), "-resize", f"{SIZE}x{SIZE}", str(HERE / f"{name}.png")],
             check=True,

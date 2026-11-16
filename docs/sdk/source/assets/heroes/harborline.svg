@@ -2,11 +2,11 @@
   <rect width="1024" height="500" fill="#37359A"/>
   <rect x="440" width="584" height="500" fill="#4D4AD6"/>
   <g transform="translate(520 -20) scale(3.4)">
-    <circle cx="42" cy="118" r="14" fill="#fff" opacity=".7"/>
-        <circle cx="76" cy="108" r="20" fill="#fff" opacity=".85"/>
-        <circle cx="120" cy="94" r="28" fill="#fff"/>
-        <circle cx="164" cy="112" r="16" fill="#fff" opacity=".8"/>
-        <rect x="24" y="150" width="144" height="8" rx="4" fill="#fff" opacity=".55"/>
+    <circle cx="48" cy="118" r="12" fill="#fff" opacity=".7"/>
+        <circle cx="78" cy="108" r="17" fill="#fff" opacity=".85"/>
+        <circle cx="116" cy="95" r="25" fill="#fff"/>
+        <circle cx="152" cy="112" r="13" fill="#fff" opacity=".8"/>
+        <rect x="34" y="148" width="124" height="8" rx="4" fill="#fff" opacity=".55"/>
   </g>
   <g transform="translate(70 150)" fill="#fff">
     <rect width="300" height="22" rx="11" opacity=".9"/>
