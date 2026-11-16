@@ -40,6 +40,11 @@ import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Public
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -60,6 +65,8 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -96,12 +103,13 @@ import com.mccal.folio.market.Source
 import com.mccal.folio.market.Section
 
 /** The Market's tabs. Adding a source over the network comes in Phase 6; Sources shows what Folio has today. */
-internal enum class MarketTab(@androidx.annotation.StringRes val label: Int, val icon: ImageVector) {
-    FEATURED(R.string.featured, Icons.Rounded.AutoAwesome),
-    SOURCES(R.string.sources, Icons.Rounded.Public),
-    PACKAGES(R.string.packages, Icons.Rounded.Storefront),
-    INSTALLED(R.string.installed, Icons.Rounded.Download),
-    SETTINGS(R.string.settings, Icons.Rounded.Settings),
+internal enum class MarketTab(@androidx.annotation.StringRes val label: Int, val icon: ImageVector, val outline: ImageVector) {
+    // Filled when selected, outlined when not, the way Sileo's tab bar reads.
+    FEATURED(R.string.featured, Icons.Rounded.AutoAwesome, Icons.Outlined.AutoAwesome),
+    SOURCES(R.string.sources, Icons.Rounded.Public, Icons.Outlined.Public),
+    PACKAGES(R.string.packages, Icons.Rounded.Storefront, Icons.Outlined.Storefront),
+    INSTALLED(R.string.installed, Icons.Rounded.Download, Icons.Outlined.Download),
+    SETTINGS(R.string.settings, Icons.Rounded.Settings, Icons.Outlined.Settings),
 }
 
 /**
@@ -811,22 +819,15 @@ internal fun MarketScreen(
 
 @Composable
 private fun MarketTabs(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
-    val glide = rememberGlide(selected.ordinal)
-    Box(Modifier.fillMaxWidth().background(FolioColors.SecondaryBackground).padding(vertical = FolioSpace.SNUG.dp)
-        .height(androidx.compose.foundation.layout.IntrinsicSize.Min)) {
-        // The highlight glides from the old tab to the new one instead of jumping (motion pass, 0.6.9).
-        if (FolioMotion.v2) Box(
-            Modifier.fillMaxWidth(1f / MarketTab.entries.size).fillMaxHeight()
-                .graphicsLayer { translationX = glide.value * size.width }
-                .padding(horizontal = 6.dp, vertical = 2.dp)
-                .background(LocalAccent.current.fill.copy(alpha = .22f), RoundedCornerShape(FolioRadius.CONTROL.dp)),
-        )
+    // A flat bar under a hairline, with no pill: the selected tab is its filled icon and the accent, as in Sileo.
+    val line = Color.White.copy(alpha = .12f)
+    Box(Modifier.fillMaxWidth().background(FolioColors.SecondaryBackground)
+        .drawBehind { drawLine(line, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 1.dp.toPx()) }
+        .padding(vertical = FolioSpace.SNUG.dp)) {
         Row(Modifier.fillMaxWidth()) {
             for (tab in MarketTab.entries) {
                 Column(
-                    // The tap highlight takes the shape of the selected pill (inset the same way) instead of a square over the whole cell.
-                    Modifier.weight(1f).padding(horizontal = 6.dp, vertical = 2.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
-                        .marketTab(tab, onSelect).heightIn(min = FolioRow.ACTION.dp).padding(vertical = FolioSpace.TINY.dp),
+                    Modifier.weight(1f).marketTab(tab, onSelect).heightIn(min = FolioRow.ACTION.dp).padding(vertical = FolioSpace.TINY.dp),
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) { MarketTabIcon(tab, tab == selected); MarketTabLabel(tab, tab == selected) }
@@ -931,7 +932,7 @@ private fun Modifier.marketTab(tab: MarketTab, onSelect: (MarketTab) -> Unit) =
 
 @Composable
 private fun MarketTabIcon(tab: MarketTab, on: Boolean) = Icon(
-    tab.icon, contentDescription = null, modifier = Modifier.size(22.dp),
+    if (on) tab.icon else tab.outline, contentDescription = null, modifier = Modifier.size(22.dp),
     tint = if (on) LocalAccent.current.ink else Color.White.copy(alpha = .55f),
 )
 
@@ -942,6 +943,28 @@ private fun MarketTabLabel(tab: MarketTab, on: Boolean) = Text(
     fontSize = cappedSp(FolioType.CAPTION),
     maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
 )
+
+/**
+ * A section's name over its rows: plain words in the muted ink, not the small capitals of an inset group. Sileo and the
+ * App Store put rows straight on the page with a hairline between them.
+ */
+@Composable
+private fun MarketSectionLabel(text: String) {
+    Text(text, color = Color.White.copy(alpha = .55f), fontSize = FolioType.SUBHEAD.sp,
+        modifier = Modifier.padding(top = FolioSpace.COMPACT.dp, bottom = FolioSpace.TINY.dp))
+}
+
+/** Rows on the page with no card behind them. Each row draws its own hairline ([marketRowDivider]). */
+@Composable
+private fun MarketFlatGroup(modifier: Modifier = Modifier, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    Column(modifier.fillMaxWidth(), content = content)
+}
+
+/** The hairline under a row, starting where its text does ([inset]) so the icon column reads as one. */
+private fun Modifier.marketRowDivider(inset: androidx.compose.ui.unit.Dp) = drawBehind {
+    val y = size.height - .5.dp.toPx()
+    drawLine(Color.White.copy(alpha = .10f), Offset(inset.toPx(), y), Offset(size.width, y), strokeWidth = 1.dp.toPx())
+}
 
 @Composable
 private fun MarketList(
@@ -1039,9 +1062,9 @@ private fun MarketList(
             item(key = "settings") { MarketOwnSettings(style = style, onStyle = onStyle, onIntroduce = onIntroduce) }
         }
         if (tab == MarketTab.INSTALLED && updates.isNotEmpty()) {
-            item(key = "updates-label") { SheetGroupLabel("Updates") }
+            item(key = "updates-label") { MarketSectionLabel("Updates") }
             item(key = "updates") {
-                SheetGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
+                MarketFlatGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
                     for (entry in updates) {
                         MarketRow(
                             session = session,
@@ -1060,9 +1083,9 @@ private fun MarketList(
             }
         }
         if (tab == MarketTab.INSTALLED && autoUpdated.isNotEmpty()) {
-            item(key = "recent-label") { SheetGroupLabel(stringResource(R.string.updated_recently)) }
+            item(key = "recent-label") { MarketSectionLabel(stringResource(R.string.updated_recently)) }
             item(key = "recent") {
-                SheetGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
+                MarketFlatGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
                     autoUpdated.forEach { u ->
                         // Undo only on a package's newest update, and only while the version it made is still the one installed.
                         val canUndo = autoUpdated.first { it.id == u.id } == u && installed[u.id]?.let { it.version == u.to && it.enabled } == true
@@ -1096,9 +1119,9 @@ private fun MarketList(
         for (section in Section.entries) {
             val inSection = shown.filter { it.entry.manifest?.section == section }
             if (inSection.isEmpty()) continue
-            item(key = "label-${section.id}") { SheetGroupLabel(section.id.replaceFirstChar(Char::uppercase)) }
+            item(key = "label-${section.id}") { MarketSectionLabel(section.id.replaceFirstChar(Char::uppercase)) }
             item(key = "group-${section.id}") {
-                SheetGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
+                MarketFlatGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
                     // Row by row, left to right, so reading order and TalkBack's order stay the list's order.
                     for (pair in inSection.chunked(columns)) {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -1125,9 +1148,9 @@ private fun MarketList(
             }
         }
         if (fromFiles.isNotEmpty()) {
-            item(key = "label-files") { SheetGroupLabel(stringResource(R.string.opened_from_files)) }
+            item(key = "label-files") { MarketSectionLabel(stringResource(R.string.opened_from_files)) }
             item(key = "group-files") {
-                SheetGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
+                MarketFlatGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
                     for (pkg in fromFiles) {
                         Row(
                             Modifier.fillMaxWidth().padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.COMPACT.dp),
@@ -1189,7 +1212,9 @@ private fun MarketRow(
         Modifier.fillMaxWidth()
             .background(if (selected) Color.White.copy(alpha = .06f) else Color.Transparent)
             .clickable(onClickLabel = openLabel, onClick = onOpen)
-            .padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.COMPACT.dp),
+            // The icon lines up with the page title, and the hairline starts under the text (icon 44 dp plus its 12 dp gap).
+            .marketRowDivider(44.dp + 12.dp)
+            .padding(vertical = FolioSpace.COMPACT.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         PackageIcon(session, entry, 44.dp)
@@ -1206,7 +1231,8 @@ private fun MarketRow(
                     update -> "${installed?.version} → ${entry.entry.version}"
                     // A package from somewhere other than Folio says where it came from.
                     entry.source.kind != Source.Kind.BUILT_IN -> "$author · ${entry.source.label}"
-                    else -> author
+                    // Who made it and what kind of thing it is, as Sileo's rows read ("Folio · Themes").
+                    else -> listOfNotNull(author.takeIf { it.isNotEmpty() }, entry.entry.manifest?.section?.id?.replaceFirstChar(Char::uppercase)).joinToString(" · ")
                 },
                 color = when {
                     installed?.enabled == false || entry.unavailable -> FolioColors.Warning
