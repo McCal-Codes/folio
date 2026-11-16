@@ -960,6 +960,45 @@ private fun MarketFlatGroup(modifier: Modifier = Modifier, content: @Composable 
     Column(modifier.fillMaxWidth(), content = content)
 }
 
+/**
+ * Version, where it is listed and which screens it works on, as three cells between two hairlines, as in Sileo's
+ * package header. Each value can wrap to two lines, so large text and a long source name never cut one off.
+ */
+@Composable
+private fun MarketStats(version: String, source: String, screens: Set<com.mccal.folio.market.Screen>, modifier: Modifier = Modifier) {
+    val line = Color.White.copy(alpha = .12f)
+    val works = when {
+        screens.size > 1 -> stringResource(R.string.market_cover_and_inner)
+        com.mccal.folio.market.Screen.COVER in screens -> stringResource(R.string.cover)
+        else -> stringResource(R.string.inner)
+    }
+    Row(
+        modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min).drawBehind {
+            drawLine(line, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 1.dp.toPx())
+            drawLine(line, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 1.dp.toPx())
+        },
+    ) {
+        val cells = listOf(
+            stringResource(R.string.market_stat_version) to version,
+            stringResource(R.string.market_stat_source) to source,
+            stringResource(R.string.market_stat_works_on) to works,
+        )
+        cells.forEachIndexed { i, (label, value) ->
+            if (i > 0) Box(Modifier.fillMaxHeight().padding(vertical = FolioSpace.COMPACT.dp).width(1.dp).background(line))
+            // One node per cell, so TalkBack reads "Version, 1.0.0" together.
+            Column(
+                Modifier.weight(1f).padding(horizontal = FolioSpace.SMALL.dp, vertical = FolioSpace.COMFY.dp).semantics(mergeDescendants = true) {},
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(label, color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
+                Text(value, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
 /** The hairline under a row, starting where its text does ([inset]) so the icon column reads as one. */
 private fun Modifier.marketRowDivider(inset: androidx.compose.ui.unit.Dp) = drawBehind {
     val y = size.height - .5.dp.toPx()
@@ -1443,7 +1482,12 @@ private fun MarketPackagePage(
                 Text(backTitle ?: backLabel, color = LocalAccent.current.ink, fontSize = FolioType.CALLOUT.sp)
             }
         }
-        Row(Modifier.padding(top = FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically) {
+        // A band in the section's color behind the icon and name, the way Sileo's page opens on the package's tint.
+        Row(
+            Modifier.padding(top = FolioSpace.COMPACT.dp).fillMaxWidth().clip(RoundedCornerShape(FolioRadius.GROUP.dp))
+                .background(sectionColor(entry.manifest?.section).copy(alpha = .16f)).padding(FolioSpace.MEDIUM.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             PackageIcon(session, MarketEntry(entry, source), 64.dp)
             Spacer(Modifier.width(14.dp))
             Column {
@@ -1515,6 +1559,12 @@ private fun MarketPackagePage(
                 color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp,
             )
         }
+        MarketStats(
+            version = (installed?.version ?: entry.version).text,
+            source = source.label,
+            screens = entry.manifest?.screens ?: com.mccal.folio.market.Screen.entries.toSet(),
+            modifier = Modifier.padding(bottom = FolioSpace.COMPACT.dp),
+        )
         // A package from a source can opt out of automatic updates on its own page; it follows the global switch until then.
         // A built-in package has no source address to be updated from, so there is nothing for the switch to do.
         if (installed != null && installed.origin == InstalledPackage.Origin.FOLIO_SOURCE && installed.sourceUrl != null && source.kind != Source.Kind.BUILT_IN &&

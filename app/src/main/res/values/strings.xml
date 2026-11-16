@@ -2710,4 +2710,8 @@
     <string name="cc_gallery_move_down">Move down</string>
     <string name="cc_compact_note">Off, Control Center fills a wide window and cannot move. On, it is a smaller panel and Right, Middle and Left place it under the top corner.</string>
     <string name="cc_rail_mark">%1$s, %2$s</string>
+    <string name="market_stat_version">Version</string>
+    <string name="market_stat_source">Source</string>
+    <string name="market_stat_works_on">Works on</string>
+    <string name="market_cover_and_inner">Cover and inner</string>
 </resources>
