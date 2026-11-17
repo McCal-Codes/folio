@@ -8,6 +8,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -204,13 +205,19 @@ internal fun photoCrop(containerWidth: Float, containerHeight: Float, bitmapWidt
  * it, then Set keeps what you framed. Cancel leaves the wallpaper as it was.
  */
 @Composable
-internal fun PhotoFrameDialog(photo: Bitmap, onCancel: () -> Unit, onSet: (PhotoCrop) -> Unit) {
+internal fun PhotoFrameDialog(photo: Bitmap, onCancel: () -> Unit, onSet: (PhotoCrop, Boolean) -> Unit) {
     val reduceMotion = LocalReduceMotion.current
     val appear = remember { Animatable(0f) }
     LaunchedEffect(Unit) { appear.animateTo(1f, tween(if (reduceMotion) FolioMotion.FADE_MS else PREVIEW_MS)) }
     var zoom by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     var area by remember { mutableStateOf(IntSize.Zero) }
+    var blur by remember { mutableStateOf(false) }
+    // The blurred copy is made the first time Blur is switched on, off the main thread, and kept for switching back and forth.
+    val soft by produceState<Bitmap?>(null, photo, blur) { if (blur && value == null) value = withContext(Dispatchers.Default) { photo.blurredSmall() } }
+    // Sharp picture first, the blurred one fading in over it: one soft cross-fade, a snap with Reduce Motion.
+    val softAlpha by androidx.compose.animation.core.animateFloatAsState(if (blur && soft != null) 1f else 0f,
+        if (reduceMotion) androidx.compose.animation.core.snap() else FolioMotion.spring<Float>(FolioMotion.Firm), label = "wallpaper blur")
     val description = stringResource(R.string.wallpaper_preview)
     Dialog(onDismissRequest = onCancel, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         Box(Modifier.fillMaxSize().background(Color.Black).graphicsLayer { alpha = appear.value }
@@ -236,22 +243,38 @@ internal fun PhotoFrameDialog(photo: Bitmap, onCancel: () -> Unit, onSet: (Photo
             ) {
                 val scale = maxOf(this.size.width / photo.width, this.size.height / photo.height) * zoom
                 val width = photo.width * scale; val height = photo.height * scale
-                drawImage(image, dstOffset = IntOffset(((this.size.width - width) / 2f + offset.x).roundToInt(), ((this.size.height - height) / 2f + offset.y).roundToInt()),
-                    dstSize = IntSize(width.roundToInt(), height.roundToInt()), filterQuality = FilterQuality.Medium)
+                val place = IntOffset(((this.size.width - width) / 2f + offset.x).roundToInt(), ((this.size.height - height) / 2f + offset.y).roundToInt())
+                val placed = IntSize(width.roundToInt(), height.roundToInt())
+                drawImage(image, dstOffset = place, dstSize = placed, filterQuality = FilterQuality.Medium)
+                if (softAlpha > 0f) soft?.let { drawImage(it.asImageBitmap(), dstOffset = place, dstSize = placed, alpha = softAlpha, filterQuality = FilterQuality.Medium) }
             }
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = .25f), Color.Transparent, Color.Black.copy(alpha = .6f)))))
             Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars).padding(horizontal = FolioSpace.XXL.dp, vertical = FolioSpace.LARGE.dp),
                 horizontalAlignment = Alignment.CenterHorizontally) {
                 DrawnHome(Modifier.weight(1f))
+                BlurSwitch(blur) { blur = it }
                 Text(stringResource(R.string.wallpaper_frame_hint), color = Color.White.copy(alpha = .85f), fontSize = FolioType.FOOTNOTE.sp, textAlign = TextAlign.Center,
                     modifier = Modifier.padding(top = FolioSpace.MEDIUM.dp))
                 Row(Modifier.fillMaxWidth().padding(top = FolioSpace.LARGE.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
                     PreviewButton(stringResource(R.string.cancel), Color.White.copy(alpha = .22f), Color.White, "wallpaper-frame-cancel", onCancel, Modifier.weight(1f))
                     PreviewButton(stringResource(R.string.set), LocalAccent.current.fill, Color.White, "wallpaper-frame-set",
-                        { onSet(photoCrop(area.width.toFloat(), area.height.toFloat(), photo.width, photo.height, zoom, offset.x, offset.y)) }, Modifier.weight(1f))
+                        { onSet(photoCrop(area.width.toFloat(), area.height.toFloat(), photo.width, photo.height, zoom, offset.x, offset.y), blur) }, Modifier.weight(1f))
                 }
             }
         }
+    }
+}
+
+/** iOS's Blur switch: a pill that is lit while the picture is soft, so icons stand out on a busy photo. */
+@Composable
+private fun BlurSwitch(on: Boolean, onChange: (Boolean) -> Unit) {
+    val label = stringResource(R.string.wallpaper_blur)
+    Box(Modifier.padding(top = FolioSpace.MEDIUM.dp).defaultMinSize(minHeight = FolioTouch.MIN.dp).clip(RoundedCornerShape(FolioRadius.RAIL.dp))
+        .background(if (on) Color.White.copy(alpha = .92f) else Color.White.copy(alpha = .22f))
+        .toggleable(value = on, role = Role.Switch, onValueChange = onChange).semantics { contentDescription = label }.testTag("wallpaper-frame-blur"),
+        contentAlignment = Alignment.Center) {
+        Text(label, color = if (on) Color.Black.copy(alpha = .85f) else Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = FolioSpace.XXL.dp, vertical = FolioSpace.COMPACT.dp))
     }
 }
 
