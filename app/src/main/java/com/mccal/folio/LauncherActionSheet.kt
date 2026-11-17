@@ -70,7 +70,7 @@ internal fun ModalDialogBackHandler(enabled: Boolean = true, onBack: () -> Unit)
  * on the cover, unfolded and turned sideways (it's a popover, not a sheet, so it never covers the page you're editing).
  */
 @Composable
-internal fun HomeEditMenu(anchor: androidx.compose.ui.unit.IntRect?, onDismiss: () -> Unit, onWidgets: () -> Unit, onWallpaper: () -> Unit,
+internal fun HomeEditMenu(anchor: androidx.compose.ui.unit.IntRect?, onDismiss: () -> Unit, onWidgets: () -> Unit, onWallpaper: () -> Unit, onPhoto: () -> Unit,
     onLook: () -> Unit, onCustomize: () -> Unit, onAddPage: (() -> Unit)?, onRemovePage: (() -> Unit)?) {
     val density = LocalDensity.current
     val margin = with(density) { 12.dp.roundToPx() }
@@ -110,6 +110,8 @@ internal fun HomeEditMenu(anchor: androidx.compose.ui.unit.IntRect?, onDismiss: 
             Box(Modifier.testTag("empty-space-widgets")) { MenuRow(stringResource(R.string.add_widget_2), Icons.Rounded.Widgets, onClick = act(onWidgets)) }
             MenuDivider()
             Box(Modifier.testTag("empty-space-look")) { MenuRow(stringResource(R.string.customize), Icons.Rounded.Palette, onClick = act(onLook)) }
+            MenuDivider()
+            Box(Modifier.testTag("empty-space-photo")) { MenuRow(stringResource(R.string.wallpaper_photo_menu), Icons.Rounded.AddPhotoAlternate, onClick = act(onPhoto)) }
             MenuDivider()
             Box(Modifier.testTag("empty-space-wallpaper")) { MenuRow(stringResource(R.string.wallpaper_appearance_2), Icons.Rounded.Wallpaper, onClick = act(onWallpaper)) }
             // A thicker gap between groups, like iOS menus.

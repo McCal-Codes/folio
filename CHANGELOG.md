@@ -9,6 +9,8 @@ Folio shows the newest section on the phone after an update, and every version u
 
 ### Added
 - **Wallpaper changes fade in:** when you set a new wallpaper, the old picture eases into the new one on Home instead of switching at once. Reduce Motion keeps the instant switch. <!-- beta 5 -->
+- **Blur a wallpaper photo:** the screen where you frame a photo has a Blur switch, like iOS. Turn it on and the picture softens with a short fade, so icons and labels stand out on a busy photo; Set saves it blurred, and Cancel changes nothing. <!-- beta 5 -->
+- **Wallpaper Photo on the Edit menu:** while icons wiggle, Edit has a Wallpaper Photo row that opens your photos straight away. Pick one, frame it, and Set or Cancel brings you back to Home, not to the settings page. A photo shared to Folio now does the same. <!-- beta 5 -->
 - **Frame a wallpaper photo:** a photo you pick opens full screen over a drawn Home. Pinch to zoom and drag to move it, then Set keeps exactly what you framed, the way Apple's Add Wallpaper step works. Cancel leaves your wallpaper as it was. <!-- beta 5 -->
 - **New icons for Folio's own packages:** the icons in the Market for Cabinet, Harborline, Roll Call, Palette, Colored Albums, Flipbook, Duet and the four themes are shaded from top to bottom with a soft highlight, and the picture on each is lifted off the tile, so they have some depth in a list. <!-- beta 5 -->
 - **Tweak pages open on a picture:** Cabinet, Colored Albums, Duet, Flipbook, Harborline, Palette and Roll Call each have a still picture at the top of their Market page, in the tweak's own color with its icon drawn large, so a page no longer starts with plain text. Pages in the Folio source also say "color" instead of "colour". <!-- beta 5 -->
@@ -108,6 +110,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Settings on a short window:** on a flip's cover screen or a phone on its side, the Folio header is one line (icon, name and version) and the Home preview is left out, so the first screen shows the search field, the setup card and the first rows instead of mostly header. <!-- beta 5 -->
 - **Widget picker details:** the Home-page map in the picker names each spot for TalkBack and announces when the fit changes, and the widget's preview keeps its size at larger text. <!-- beta 5 -->
 - **Crash when the phone folds or unfolds with a panel open:** Notification Center or Control Center could close Folio with "Padding must be non-negative" on a Flip3 (reported on 0.6.9.1). The spring that moves a panel off the hinge dipped a hair below zero on its way back to the window's edge, and a padding cannot be negative. It is now held at zero. <!-- beta 4 -->
+- **Focus on Samsung phones with Android 15:** turning a Focus on, or a schedule or charging doing it, could close Folio on a phone whose Android 15 lacks the newer Do Not Disturb rules. Folio now falls back to the older rule there, and a Do Not Disturb failure can no longer take Home down with it. <!-- beta 5 -->
 - **Search finds Older versions:** searching Settings for "rollback", "downgrade" or "go back" now leads to Software Update, where going back to an older version lives. <!-- beta 3 -->
 - **Home starts full:** a new setup now fills Home with your apps, up to the rows that fit your screen, instead of a handful of starter apps and an empty page. Folio's own entries and the dock's apps are left out of the fill, and everything is still yours to change. <!-- beta 3 -->
 - **New installs start on Automatic rows:** a fresh install no longer starts on a fixed four rows, so a tall phone uses its height from the first launch. An existing Home keeps the rows it has. <!-- beta 3 -->
@@ -124,6 +127,12 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Blur behind the panels over an app:** where the phone does not let a window blur (One UI turns it off), Folio takes a screenshot of the app to blur. If the phone was slow to hand it over, the picture was thrown away and the panel stayed on plain frosted glass; it now fades in when it arrives. <!-- beta 1 -->
 - **App Library while folding:** resetting a search or switching profiles waits for the next layout pass, avoiding a crash when the window changes size. <!-- beta 1 -->
 - **Dual-Screen Ambient Light switch:** StandBy 2's options now show the switch for the outer-screen glow. It was in the code but missing from the page, so the glow could not be turned off. <!-- beta 1 -->
+
+## [0.6.9.2] - 2026-11-17
+
+### Fixed
+- **Crash when the phone folds or unfolds with a panel open:** Notification Center or Control Center could close Folio with "Padding must be non-negative" while the phone folded or unfolded. The spring that moves a panel off the hinge dipped a hair below zero on its way back to the window's edge, and a padding cannot be negative. It is now held at zero.
+- **Focus on Samsung phones with Android 15:** turning a Focus on, or a schedule or charging doing it, could close Folio on a phone whose Android 15 lacks the newer Do Not Disturb rules. Folio now falls back to the older rule there, and a Do Not Disturb failure can no longer take Home down with it.
 
 ## [0.6.9.1] - 2026-11-10
 

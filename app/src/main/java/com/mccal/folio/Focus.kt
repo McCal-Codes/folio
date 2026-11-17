@@ -105,17 +105,33 @@ internal object FocusController {
         val manager = context.getSystemService(NotificationManager::class.java)
         val prefs = context.getSharedPreferences(PREFS, 0)
         modes.forEach { mode ->
-            val ruleId = prefs.getString(mode.id, null)?.takeIf { runCatching { manager.getAutomaticZenRule(it) }.getOrNull() != null }
-            if (mode.id != active?.id) {
-                ruleId?.let { id -> runCatching { manager.setAutomaticZenRuleState(id, Condition(conditionId(mode), mode.name, Condition.STATE_FALSE)) } }
-                return@forEach
+            // One Focus's rule failing (a framework that lacks a method, a refused call) must never reach Home's main thread:
+            // this also runs from a schedule or charging with no tap (0.6.9.2).
+            guardedZen {
+                val ruleId = prefs.getString(mode.id, null)?.takeIf { runCatching { manager.getAutomaticZenRule(it) }.getOrNull() != null }
+                if (mode.id != active?.id) {
+                    ruleId?.let { id -> runCatching { manager.setAutomaticZenRuleState(id, Condition(conditionId(mode), mode.name, Condition.STATE_FALSE)) } }
+                    return@guardedZen
+                }
+                val rule = buildRule(context, mode)
+                val id = if (ruleId != null) ruleId.also { runCatching { manager.updateAutomaticZenRule(it, rule) } }
+                    else runCatching { manager.addAutomaticZenRule(rule) }.getOrNull()?.also { prefs.edit().putString(mode.id, it).apply() }
+                id?.let { runCatching { manager.setAutomaticZenRuleState(it, Condition(conditionId(mode), mode.name, Condition.STATE_TRUE)) } }
             }
-            val rule = buildRule(context, mode)
-            val id = if (ruleId != null) ruleId.also { runCatching { manager.updateAutomaticZenRule(it, rule) } }
-                else runCatching { manager.addAutomaticZenRule(rule) }.getOrNull()?.also { prefs.edit().putString(mode.id, it).apply() }
-            id?.let { runCatching { manager.setAutomaticZenRuleState(it, Condition(conditionId(mode), mode.name, Condition.STATE_TRUE)) } }
         }
     }
+
+    /** Runs [block], swallowing any failure (an Error such as NoSuchMethodError included): Do Not Disturb is a bonus, never a crash. */
+    internal fun guardedZen(block: () -> Unit) {
+        try { block() } catch (_: Throwable) { }
+    }
+
+    /**
+     * The Android 15 modes rule from [modern] where the framework has it, else the legacy rule from [legacy]. Some Android 15
+     * builds (a Samsung Z Flip 3 on One UI 7) report API 35 without `AutomaticZenRule.Builder`, so the call throws
+     * NoSuchMethodError, which is an Error and not an Exception.
+     */
+    internal fun <T> modernOrLegacy(modern: () -> T, legacy: () -> T): T = try { modern() } catch (_: Throwable) { legacy() }
 
     /** Whether Android still has [mode]'s rule on (someone may have turned it off in Android's own settings). */
     fun isOnInAndroid(context: Context, mode: FocusMode): Boolean? {
@@ -127,8 +143,12 @@ internal object FocusController {
     private fun buildRule(context: Context, mode: FocusMode): AutomaticZenRule {
         val settings = ComponentName(context, FolioSettingsActivity::class.java)
         val filter = if (mode.silence) NotificationManager.INTERRUPTION_FILTER_PRIORITY else NotificationManager.INTERRUPTION_FILTER_ALL
-        if (Build.VERSION.SDK_INT >= 35) {
-            return AutomaticZenRule.Builder(mode.name, conditionId(mode))
+        @Suppress("DEPRECATION")
+        val legacy = { AutomaticZenRule(mode.name, null, settings, conditionId(mode), null, filter, true) }
+        if (Build.VERSION.SDK_INT < 35) return legacy()
+        // The whole modes-API chain (Builder, setType, setDeviceEffects, ZenDeviceEffects, setManualInvocationAllowed) is inside the guard.
+        return modernOrLegacy({
+            AutomaticZenRule.Builder(mode.name, conditionId(mode))
                 .setConfigurationActivity(settings)
                 .setInterruptionFilter(filter)
                 .setType(if (mode.id == "sleep") AutomaticZenRule.TYPE_BEDTIME else AutomaticZenRule.TYPE_OTHER)
@@ -139,9 +159,7 @@ internal object FocusController {
                     .build())
                 .setManualInvocationAllowed(true)
                 .build()
-        }
-        @Suppress("DEPRECATION")
-        return AutomaticZenRule(mode.name, null, settings, conditionId(mode), null, filter, true)
+        }, legacy)
     }
 }
 
