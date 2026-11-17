@@ -1066,7 +1066,10 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         val slots = remember(ccLayout, cols, chosen, focusOn) { ccLayoutFor(ccLayout, cols, chosen.map { it.name }, focusOn) }
         val addRowHeight = if (slotMode) FolioTouch.MIN.dp + gap else 0.dp
         val slotPerPage = if (pagesAvailable == null) 40 else maxOf(3, ccRowsThatFit((pagesAvailable - addRowHeight).value, cell.value, gap.value))
-        val slotRows = if (slotMode) maxOf(ccRowsUsed(slots) + (if (edit.active) 1 else 0), ccRowsUsed(ccDefaultLayout(cols, chosen.map { it.name }, focusOn))).coerceAtLeast(1) else 0
+        // Pages come only from overflow: the empty row never opens a page of its own, so a full last page has no spare row (as iOS, which has no empty page).
+        val slotUsed = if (slotMode) maxOf(ccRowsUsed(slots), ccRowsUsed(ccDefaultLayout(cols, chosen.map { it.name }, focusOn))).coerceAtLeast(1) else 0
+        val slotSpare = slotMode && edit.active && slotUsed - ccPageStarts(slots, slotPerPage, slotUsed).last() < slotPerPage
+        val slotRows = slotUsed + (if (slotSpare) 1 else 0)
         val slotStarts = remember(slots, slotPerPage, slotRows, slotMode) { if (slotMode) ccPageStarts(slots, slotPerPage, slotRows) else listOf(0) }
         fun slotEnd(index: Int) = slotStarts.getOrNull(index + 1) ?: maxOf(slotRows, slotStarts[index] + 1)
         val pages = remember(plan, extraPages, slotMode, slotStarts.size) { ccPageSpecs(if (slotMode) slotStarts.size else plan.perPage.size, extraPages) }
@@ -1087,6 +1090,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         }
         // A move, an Undo or an add can open or close a Controls page in the editor. The pager counts its pages from the other end, so the page in view
         // is put back (never past the last Controls page), and the editing is not ended by the page number being read on the way.
+        val reduceMotionNow = LocalReduceMotion.current
         val pageCountSeen = remember { intArrayOf(pages.size) }
         val logicalSeen = remember { intArrayOf(0) }
         SideEffect { if (pageCountSeen[0] == pages.size) logicalSeen[0] = firstIndex - pager.currentPage }
@@ -1097,7 +1101,8 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
             val lastControls = pages.count { it.page == CcPage.CONTROLS } - 1
             val want = if (edit.active) minOf(logicalSeen[0], lastControls) else 0
             val index = pages.lastIndex - want
-            if (pager.currentPage != index) pager.scrollToPage(index)
+            // The same page kept in view is only the pager's count re-anchoring, which must not be seen; a page that is gone (an Undo, a move out of it) slides back to the one before.
+            if (pager.currentPage != index) { if (want == logicalSeen[0] || reduceMotionNow) pager.scrollToPage(index) else pager.animateScrollToPage(index, animationSpec = FolioMotion.spring(FolioMotion.Sheet)) }
         }
         // The page in view is remembered for Open on: Last page used.
         LaunchedEffect(current, pages) { if (v2) CcLastPage.page = pages.getOrNull(current)?.page }
@@ -1425,7 +1430,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                         if (edit.active && spec.index == (if (slotMode) slotStarts.lastIndex else plan.perPage.lastIndex)) {
                             Row(Modifier.width(gridWidth).clip(RoundedCornerShape(FolioRadius.CARD.dp)).then(if (galleryItems.isEmpty()) Modifier else Modifier.clickable(role = androidx.compose.ui.semantics.Role.Button) { galleryOpen = true })
                                 .heightIn(min = FolioTouch.MIN.dp).padding(FolioSpace.SMALL.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                                if (galleryItems.isNotEmpty()) Icon(Icons.Rounded.AddCircle, null, tint = Color.White, modifier = Modifier.size(18.dp).padding(end = FolioSpace.TINY.dp))
+                                if (galleryItems.isNotEmpty()) Icon(Icons.Rounded.AddCircle, null, tint = Color.White, modifier = Modifier.padding(end = FolioSpace.SNUG.dp).size((FolioSpace.XL.dp.value * ccIconScale(LocalDensity.current.fontScale)).dp))
                                 Text(if (galleryItems.isEmpty()) stringResource(R.string.all_controls_added) else stringResource(R.string.add_a_control),
                                     color = if (galleryItems.isEmpty()) FolioGlass.secondary else Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
                             }

@@ -70,7 +70,7 @@ class CcSlotGridDragTest {
      * The grid as Control Center's editor shows it when the window holds [perPage] rows: one page at a time, the layout in whole-grid rows (so
      * what is seen is `changes.last()`), and a control held at a page's edge carried to the next page or the one before.
      */
-    private fun pagedHost(initial: List<CcSlot>, perPage: Int = 3, startPage: Int = 0) {
+    private fun pagedHost(initial: List<CcSlot>, perPage: Int = 3, startPage: Int = 0, windowSpare: Dp = 0.dp) {
         compose.setContent {
             var slots by remember { mutableStateOf(initial) }
             var page by remember { mutableStateOf(startPage) }
@@ -86,7 +86,7 @@ class CcSlotGridDragTest {
                 return true
             }
             CompositionLocalProvider(LocalReduceMotion provides false) {
-                Box(Modifier.padding(16.dp).onGloballyPositioned { viewport = it }) {
+                Box(Modifier.padding(16.dp).onGloballyPositioned { viewport = it }.padding(bottom = windowSpare)) {
                     CcSlotGrid(
                         ccPageSlots(slots, start, end), cols = 4, rows = end - start, cell = cell, gap = gap, editing = true, raised = null,
                         removable = { true }, labelOf = { it },
@@ -295,6 +295,17 @@ class CcSlotGridDragTest {
         pagedHost(listOf(one("a", 0, 3), one("b", 3, 0)), startPage = 1)
         hold("a")
         // Row 0 of this page, 40 dp down; 3 rows of 92 dp is the page, so 3 rows down puts the finger past its bottom edge.
+        moveFinger("a", 0.dp, step * 3 - 40.dp, settle = false)
+        compose.mainClock.advanceTimeBy(900)
+        assertEquals("a is on the page before, at its end", one("a", 0, 2), changes.last().first { it.id == "a" })
+        assertEquals(0, pageShown)
+        release("a")
+    }
+
+    @Test fun theBottomEdgeIsTheGridsEvenWhenTheWindowIsTallerThanThePage() {
+        // A page that holds fewer rows than the window has its edge under its last row, not at the bottom of the empty window.
+        pagedHost(listOf(one("a", 0, 3), one("b", 3, 0)), startPage = 1, windowSpare = 300.dp)
+        hold("a")
         moveFinger("a", 0.dp, step * 3 - 40.dp, settle = false)
         compose.mainClock.advanceTimeBy(900)
         assertEquals("a is on the page before, at its end", one("a", 0, 2), changes.last().first { it.id == "a" })

@@ -34,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -174,6 +175,8 @@ internal fun CcSlotGrid(
     var pending by remember { mutableStateOf<List<CcSlot>?>(null) }
     // Which edge the held control is at with a page to carry it to (1 the top, -1 the bottom, 0 none): a still cue says it will be carried.
     var edgeCue by remember { mutableStateOf(0) }
+    // True once the page at that edge had no room for the held control: the cue stays, dimmed, so it is plain nothing will happen.
+    var cueRefused by remember { mutableStateOf(false) }
     // The control that is settling into its new place, and how far it still is from it (the layout moves it at once, this carries it there).
     var landing by remember { mutableStateOf<String?>(null) }
     val settle = remember { Animatable(Offset.Zero, Offset.VectorConverter) }
@@ -243,7 +246,7 @@ internal fun CcSlotGrid(
     // Held at the top or bottom edge of the page for a moment, the control is carried to the next page (above) or the one before (below), where the
     // finger can put it down; a page with no room for it, or no such page, does nothing. The pages never scroll.
     LaunchedEffect(dragging != null) {
-        if (dragging == null) { edgeCue = 0; return@LaunchedEffect }
+        if (dragging == null) { edgeCue = 0; cueRefused = false; return@LaunchedEffect }
         val edge = with(density) { CC_CARRY_EDGE_DP.dp.toPx() }
         var zone = 0
         var since = 0L
@@ -255,17 +258,22 @@ internal fun CcSlotGrid(
             val grid = gridCoords ?: continue
             if (!page.isAttached || !grid.isAttached) continue
             val origin = latestBase.firstOrNull { it.id == id } ?: break
-            val top = page.positionInWindow().y
-            val finger = grid.positionInWindow().y + origin.row * latestStep + drag.y + grab.y
+            // The edges are those of the places the controls can take (the grid), kept inside the page window: a page that holds only a few rows has its
+            // edge under its last row, where the cue is drawn, not at the bottom of the empty window.
+            val gridTop = grid.positionInWindow().y
+            val top = maxOf(gridTop, page.positionInWindow().y)
+            val bottom = minOf(gridTop + grid.size.height, page.positionInWindow().y + page.size.height)
+            val finger = gridTop + origin.row * latestStep + drag.y + grab.y
             // Not before the finger has moved: a control lifted near an edge is not carried by being lifted.
-            val at = if (drag == Offset.Zero) 0 else ccEdgeZone(finger, top, top + page.size.height, edge)
+            val at = if (drag == Offset.Zero) 0 else ccEdgeZone(finger, top, bottom, edge)
             val target = if (at > 0) latestCarryNext else if (at < 0) latestCarryBack else null
             val now0 = if (target == null) 0 else at
-            if (now0 != zone) { zone = now0; since = now; spent = false; edgeCue = now0; if (now0 != 0) haptic.perform(FolioHaptic.Step) }
+            if (now0 != zone) { zone = now0; since = now; spent = false; edgeCue = now0; cueRefused = false; if (now0 != 0) haptic.perform(FolioHaptic.Step) }
             else if (zone != 0 && !spent && now - since >= CC_CARRY_DWELL_NS) {
                 spent = true
                 if (target?.invoke(id) == true) { haptic.perform(FolioHaptic.Commit); dragging = null; drag = Offset.Zero; edgeCue = 0; break }
                 haptic.perform(FolioHaptic.Refuse)
+                cueRefused = true
             }
         }
     }
@@ -302,11 +310,18 @@ internal fun CcSlotGrid(
         if (!editing) Box(Modifier.matchParentSize().pointerInput(Unit) {
             detectTapGestures(onLongPress = { haptic.perform(FolioHaptic.PickedUp); latestEnter() })
         })
-        // The page to go to, shown while the held control rests at an edge: a small still pill with an arrow (never animated, so nothing flashes).
-        if (edgeCue != 0 && dragging != null) Canvas(Modifier.align(if (edgeCue > 0) Alignment.TopCenter else Alignment.BottomCenter).zIndex(2f).size(56.dp, 22.dp)) {
-            drawRoundRect(Color.White.copy(alpha = .35f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2))
-            val mid = size.width / 2; val y = size.height / 2; val arm = 6.dp.toPx(); val rise = 3.5.dp.toPx() * (if (edgeCue > 0) -1f else 1f)
-            val stroke = 2.5.dp.toPx()
+        // The page to go to, shown while the held control rests at an edge: a small still pill with an arrow, in the frosted tile fill so it reads on
+        // any wallpaper. It fades in and out once, in one direction (a single ramp, never a pulse, so nothing flashes), and not at all with Reduce Motion.
+        // Its height is on the spacing scale and its corners are fully round.
+        val cueOn = edgeCue != 0 && dragging != null
+        var cueEdge by remember { mutableStateOf(1) }
+        if (cueOn) cueEdge = edgeCue
+        val cueAlpha by animateFloatAsState(if (!cueOn) 0f else if (cueRefused) .4f else 1f, if (reduceMotion) snap() else FolioMotion.spring(FolioMotion.Snap), label = "cc carry cue")
+        if (cueAlpha > 0f) Canvas(Modifier.align(if (cueEdge > 0) Alignment.TopCenter else Alignment.BottomCenter).zIndex(2f).alpha(cueAlpha)
+            .padding(vertical = FolioSpace.SMALL.dp).size((FolioTouch.MIN + FolioSpace.SMALL).dp, FolioSpace.XXL.dp)) {
+            drawRoundRect(FolioGlass.frostedTile, cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2))
+            val mid = size.width / 2; val y = size.height / 2; val arm = FolioSpace.SNUG.dp.toPx(); val rise = (FolioSpace.TINY.dp.toPx() * .9f) * (if (cueEdge > 0) -1f else 1f)
+            val stroke = FolioSpace.HAIR.dp.toPx() + 1f
             drawLine(Color.White, Offset(mid - arm, y - rise), Offset(mid, y + rise), stroke, StrokeCap.Round)
             drawLine(Color.White, Offset(mid + arm, y - rise), Offset(mid, y + rise), stroke, StrokeCap.Round)
         }
