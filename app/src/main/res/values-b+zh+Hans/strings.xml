@@ -1589,6 +1589,8 @@
     <string name="label_island_listener">Folio 灵动岛</string>
     <string name="label_theme_import">Folio 主题</string>
     <string name="label_wallpaper_import">Folio 壁纸</string>
+    <string name="wallpaper_blur">模糊</string>
+    <string name="wallpaper_photo_menu">壁纸照片</string>
     <string name="wallpaper_frame_hint">双指缩放，拖动调整位置</string>
     <string name="label_redeem">Folio 支持者代码</string>
     <string name="label_settings_shortcut">Folio 设置</string>
