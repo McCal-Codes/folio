@@ -3,6 +3,7 @@ package com.mccal.folio
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import androidx.lifecycle.repeatOnLifecycle
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.isImeVisible
 import android.app.WallpaperManager
 import android.content.ComponentName
 import android.content.Intent
+import android.net.Uri
 import android.content.pm.LauncherApps
 import android.os.Bundle
 import android.os.UserManager
@@ -168,7 +170,7 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null && takeMarketLink(intent)) settingsRequests.intValue++
         intent.removeExtra("duo_destination")
         // A recreated activity (rotation, fold, process restart) keeps the pending alert; the launch intent is used once.
-        if (savedInstanceState == null) takeSharedTheme(intent)
+        if (savedInstanceState == null) { takeSharedTheme(intent); takeSharedWallpaper(intent) }
         else sharedTheme.value = savedInstanceState.getString(PENDING_THEME)?.let(FolioTheme::fromJson)
         setContent {
             val savedState = model.state.collectAsStateWithLifecycle().value
@@ -717,12 +719,35 @@ class MainActivity : ComponentActivity() {
         sharedTheme.value = raw.takeIf { it.length <= ThemeImportActivity.MAX_BYTES }?.let(FolioTheme::fromJson)
     }
 
+    /**
+     * A photo shared to Folio (WallpaperShareActivity): shown in the Wallpaper page's preview, with one Set. Any app can start
+     * Home with this extra, so the link is checked again and nothing is applied until Set. Showing the preview needs Folio's own
+     * background, so it switches to that and puts Android's wallpaper back if the photo is cancelled or cannot be read.
+     */
+    private fun takeSharedWallpaper(intent: Intent?) {
+        val raw = intent?.getStringExtra(WallpaperShareActivity.EXTRA_PHOTO) ?: return
+        intent.removeExtra(WallpaperShareActivity.EXTRA_PHOTO)
+        val uri = raw.takeIf { it.length <= 2_048 }?.let(Uri::parse)?.takeIf { WallpaperShareActivity.acceptable(it, packageName) } ?: return
+        val wasSystem = showsWallpaper
+        // The saved state may still be loading on a cold start, and a change made before it lands would be lost, so the
+        // setting waits for Home to be ready. The window itself is switched at once.
+        fun choose(system: Boolean) {
+            applyWallpaperWindow(system)
+            lifecycleScope.launch { model.state.first { it.homeReady }; model.setSystemWallpaper(system) }
+        }
+        if (wasSystem) choose(false)
+        backgrounds.stageSharedPhoto(uri, if (wasSystem) ({ choose(true) }) else null)
+        SettingsLink.page = CustomizationPage.WALLPAPER
+        settingsRequests.intValue++
+    }
+
     override fun onNewIntent(intent: Intent) {
         intent.dropUnreadableExtras()
         super.onNewIntent(intent)
 
         setIntent(intent)
         takeSharedTheme(intent)
+        takeSharedWallpaper(intent)
         FoldRenderExperiment.onNewIntent(this, intent)
         updateDefaultHome()
         if (intent.getStringExtra("duo_destination") == "search") searchRequests.intValue++

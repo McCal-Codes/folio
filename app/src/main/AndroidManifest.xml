@@ -243,6 +243,17 @@
                 <data android:mimeType="application/json" />
             </intent-filter>
         </activity>
+        <!-- Share a photo to Folio to try it as Home's background. SEND only, so Folio does not show up under "Open with"
+             for every picture; Home shows the preview and nothing changes until Set. -->
+        <activity android:name=".WallpaperShareActivity" android:exported="true" android:excludeFromRecents="true"
+            android:theme="@style/Theme.Folio.FoldBridge" android:taskAffinity="com.mccal.folio.wallpaper" android:noHistory="true"
+            android:label="@string/label_wallpaper_import">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+        </activity>
         <!-- A .foliopkg file opened or shared with Folio. It's unsigned, so the Market says so before anything runs. -->
         <activity android:name=".PackageImportActivity" android:exported="true" android:excludeFromRecents="true"
             android:theme="@style/Theme.Folio.FoldBridge" android:taskAffinity="com.mccal.folio.package"
