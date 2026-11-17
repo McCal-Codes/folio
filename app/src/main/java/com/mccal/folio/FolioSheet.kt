@@ -141,21 +141,23 @@ internal fun ModalBottomSheet(
     fullScreen: Boolean = false,
     /** Widest the sheet gets when shown as a centered form sheet on a regular-size screen. */
     formWidth: androidx.compose.ui.unit.Dp = 560.dp,
+    /** Leave Home sharp behind a bottom sheet (a light scrim, no blur), for a sheet that changes how Home looks and should be seen doing it. */
+    keepHomeSharp: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    RegisterOpenWindow(LauncherSheets)
+    if (!keepHomeSharp) RegisterOpenWindow(LauncherSheets)
     if (fullScreen) { FullScreenPage(onDismissRequest, content); return }
     // Regular size (inner screen, either orientation): an iPad-style form sheet centered over Home instead of a stretched bottom sheet.
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     if (configuration.fitsRegularHomeLayout()) {
-        FormSheet(onDismissRequest, properties.shouldDismissOnBackPress, formWidth, modifier, content); return
+        FormSheet(onDismissRequest, properties.shouldDismissOnBackPress, formWidth, modifier, content, lightScrim = keepHomeSharp); return
     }
     MaterialTheme(colorScheme = FolioSheetColors, typography = MaterialTheme.typography) {
         androidx.compose.material3.ModalBottomSheet(
             onDismissRequest = onDismissRequest, modifier = modifier, sheetState = sheetState,
             shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
             containerColor = FolioColors.SecondaryBackground.copy(alpha = .97f), contentColor = Color.White,
-            scrimColor = Color.Black.copy(alpha = .35f),
+            scrimColor = Color.Black.copy(alpha = if (keepHomeSharp) .08f else .35f),
             dragHandle = { Box(Modifier.padding(top = FolioSpace.COMPACT.dp, bottom = FolioSpace.SNUG.dp).size(width = 36.dp, height = 5.dp)
                 .background(Color.White.copy(alpha = .3f), RoundedCornerShape(3.dp))) },
             properties = properties, content = {
@@ -283,7 +285,7 @@ private fun PeekCapsule(peek: PeekSlider) {
 
 @Composable
 private fun FormSheet(onDismissRequest: () -> Unit, dismissOnBack: Boolean, width: androidx.compose.ui.unit.Dp, modifier: Modifier,
-    content: @Composable ColumnScope.() -> Unit) {
+    content: @Composable ColumnScope.() -> Unit, lightScrim: Boolean = false) {
     // New motion: a tap outside, Back, or Done (through LocalOverlayExit) drops the sheet back the way it rose.
     val exit = rememberOverlayExit()
     val dismiss = { exit.close(onDismissRequest) }
@@ -296,7 +298,7 @@ private fun FormSheet(onDismissRequest: () -> Unit, dismissOnBack: Boolean, widt
         androidx.compose.runtime.CompositionLocalProvider(LocalOverlayExit provides exit) {
         MaterialTheme(colorScheme = FolioSheetColors, typography = MaterialTheme.typography) {
             Box(Modifier.fillMaxSize().graphicsLayer { alpha = appear.value * fade.value * OverlayExits.alpha(exit.progress.value, fades = true, reduce = exit.reduce) }
-                .background(Color.Black.copy(alpha = .35f))
+                .background(Color.Black.copy(alpha = if (lightScrim) .08f else .35f))
                 .then(dismissScrim(dismiss)))
             FoldAvoidingBox(Modifier.windowInsetsPadding(WindowInsets.safeDrawing).padding(FolioSpace.XXL.dp)) {
                 androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {

@@ -71,7 +71,7 @@ internal fun ModalDialogBackHandler(enabled: Boolean = true, onBack: () -> Unit)
  */
 @Composable
 internal fun HomeEditMenu(anchor: androidx.compose.ui.unit.IntRect?, onDismiss: () -> Unit, onWidgets: () -> Unit, onWallpaper: () -> Unit,
-    onCustomize: () -> Unit, onAddPage: (() -> Unit)?, onRemovePage: (() -> Unit)?) {
+    onLook: () -> Unit, onCustomize: () -> Unit, onAddPage: (() -> Unit)?, onRemovePage: (() -> Unit)?) {
     val density = LocalDensity.current
     val margin = with(density) { 12.dp.roundToPx() }
     val reduceMotion = LocalReduceMotion.current
@@ -108,6 +108,8 @@ internal fun HomeEditMenu(anchor: androidx.compose.ui.unit.IntRect?, onDismiss: 
             .border(FolioGlass.edge, RoundedCornerShape(18.dp)).testTag("home-edit-menu")) {
             fun act(action: () -> Unit) = { onDismiss(); action() }
             Box(Modifier.testTag("empty-space-widgets")) { MenuRow(stringResource(R.string.add_widget_2), Icons.Rounded.Widgets, onClick = act(onWidgets)) }
+            MenuDivider()
+            Box(Modifier.testTag("empty-space-look")) { MenuRow(stringResource(R.string.customize), Icons.Rounded.Palette, onClick = act(onLook)) }
             MenuDivider()
             Box(Modifier.testTag("empty-space-wallpaper")) { MenuRow(stringResource(R.string.wallpaper_appearance_2), Icons.Rounded.Wallpaper, onClick = act(onWallpaper)) }
             // A thicker gap between groups, like iOS menus.
