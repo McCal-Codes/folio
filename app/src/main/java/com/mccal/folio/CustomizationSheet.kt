@@ -604,24 +604,9 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         // iOS Home Screen customization: Default, Dark and Tinted side by side.
                         Text(stringResource(R.string.style), color = androidx.compose.ui.graphics.Color.White.copy(alpha = .6f), fontSize = FolioType.FOOTNOTE.sp, modifier = Modifier.padding(top = FolioSpace.SMALL.dp))
                         IosSegmented(IconStyle.entries.map { it to stringResource(it.label) }, state.iconStyle, { model.setIconStyle(it, state.iconTint) }, Modifier.padding(vertical = FolioSpace.TINY.dp), tag = "icon-style")
-                        if (state.iconStyle == IconStyle.TINTED) Row(Modifier.fillMaxWidth().padding(vertical = FolioSpace.SNUG.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
-                            // Wallpaper color (follows the wallpaper when it changes)
-                            val tone = LocalWallpaperTone.current
-                            Box(Modifier.size(40.dp).clip(androidx.compose.foundation.shape.CircleShape)
-                                .background(wallpaperIconTint(tone)?.let { androidx.compose.ui.graphics.Color(it) } ?: androidx.compose.ui.graphics.Color.Gray)
-                                .then(if (state.iconTintFromWallpaper) Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, androidx.compose.foundation.shape.CircleShape) else Modifier)
-                                .clickable(role = androidx.compose.ui.semantics.Role.RadioButton) { model.setIconTintFromWallpaper(true) }
-                                .description(R.string.wallpaper_color).semantics { selected = state.iconTintFromWallpaper },
-                                contentAlignment = Alignment.Center) {
-                                Icon(Icons.Rounded.Wallpaper, null, tint = androidx.compose.ui.graphics.Color.Black.copy(alpha = .6f), modifier = Modifier.size(18.dp))
-                            }
-                            listOf(FolioColors.Value.Warning, FolioColors.Value.RedSoft, 0xFFFF7EB6, 0xFFBF8CFF, 0xFF64B5FF, 0xFF5EE0C4, 0xFF9BE15D, 0xFFE8E8E8).forEach { c ->
-                                Box(Modifier.size(40.dp).clip(androidx.compose.foundation.shape.CircleShape).background(androidx.compose.ui.graphics.Color(c))
-                                    .then(if (!state.iconTintFromWallpaper && state.iconTint == c) Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, androidx.compose.foundation.shape.CircleShape) else Modifier)
-                                    .clickable(role = androidx.compose.ui.semantics.Role.RadioButton) { model.setIconTintFromWallpaper(false); model.setIconStyle(IconStyle.TINTED, c) }
-                                    .description(R.string.tint_color).semantics { selected = !state.iconTintFromWallpaper && state.iconTint == c })
-                            }
-                        }
+                        if (state.iconStyle == IconStyle.TINTED) IconTintSwatches(state.iconTintFromWallpaper, state.iconTint,
+                            onWallpaper = { model.setIconTintFromWallpaper(true) },
+                            onColor = { model.setIconTintFromWallpaper(false); model.setIconStyle(IconStyle.TINTED, it) })
                         IosMenuRow(stringResource(R.string.icon_pack), listOf<Pair<String?, String>>(null to stringResource(R.string.app_icons)) + packs.map { it.packageName to it.label },
                             state.iconPack, { IconPacks.clear(); model.setIconPack(it) }, tag = "icon-pack")
                         CardNote(stringResource(R.string.icon_packs_and_themes_are_made_by_indepe))
