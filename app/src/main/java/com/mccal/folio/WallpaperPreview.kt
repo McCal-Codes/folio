@@ -178,9 +178,6 @@ internal data class PhotoCrop(val left: Int, val top: Int, val width: Int, val h
 
 private const val MAX_FRAME_ZOOM = 5f
 
-/** How long the blurred picture takes to fade in over the sharp one. */
-private const val BLUR_FADE_MS = 220
-
 /** How far the picture may be moved at this zoom before an edge of it would show inside the screen. */
 internal fun maxPan(container: Float, bitmap: Int, base: Float, zoom: Float) = ((bitmap * base * zoom - container) / 2f).coerceAtLeast(0f)
 
@@ -220,7 +217,7 @@ internal fun PhotoFrameDialog(photo: Bitmap, onCancel: () -> Unit, onSet: (Photo
     val soft by produceState<Bitmap?>(null, photo, blur) { if (blur && value == null) value = withContext(Dispatchers.Default) { photo.blurredSmall() } }
     // Sharp picture first, the blurred one fading in over it: one soft cross-fade, a snap with Reduce Motion.
     val softAlpha by androidx.compose.animation.core.animateFloatAsState(if (blur && soft != null) 1f else 0f,
-        if (reduceMotion) androidx.compose.animation.core.snap() else tween(BLUR_FADE_MS), label = "wallpaper blur")
+        if (reduceMotion) androidx.compose.animation.core.snap() else FolioMotion.spring<Float>(FolioMotion.Firm), label = "wallpaper blur")
     val description = stringResource(R.string.wallpaper_preview)
     Dialog(onDismissRequest = onCancel, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         Box(Modifier.fillMaxSize().background(Color.Black).graphicsLayer { alpha = appear.value }
