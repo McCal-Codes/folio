@@ -8,6 +8,7 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.7.0] - Unreleased
 
 ### Added
+- **Wallpaper changes fade in:** when you set a new wallpaper, the old picture eases into the new one on Home instead of switching at once. Reduce Motion keeps the instant switch. <!-- beta 5 -->
 - **Frame a wallpaper photo:** a photo you pick opens full screen over a drawn Home. Pinch to zoom and drag to move it, then Set keeps exactly what you framed, the way Apple's Add Wallpaper step works. Cancel leaves your wallpaper as it was. <!-- beta 5 -->
 - **New icons for Folio's own packages:** the icons in the Market for Cabinet, Harborline, Roll Call, Palette, Colored Albums, Flipbook, Duet and the four themes are shaded from top to bottom with a soft highlight, and the picture on each is lifted off the tile, so they have some depth in a list. <!-- beta 5 -->
 - **Tweak pages open on a picture:** Cabinet, Colored Albums, Duet, Flipbook, Harborline, Palette and Roll Call each have a still picture at the top of their Market page, in the tweak's own color with its icon drawn large, so a page no longer starts with plain text. Pages in the Folio source also say "color" instead of "colour". <!-- beta 5 -->
