@@ -386,11 +386,16 @@ class LauncherBackgroundController(
         generation++; loading = false; clearPickerPending()
     }
 
-    fun applyPreview() {
+    /** [crop]: the part of the staged photo the person framed (pinch and drag); null keeps the whole picture. */
+    internal fun applyPreview(crop: PhotoCrop? = null) {
         val staged = preview ?: return
         if (!previewPending || pendingOperation() != staged.operation ||
             previewFile()?.absolutePath != staged.file.absolutePath) return
-        caught("Wallpaper: setting the photo") { staged.commit(launcherPhotoFile(activity)) }
+        var framed: Bitmap? = null
+        caught("Wallpaper: setting the photo") {
+            framed = crop?.takeIf { it.fitsIn(staged.bitmap.width, staged.bitmap.height) }?.let { staged.frame(it) }
+            staged.commit(launcherPhotoFile(activity))
+        }
             .onSuccess {
                 releasePreviewGrant(staged.operation)
                 setBackgroundChoice(activity, BackgroundChoice.Photo)
@@ -402,7 +407,7 @@ class LauncherBackgroundController(
                 previewPending = false
                 loading = false
                 revertOnCancel = null
-                LauncherBackgroundCache.changed(staged.bitmap, staged.operation)
+                LauncherBackgroundCache.changed(framed ?: staged.bitmap, staged.operation)
                 photoSelected = true
                 justSet = true
                 errorMessage = null
@@ -644,6 +649,21 @@ class LauncherBackgroundController(
         fun publish(): Bitmap {
             published = true
             return bitmap
+        }
+
+        /** Keeps only the framed part: it replaces the staged file, so the commit that follows saves exactly what was framed. */
+        fun frame(crop: PhotoCrop): Bitmap {
+            val framed = Bitmap.createBitmap(bitmap, crop.left, crop.top, crop.width, crop.height)
+            try {
+                FileOutputStream(file).use { output ->
+                    require(framed.compress(Bitmap.CompressFormat.JPEG, 92, output)) { "The framed photo could not be saved." }
+                    output.fd.sync()
+                }
+            } catch (error: Exception) {
+                if (framed !== bitmap) framed.recycle()
+                throw error
+            }
+            return framed
         }
 
         fun commit(destination: File) {

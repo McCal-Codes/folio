@@ -3,9 +3,11 @@ package com.mccal.folio
 import android.graphics.Bitmap
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,16 +26,23 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -44,12 +53,15 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
 import java.time.format.DateTimeFormatter
 
 /*
@@ -151,6 +163,92 @@ internal fun WallpaperPreviewDialog(artId: String, thumbnail: Bitmap?, sharp: Bi
                 Row(Modifier.fillMaxWidth().padding(top = FolioSpace.LARGE.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
                     PreviewButton(stringResource(R.string.cancel), Color.White.copy(alpha = .22f), Color.White, "wallpaper-preview-cancel", onCancel, Modifier.weight(1f))
                     PreviewButton(stringResource(R.string.set), LocalAccent.current.fill, Color.White, "wallpaper-preview-set", onSet, Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+/** A rectangle of a photo, in its own pixels: what the person framed. */
+internal data class PhotoCrop(val left: Int, val top: Int, val width: Int, val height: Int) {
+    fun fitsIn(bitmapWidth: Int, bitmapHeight: Int) =
+        width > 0 && height > 0 && left >= 0 && top >= 0 && left + width <= bitmapWidth && top + height <= bitmapHeight
+}
+
+private const val MAX_FRAME_ZOOM = 5f
+
+/** How far the picture may be moved at this zoom before an edge of it would show inside the screen. */
+internal fun maxPan(container: Float, bitmap: Int, base: Float, zoom: Float) = ((bitmap * base * zoom - container) / 2f).coerceAtLeast(0f)
+
+/**
+ * The part of a photo showing on screen. The picture is first scaled to just cover the screen, then zoomed ([zoom], at least 1)
+ * and moved ([offsetX], [offsetY] in screen pixels from its centered position), which is what the editor draws.
+ */
+internal fun photoCrop(containerWidth: Float, containerHeight: Float, bitmapWidth: Int, bitmapHeight: Int,
+    zoom: Float, offsetX: Float, offsetY: Float): PhotoCrop {
+    val base = maxOf(containerWidth / bitmapWidth, containerHeight / bitmapHeight)
+    val scale = base * zoom.coerceAtLeast(1f)
+    val visibleWidth = (containerWidth / scale).coerceAtMost(bitmapWidth.toFloat())
+    val visibleHeight = (containerHeight / scale).coerceAtMost(bitmapHeight.toFloat())
+    val centerX = bitmapWidth / 2f - offsetX / scale
+    val centerY = bitmapHeight / 2f - offsetY / scale
+    val left = (centerX - visibleWidth / 2f).coerceIn(0f, bitmapWidth - visibleWidth)
+    val top = (centerY - visibleHeight / 2f).coerceIn(0f, bitmapHeight - visibleHeight)
+    val width = visibleWidth.roundToInt().coerceIn(1, bitmapWidth)
+    val height = visibleHeight.roundToInt().coerceIn(1, bitmapHeight)
+    return PhotoCrop(left.roundToInt().coerceIn(0, bitmapWidth - width), top.roundToInt().coerceIn(0, bitmapHeight - height), width, height)
+}
+
+/**
+ * Apple's Add Wallpaper step for a photo: the picture fills the screen under a drawn Home, pinch to zoom and drag to frame
+ * it, then Set keeps what you framed. Cancel leaves the wallpaper as it was.
+ */
+@Composable
+internal fun PhotoFrameDialog(photo: Bitmap, onCancel: () -> Unit, onSet: (PhotoCrop) -> Unit) {
+    val reduceMotion = LocalReduceMotion.current
+    val appear = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { appear.animateTo(1f, tween(if (reduceMotion) FolioMotion.FADE_MS else PREVIEW_MS)) }
+    var zoom by remember { mutableFloatStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
+    var area by remember { mutableStateOf(IntSize.Zero) }
+    val description = stringResource(R.string.wallpaper_preview)
+    Dialog(onDismissRequest = onCancel, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+        Box(Modifier.fillMaxSize().background(Color.Black).graphicsLayer { alpha = appear.value }
+            .semantics { contentDescription = description }.testTag("wallpaper-frame-dialog")) {
+            val image = remember(photo) { photo.asImageBitmap() }
+            // The whole picture is drawn at its covering size (zoom 1) and moved from the middle, which is what photoCrop reads back.
+            Canvas(Modifier.fillMaxSize().onSizeChanged { area = it }
+                    .pointerInput(photo) {
+                        detectTransformGestures { centroid, pan, gestureZoom, _ ->
+                            val width = area.width.toFloat(); val height = area.height.toFloat()
+                            if (width <= 0f || height <= 0f) return@detectTransformGestures
+                            val base = maxOf(width / photo.width, height / photo.height)
+                            val next = (zoom * gestureZoom).coerceIn(1f, MAX_FRAME_ZOOM)
+                            val ratio = next / zoom
+                            // Zoom about the fingers, not the middle, then follow them.
+                            val about = Offset(centroid.x - width / 2f, centroid.y - height / 2f)
+                            val moved = (offset - about) * ratio + about + pan
+                            val limitX = maxPan(width, photo.width, base, next); val limitY = maxPan(height, photo.height, base, next)
+                            zoom = next
+                            offset = Offset(moved.x.coerceIn(-limitX, limitX), moved.y.coerceIn(-limitY, limitY))
+                        }
+                    }
+            ) {
+                val scale = maxOf(this.size.width / photo.width, this.size.height / photo.height) * zoom
+                val width = photo.width * scale; val height = photo.height * scale
+                drawImage(image, dstOffset = IntOffset(((this.size.width - width) / 2f + offset.x).roundToInt(), ((this.size.height - height) / 2f + offset.y).roundToInt()),
+                    dstSize = IntSize(width.roundToInt(), height.roundToInt()), filterQuality = FilterQuality.Medium)
+            }
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = .25f), Color.Transparent, Color.Black.copy(alpha = .6f)))))
+            Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars).padding(horizontal = FolioSpace.XXL.dp, vertical = FolioSpace.LARGE.dp),
+                horizontalAlignment = Alignment.CenterHorizontally) {
+                DrawnHome(Modifier.weight(1f))
+                Text(stringResource(R.string.wallpaper_frame_hint), color = Color.White.copy(alpha = .85f), fontSize = FolioType.FOOTNOTE.sp, textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = FolioSpace.MEDIUM.dp))
+                Row(Modifier.fillMaxWidth().padding(top = FolioSpace.LARGE.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
+                    PreviewButton(stringResource(R.string.cancel), Color.White.copy(alpha = .22f), Color.White, "wallpaper-frame-cancel", onCancel, Modifier.weight(1f))
+                    PreviewButton(stringResource(R.string.set), LocalAccent.current.fill, Color.White, "wallpaper-frame-set",
+                        { onSet(photoCrop(area.width.toFloat(), area.height.toFloat(), photo.width, photo.height, zoom, offset.x, offset.y)) }, Modifier.weight(1f))
                 }
             }
         }

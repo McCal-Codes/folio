@@ -371,6 +371,10 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     backgrounds.pendingArt?.takeIf { FeatureGate.WALLPAPER_PREVIEW.isOpen(wallpaperContext) }?.let { art ->
                         WallpaperPreviewDialog(art.id, backgrounds.pendingArtBitmap, backgrounds.pendingArtPreviewBitmap, backgrounds::cancelPendingArt, backgrounds::setPendingArt)
                     }
+                    // A photo opens the same way, with pinch and drag to frame it; Set keeps what is framed (Apple's Add Wallpaper step).
+                    backgrounds.previewBitmap?.takeIf { backgrounds.previewPending && !state.systemWallpaper && FeatureGate.WALLPAPER_PREVIEW.isOpen(wallpaperContext) }?.let { photo ->
+                        PhotoFrameDialog(photo, backgrounds::cancelPreview) { crop -> backgrounds.applyPreview(crop) }
+                    }
                     if (!state.systemWallpaper) {
                         MiniHomePreview(candidate, state, 228.dp)
                         if (staging) SheetGroup {
