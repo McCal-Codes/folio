@@ -5,6 +5,12 @@ Folio is in development), and this file follows [Keep a Changelog](https://keepa
 `versionCode` is derived from the version name ((MAJOR × 10000 + MINOR × 100 + PATCH) × 10 + HOTFIX), so every release sorts correctly and a fix on top of one has nine numbers of its own.
 Folio shows the newest section on the phone after an update, and every version under Settings › What's New › Version History.
 
+## [0.6.9.2] - 2026-11-17
+
+### Fixed
+- **Crash when the phone folds or unfolds with a panel open:** Notification Center or Control Center could close Folio with "Padding must be non-negative" while the phone folded or unfolded. The spring that moves a panel off the hinge dipped a hair below zero on its way back to the window's edge, and a padding cannot be negative. It is now held at zero.
+- **Focus on Samsung phones with Android 15:** turning a Focus on, or a schedule or charging doing it, could close Folio on a phone whose Android 15 lacks the newer Do Not Disturb rules. Folio now falls back to the older rule there, and a Do Not Disturb failure can no longer take Home down with it.
+
 ## [0.6.9.1] - 2026-11-10
 
 ### Fixed
