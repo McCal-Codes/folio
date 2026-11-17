@@ -1605,6 +1605,8 @@
     <!-- Shown when opening a Folio theme file. -->
     <string name="label_theme_import">Folio 테마</string>
     <string name="label_wallpaper_import">Folio 배경화면</string>
+    <string name="wallpaper_blur">흐림 효과</string>
+    <string name="wallpaper_photo_menu">배경화면 사진</string>
     <string name="wallpaper_frame_hint">확대하려면 손가락을 모으고, 움직이려면 드래그하세요</string>
     <!-- Shown when opening a supporter code link. -->
     <string name="label_redeem">Folio 후원자 코드</string>
@@ -1687,6 +1689,7 @@
     <string name="app_options">앱 옵션</string>
     <string name="show_app_panel">앱 패널 보기</string>
     <string name="app_panel">앱 패널</string>
+    <string name="remove_folder_from_home">홈 화면에서 %1$s 폴더 제거</string>
     <string name="remove_from_home_2">홈 화면에서 %1$s 제거</string>
     <string name="android_notifications">Android 알림</string>
     <string name="clear_all">모두 지우기</string>

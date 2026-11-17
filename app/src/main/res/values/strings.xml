@@ -1643,6 +1643,8 @@
     <!-- Shown when opening a Folio theme file. -->
     <string name="label_theme_import">Folio Theme</string>
     <string name="label_wallpaper_import">Folio Wallpaper</string>
+    <string name="wallpaper_blur">Blur</string>
+    <string name="wallpaper_photo_menu">Wallpaper Photo</string>
     <string name="wallpaper_frame_hint">Pinch to zoom, drag to move</string>
     <!-- Shown when opening a supporter code link. -->
     <string name="label_redeem">Folio supporter code</string>
@@ -1725,6 +1727,7 @@
     <string name="app_options">App options</string>
     <string name="show_app_panel">Show App Panel</string>
     <string name="app_panel">App Panel</string>
+    <string name="remove_folder_from_home">Remove folder %1$s from Home</string>
     <string name="remove_from_home_2">Remove %1$s from Home</string>
     <string name="android_notifications">Android notifications</string>
     <string name="clear_all">Clear all</string>

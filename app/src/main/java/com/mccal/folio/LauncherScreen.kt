@@ -174,6 +174,7 @@ fun LauncherScreen(
     // Held back for the beta until 0.6.9 (FeatureGate): the new ways to shape a folder, and the Big Clock's own menu rows.
     val homeView = androidx.compose.ui.platform.LocalView.current
     val folderEditing = rememberGateOpen(FeatureGate.FOLDER_EDITING)
+    val wallpaperFraming = rememberGateOpen(FeatureGate.WALLPAPER_PREVIEW)
     val newFolderTitle = stringResource(R.string.new_folder_name) // in the phone's language, not always English
     val clockCustomize = rememberGateOpen(FeatureGate.CLOCK_CUSTOMIZE)
     val overlays = rememberHomeOverlays()
@@ -754,6 +755,7 @@ fun LauncherScreen(
         val palette = if (LocalSolidGlass.current) tinted.copy(glass = tintedGlass(
             if (homeInk.dark) FolioColors.LightBackground else FolioColors.SecondaryBackground, tone.primary, tintAmount * .5f)) else tinted
         val homeApps = remember(state.apps, state.hiddenApps) { HomeApps(state.apps.filter { it.id !in state.hiddenApps && it.available }) { onLaunchFrom(it, null) } }
+        val removedIcons = remember { RemovedIcons() }
         val bigClockStyles = remember(state.bigClockStyles) { BigClockStyles(state.bigClockStyles, model::setBigClockStyle) }
         // iOS "dark appearance dims wallpaper" and its legibility gradient over the background. They are worked out here, above
         // everything that draws on the wallpaper, so the Big Clock can measure its picture as it really looks (LocalHomeDarkening).
@@ -766,6 +768,7 @@ fun LauncherScreen(
             LocalHomeInk provides homeInk, LocalDuoPalette provides palette,
             // Remembered so every icon isn't recomposed each time Home recomposes (a new lambda changes the local).
             LocalStackedApps provides state.iconStacks.keys,
+            LocalRemovedIcons provides removedIcons,
             // Icon Actions: an icon's saved swipes and double tap, while the gate is open, Home is not being edited and Safe Mode is off
             // (in Safe Mode icons keep their normal gestures, rather than a swipe being taken and then refused).
             LocalIconActions provides remember(state.iconActions, homeEdit.active, haptic, launcherActivity) {
@@ -796,6 +799,8 @@ fun LauncherScreen(
             if (scrim.draws) Box(Modifier.fillMaxSize().homeScrim(scrim))
         }
         if (dim > 0f) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = dim)))
+        // Behind the grid: a removed icon's copy plays out in the cell that was just emptied.
+        RemovedIconsHost(removedIcons)
         // Home never moves for the keyboard: including IME insets here re-measured the whole grid on every
         // frame of the keyboard animation (Spotlight/search jank). Sheets that need it use imePadding themselves.
         var homeBoxTop by remember { mutableFloatStateOf(0f) }
@@ -2180,6 +2185,11 @@ fun LauncherScreen(
         appsById[overlays.rename]?.let { app ->
             RenameAppAlert(app, onDismiss = { overlays.rename = null }, onRename = { model.renameApp(app.id, it); overlays.rename = null })
         }
+        // A photo chosen for the wallpaper (picked on the Wallpaper page, shared to Folio, or from the Edit menu) opens full screen here to
+        // frame and blur, so Set and Cancel both land on Home. With the gate closed the Wallpaper page's own preview rows do it.
+        launcherActivity.backgrounds.previewBitmap?.takeIf { launcherActivity.backgrounds.previewPending && !state.systemWallpaper && wallpaperFraming }?.let { photo ->
+            PhotoFrameDialog(photo, launcherActivity.backgrounds::cancelPreview) { crop, blur -> launcherActivity.backgrounds.applyPreview(crop, blur) }
+        }
         if (customizeHome) CustomizeHomeSheet(sample = state.apps.firstOrNull(), style = state.iconStyle, tint = state.iconTint,
             tintFromWallpaper = state.iconTintFromWallpaper, onStyle = { model.setIconStyle(it, state.iconTint) },
             onTintFromWallpaper = { model.setIconTintFromWallpaper(true) },
@@ -2191,6 +2201,7 @@ fun LauncherScreen(
                     picker.targetIndex = index; picker.exactTarget = true; picker.slot = model.nextWidgetSlot(); picker.packageName = null; picker.profileSerial = null
                     sheet = "widgets"
                 }, onWallpaper = { sheet = "settings:wallpaper" },
+                onPhoto = { if (wallpaperFraming) launcherActivity.chooseWallpaperPhoto() else sheet = "settings:wallpaper" },
                 onLook = { customizeHome = true },
                 onCustomize = { sheet = "settings" },
                 onAddPage = { val page = model.addPage(); if (page >= 0) scope.launch { pager.animateScrollToPage(page) } },

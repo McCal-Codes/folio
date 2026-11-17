@@ -479,8 +479,8 @@ fun homeOffer(layout: HomeLayout, id: String): HomeOffer {
 
 /** Remove only the shortcut/placement, never the installed app or widget binding. */
 fun removePlacement(layout: HomeLayout, source: DropTarget): HomeLayout = when (source) {
-    is DropTarget.Home -> if (layout.slotAt(source.index)?.let(::isFolderId) == true) layout
-        else layout.withSlot(source.index, null)
+    is DropTarget.Home -> layout.slotAt(source.index)?.takeIf(::isFolderId)?.let { removeFolder(layout, it) }
+        ?: layout.withSlot(source.index, null)
     is DropTarget.Dock -> layout.copy(dock = layout.dock.mapIndexed { i, id -> if (i == source.index) null else id })
     is DropTarget.Widget -> layout.copy(widgetPlacements = layout.widgetPlacements.filterNot { it.slot == source.index },
         widgetRestores = layout.widgetRestores.filterNot { it.slot == source.index })

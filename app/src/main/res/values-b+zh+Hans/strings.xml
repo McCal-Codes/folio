@@ -1589,6 +1589,8 @@
     <string name="label_island_listener">Folio 灵动岛</string>
     <string name="label_theme_import">Folio 主题</string>
     <string name="label_wallpaper_import">Folio 壁纸</string>
+    <string name="wallpaper_blur">模糊</string>
+    <string name="wallpaper_photo_menu">壁纸照片</string>
     <string name="wallpaper_frame_hint">双指缩放，拖动调整位置</string>
     <string name="label_redeem">Folio 支持者代码</string>
     <string name="label_settings_shortcut">Folio 设置</string>
@@ -1667,6 +1669,7 @@
     <string name="app_options">App 选项</string>
     <string name="show_app_panel">显示 App 面板</string>
     <string name="app_panel">App 面板</string>
+    <string name="remove_folder_from_home">从主屏幕移除文件夹 %1$s</string>
     <string name="remove_from_home_2">从主屏幕移除 %1$s</string>
     <string name="android_notifications">Android 通知</string>
     <string name="clear_all">全部清除</string>
