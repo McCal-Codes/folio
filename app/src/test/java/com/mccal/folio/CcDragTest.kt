@@ -90,30 +90,24 @@ class CcDragTest {
         assertEquals(ccDrop(slots, "a", landed.col, landed.row, cols, rows), preview.slots)
     }
 
-    @Test fun `the page does not scroll with the finger in the middle`() {
-        assertEquals(0f, ccAutoScrollStep(500f, 100f, 900f, 80f, 14f), 0f)
+    @Test fun `a finger in the middle of the page is at neither edge`() {
+        assertEquals(0, ccEdgeZone(500f, 100f, 900f, 40f))
     }
 
-    @Test fun `near the top it scrolls up and near the bottom down, faster the deeper the finger is`() {
-        val shallow = ccAutoScrollStep(150f, 100f, 900f, 80f, 14f)
-        val deep = ccAutoScrollStep(110f, 100f, 900f, 80f, 14f)
-        assertTrue(shallow < 0f && deep < shallow)
-        val low = ccAutoScrollStep(840f, 100f, 900f, 80f, 14f)
-        val lower = ccAutoScrollStep(890f, 100f, 900f, 80f, 14f)
-        assertTrue(low > 0f && lower > low)
+    @Test fun `near the top is the next page and near the bottom the page before`() {
+        assertEquals(1, ccEdgeZone(120f, 100f, 900f, 40f))
+        assertEquals(-1, ccEdgeZone(880f, 100f, 900f, 40f))
     }
 
-    @Test fun `past the edge of the page it scrolls at full speed and never faster`() {
-        assertEquals(-14f, ccAutoScrollStep(-300f, 100f, 900f, 80f, 14f), 0f)
-        assertEquals(14f, ccAutoScrollStep(2000f, 100f, 900f, 80f, 14f), 0f)
-        assertEquals(-14f, ccAutoScrollStep(100f, 100f, 900f, 80f, 14f), 0f)
+    @Test fun `past the edge of the page counts as the edge`() {
+        assertEquals(1, ccEdgeZone(-300f, 100f, 900f, 40f))
+        assertEquals(-1, ccEdgeZone(2000f, 100f, 900f, 40f))
     }
 
-    @Test fun `a page too short for two edges still has a quiet middle and no bad input scrolls`() {
-        assertEquals(0f, ccAutoScrollStep(150f, 100f, 200f, 80f, 14f), 0f)
-        assertEquals(0f, ccAutoScrollStep(150f, 200f, 100f, 80f, 14f), 0f)
-        assertEquals(0f, ccAutoScrollStep(150f, 100f, 900f, 0f, 14f), 0f)
-        assertEquals(0f, ccAutoScrollStep(150f, 100f, 900f, 80f, 0f), 0f)
+    @Test fun `a page too short for two edges has a quiet middle and bad input has no edge`() {
+        assertEquals(0, ccEdgeZone(150f, 100f, 200f, 80f))
+        assertEquals(0, ccEdgeZone(150f, 200f, 100f, 40f))
+        assertEquals(0, ccEdgeZone(150f, 100f, 900f, 0f))
     }
 
     private fun state(vararg controls: String) = CcEditState(controls.toList(), null)

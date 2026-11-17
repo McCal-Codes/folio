@@ -2705,6 +2705,10 @@
     <string name="cc_remove">Remove</string>
     <string name="cc_moved_to">%1$s moved to row %2$d, column %3$d</string>
     <string name="cc_cant_move">%1$s can\'t go there</string>
+    <string name="cc_move_next_page">Move to next page</string>
+    <string name="cc_move_prev_page">Move to previous page</string>
+    <string name="cc_moved_to_page">%1$s moved to page %2$d</string>
+    <string name="cc_page_full">Page %1$d has no room for %2$s</string>
     <string name="cc_resized">%1$s is now %2$d by %3$d</string>
     <string name="cc_tile_place">Row %1$d, column %2$d, %3$d by %4$d</string>
     <string name="cc_removed_undo">%1$s removed. Undo is at the top.</string>

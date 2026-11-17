@@ -7,13 +7,11 @@ import androidx.compose.animation.core.animateIntOffsetAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.positionChangeIgnoreConsumed
 import androidx.compose.foundation.layout.Box
@@ -120,9 +118,9 @@ internal fun ccNextSize(slots: List<CcSlot>, id: String, cols: Int, rows: Int): 
         .firstOrNull { it != (slot.w to slot.h) && ccFits(slots, slot.copy(w = it.first, h = it.second), cols, rows) }
 }
 
-/** How close to the top or bottom of the page, in dp, a held control starts scrolling it, and the most it scrolls a frame. */
-private const val CC_SCROLL_EDGE_DP = 56
-private const val CC_SCROLL_STEP_DP = 14
+/** How close to the top or bottom of the page, in dp, a held control counts as at its edge, and how long it must stay there to be carried to the next page. */
+private const val CC_CARRY_EDGE_DP = 36
+private const val CC_CARRY_DWELL_NS = 350_000_000L
 
 /** How much a lifted control grows (5%); the drag adds it back, since the pointer measures inside the grown control. */
 private const val CC_LIFT_GROW = .05f
@@ -134,7 +132,8 @@ private val CcTileCorner = RoundedCornerShape(26.dp)
  * Control Center's Controls page as places on a grid (FeatureGate.CC_EDITOR): each of [slots] is drawn at its place and size by [content].
  * While [editing], a press and hold lifts a control (it grows a little, with a shadow and a haptic tap) and it follows the finger. The place it
  * would take is outlined, and a neighbor that would trade places slides into the one it leaves, so letting go is never a surprise; a drop that
- * cannot work, or one off the grid, returns the control home. Held near the top or bottom of a page that scrolls, the page scrolls. A corner
+ * cannot work, or one off the grid, returns the control home. Held at the top or bottom edge of its page for a moment, the control is carried to
+ * the next page (or the one before) when there is room for it ([carryNext], [carryBack]; the pages never scroll, PNL-1). A corner
  * handle resizes (the controls it would push aside move away as it is dragged), and a minus takes a control that can be taken off ([removable]).
  * Every change is handed to [onChange] as a whole new list that [ccDrop] and [ccResize] have already checked. The corner handle is a small
  * 32 dp target so it never covers the middle of a one-cell tile, where a press and hold has to reach the drag. Nothing here draws a control itself.
@@ -143,14 +142,15 @@ private val CcTileCorner = RoundedCornerShape(26.dp)
  * Under Reduce Motion nothing moves but the control being dragged: neighbors, the settle and the lift all snap.
  *
  * TalkBack gets the same editing as actions (move, change size, remove) and each control says where it is, since a drag cannot be made without sight.
- * A page that scrolls hands over its [scroll] state and [viewport] (the page's own box) for the scroll at the edges.
+ * The page hands over its [viewport] (its own box) so the edges can be found.
  */
 @Composable
 internal fun CcSlotGrid(
     slots: List<CcSlot>, cols: Int, rows: Int, cell: Dp, gap: Dp, editing: Boolean, raised: String?,
     removable: (String) -> Boolean, labelOf: @Composable (String) -> String,
     onChange: (List<CcSlot>) -> Unit, onRemove: (String) -> Unit,
-    onEnterEdit: () -> Unit = {}, scroll: ScrollState? = null, viewport: () -> LayoutCoordinates? = { null },
+    onEnterEdit: () -> Unit = {}, viewport: () -> LayoutCoordinates? = { null },
+    carryNext: ((String) -> Boolean)? = null, carryBack: ((String) -> Boolean)? = null,
     content: @Composable BoxScope.(CcSlot) -> Unit,
 ) {
     val density = LocalDensity.current
@@ -172,6 +172,8 @@ internal fun CcSlotGrid(
     var resize by remember { mutableStateOf(Offset.Zero) }
     // A change just handed to onChange, shown until the saved layout catches up, so nothing flashes back to the old places for a frame.
     var pending by remember { mutableStateOf<List<CcSlot>?>(null) }
+    // Which edge the held control is at with a page to carry it to (1 the top, -1 the bottom, 0 none): a still cue says it will be carried.
+    var edgeCue by remember { mutableStateOf(0) }
     // The control that is settling into its new place, and how far it still is from it (the layout moves it at once, this carries it there).
     var landing by remember { mutableStateOf<String?>(null) }
     val settle = remember { Animatable(Offset.Zero, Offset.VectorConverter) }
@@ -186,8 +188,9 @@ internal fun CcSlotGrid(
     val latestCols by rememberUpdatedState(cols)
     val latestStep by rememberUpdatedState(stepPx)
     val latestReduce by rememberUpdatedState(reduceMotion)
-    val latestScroll by rememberUpdatedState(scroll)
     val latestViewport by rememberUpdatedState(viewport)
+    val latestCarryNext by rememberUpdatedState(carryNext)
+    val latestCarryBack by rememberUpdatedState(carryBack)
     fun span(n: Int): Dp = cell * n + gap * (n - 1)
 
     // What letting go would do, from where the finger has taken the lifted control (read only when it changes, not on every pixel).
@@ -237,23 +240,33 @@ internal fun CcSlotGrid(
         else { if (lastKey != null && lastKey != landingKey) haptic.perform(FolioHaptic.Step); lastKey = landingKey }
     }
 
-    // Held near the top or bottom of a page that scrolls, the page scrolls and the control stays under the finger.
+    // Held at the top or bottom edge of the page for a moment, the control is carried to the next page (above) or the one before (below), where the
+    // finger can put it down; a page with no room for it, or no such page, does nothing. The pages never scroll.
     LaunchedEffect(dragging != null) {
-        if (dragging == null) return@LaunchedEffect
-        val edge = with(density) { CC_SCROLL_EDGE_DP.dp.toPx() }
-        val most = with(density) { CC_SCROLL_STEP_DP.dp.toPx() }
+        if (dragging == null) { edgeCue = 0; return@LaunchedEffect }
+        val edge = with(density) { CC_CARRY_EDGE_DP.dp.toPx() }
+        var zone = 0
+        var since = 0L
+        var spent = false
         while (true) {
-            withFrameNanos { }
+            val now = withFrameNanos { it }
             val id = dragging ?: break
-            val state = latestScroll ?: continue
             val page = latestViewport() ?: continue
             val grid = gridCoords ?: continue
             if (!page.isAttached || !grid.isAttached) continue
             val origin = latestBase.firstOrNull { it.id == id } ?: break
             val top = page.positionInWindow().y
             val finger = grid.positionInWindow().y + origin.row * latestStep + drag.y + grab.y
-            val by = ccAutoScrollStep(finger, top, top + page.size.height, edge, most)
-            if (by != 0f) { val used = state.scrollBy(by); if (used != 0f) drag += Offset(0f, used) }
+            // Not before the finger has moved: a control lifted near an edge is not carried by being lifted.
+            val at = if (drag == Offset.Zero) 0 else ccEdgeZone(finger, top, top + page.size.height, edge)
+            val target = if (at > 0) latestCarryNext else if (at < 0) latestCarryBack else null
+            val now0 = if (target == null) 0 else at
+            if (now0 != zone) { zone = now0; since = now; spent = false; edgeCue = now0; if (now0 != 0) haptic.perform(FolioHaptic.Step) }
+            else if (zone != 0 && !spent && now - since >= CC_CARRY_DWELL_NS) {
+                spent = true
+                if (target?.invoke(id) == true) { haptic.perform(FolioHaptic.Commit); dragging = null; drag = Offset.Zero; edgeCue = 0; break }
+                haptic.perform(FolioHaptic.Refuse)
+            }
         }
     }
 
@@ -262,6 +275,8 @@ internal fun CcSlotGrid(
     val up = stringResource(R.string.cc_move_up)
     val down = stringResource(R.string.cc_move_down)
     val bigger = stringResource(R.string.cc_change_size)
+    val nextPage = stringResource(R.string.cc_move_next_page)
+    val backPage = stringResource(R.string.cc_move_prev_page)
     val removeLabel = stringResource(R.string.cc_remove)
 
     fun endDrag(id: String, commit: Boolean) {
@@ -287,6 +302,14 @@ internal fun CcSlotGrid(
         if (!editing) Box(Modifier.matchParentSize().pointerInput(Unit) {
             detectTapGestures(onLongPress = { haptic.perform(FolioHaptic.PickedUp); latestEnter() })
         })
+        // The page to go to, shown while the held control rests at an edge: a small still pill with an arrow (never animated, so nothing flashes).
+        if (edgeCue != 0 && dragging != null) Canvas(Modifier.align(if (edgeCue > 0) Alignment.TopCenter else Alignment.BottomCenter).zIndex(2f).size(56.dp, 22.dp)) {
+            drawRoundRect(Color.White.copy(alpha = .35f), cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2))
+            val mid = size.width / 2; val y = size.height / 2; val arm = 6.dp.toPx(); val rise = 3.5.dp.toPx() * (if (edgeCue > 0) -1f else 1f)
+            val stroke = 2.5.dp.toPx()
+            drawLine(Color.White, Offset(mid - arm, y - rise), Offset(mid, y + rise), stroke, StrokeCap.Round)
+            drawLine(Color.White, Offset(mid + arm, y - rise), Offset(mid, y + rise), stroke, StrokeCap.Round)
+        }
         // The free places, as faint circles, so it is plain where a control can be dropped (as iOS).
         if (editing) ccFreeCells(layout, cols, rows).forEach { (c, r) ->
             Box(Modifier.offset(step * c, step * r).size(cell).padding(cell * .08f).clip(CircleShape).background(Color.White.copy(alpha = .07f)))
@@ -337,6 +360,8 @@ internal fun CcSlotGrid(
                                         next != latestBase
                                     })
                                     move("$left, $name", -1, 0); move("$right, $name", 1, 0); move("$up, $name", 0, -1); move("$down, $name", 0, 1)
+                                    carryNext?.let { go -> add(CustomAccessibilityAction("$nextPage, $name") { go(id) }) }
+                                    carryBack?.let { go -> add(CustomAccessibilityAction("$backPage, $name") { go(id) }) }
                                     if (ccAllowedSizes(id, cols).size > 1) add(CustomAccessibilityAction("$bigger, $name") {
                                         val next = ccNextSize(latestBase, id, latestCols, latestRows)
                                         if (next != null) {

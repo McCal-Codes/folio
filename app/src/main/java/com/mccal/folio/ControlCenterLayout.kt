@@ -145,6 +145,55 @@ internal fun ccAdd(slots: List<CcSlot>, id: String, cols: Int, rows: Int): List<
     return null
 }
 
+/**
+ * The first row of each page of the editor, for a window that holds [rowsPerPage] rows (PNL-1: what does not fit goes to another page, never into
+ * a scroll). [totalRows] is how many rows the page set must cover at least (the editor adds one empty row to drop into). A page ends at the
+ * last row boundary within [rowsPerPage] that no control stands across, so a tall control is never cut in two; a page that begins in an empty
+ * stretch jumps to the next control. With nowhere clean to break, the page is cut at [rowsPerPage] anyway.
+ */
+internal fun ccPageStarts(slots: List<CcSlot>, rowsPerPage: Int, totalRows: Int): List<Int> {
+    val per = rowsPerPage.coerceAtLeast(1)
+    val total = maxOf(totalRows, ccRowsUsed(slots), 1)
+    val starts = mutableListOf(0)
+    var start = 0
+    while (true) {
+        var end = start + per
+        if (end >= total) break
+        while (end > start + 1 && slots.any { it.row < end && it.bottom > end }) end--
+        if (slots.any { it.row < end && it.bottom > end }) end = start + per
+        start = slots.filter { it.row >= end }.minOfOrNull { it.row } ?: end
+        if (start >= total) break
+        starts += start
+    }
+    return starts
+}
+
+/** The controls standing on the page of rows [start] until [end], moved up so the page begins at row 0 (what the page's grid draws). */
+internal fun ccPageSlots(slots: List<CcSlot>, start: Int, end: Int): List<CcSlot> =
+    slots.filter { it.row >= start && it.row < end }.map { it.copy(row = it.row - start) }
+
+/** The whole layout with the page of rows [start] until [end] replaced by [page] (given as [ccPageSlots] gives it, from row 0). */
+internal fun ccMergePage(slots: List<CcSlot>, start: Int, end: Int, page: List<CcSlot>): List<CcSlot> {
+    val order = slots.map { it.id }
+    val rest = slots.filter { !(it.row >= start && it.row < end) }
+    val merged = rest + page.map { it.copy(row = it.row + start) }
+    return merged.sortedBy { order.indexOf(it.id).let { i -> if (i < 0) Int.MAX_VALUE else i } }
+}
+
+/**
+ * [id] taken onto the page of rows [from] until [to]: its first free place there, reading from the top, or from the bottom when [fromBottom]
+ * (a control moved to the page before lands at its end). Null when the page has no room for it.
+ */
+internal fun ccCarry(slots: List<CcSlot>, id: String, cols: Int, from: Int, to: Int, fromBottom: Boolean): List<CcSlot>? {
+    val slot = slots.firstOrNull { it.id == id } ?: return null
+    val rowsToTry = if (fromBottom) (to - slot.h downTo from) else (from..(to - slot.h))
+    for (row in rowsToTry) for (col in 0..(cols - slot.w)) {
+        val moved = slot.copy(col = col, row = row)
+        if (ccFits(slots, moved, cols, to)) return slots.map { if (it.id == id) moved else it }
+    }
+    return null
+}
+
 /** The free single cells of a grid [cols] by [rows], which the editor draws as faint circles. */
 internal fun ccFreeCells(slots: List<CcSlot>, cols: Int, rows: Int): List<Pair<Int, Int>> =
     (0 until rows).flatMap { r -> (0 until cols).map { c -> c to r } }

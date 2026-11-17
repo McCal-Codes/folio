@@ -2661,6 +2661,10 @@
     <string name="cc_remove">제거</string>
     <string name="cc_moved_to">%1$s을(를) %2$d행 %3$d열로 이동했습니다</string>
     <string name="cc_cant_move">%1$s은(는) 그곳으로 갈 수 없습니다</string>
+    <string name="cc_move_next_page">다음 페이지로 이동</string>
+    <string name="cc_move_prev_page">이전 페이지로 이동</string>
+    <string name="cc_moved_to_page">%1$s을(를) %2$d페이지로 이동했습니다</string>
+    <string name="cc_page_full">%1$d페이지에는 %2$s을(를) 둘 자리가 없습니다</string>
     <string name="cc_resized">%1$s 크기가 이제 %2$d × %3$d입니다</string>
     <string name="cc_tile_place">%1$d행 %2$d열, %3$d × %4$d</string>
     <string name="cc_removed_undo">%1$s을(를) 제거했습니다. 위쪽에 실행 취소가 있습니다.</string>

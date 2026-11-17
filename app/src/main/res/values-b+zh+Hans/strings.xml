@@ -2639,6 +2639,10 @@
     <string name="cc_remove">移除</string>
     <string name="cc_moved_to">%1$s已移到第%2$d行第%3$d列</string>
     <string name="cc_cant_move">%1$s无法移到那里</string>
+    <string name="cc_move_next_page">移到下一页</string>
+    <string name="cc_move_prev_page">移到上一页</string>
+    <string name="cc_moved_to_page">%1$s已移到第%2$d页</string>
+    <string name="cc_page_full">第%1$d页没有放%2$s的空间</string>
     <string name="cc_resized">%1$s现在为%2$d×%3$d</string>
     <string name="cc_tile_place">第%1$d行第%2$d列，%3$d×%4$d</string>
     <string name="cc_removed_undo">已移除%1$s。顶部有“撤销”。</string>

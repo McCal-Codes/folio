@@ -2,9 +2,7 @@ package com.mccal.folio
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -44,28 +42,59 @@ class CcSlotGridDragTest {
 
     private fun one(id: String, col: Int, row: Int) = CcSlot(id, col, row, 1, 1)
 
-    private var scrollState: androidx.compose.foundation.ScrollState? = null
-
     /** Replaces the layout from outside the grid, as Undo does. */
     private var setSlots: ((List<CcSlot>) -> Unit)? = null
 
-    /** The grid alone, or (with [scrolls]) in a 380 dp page that scrolls, as Control Center's Controls page does when its rows do not fit. */
-    private fun host(initial: List<CcSlot>, reduceMotion: Boolean = false, scrolls: Boolean = false, rows: Int = 4) {
+    /** The grid alone. */
+    private fun host(initial: List<CcSlot>, reduceMotion: Boolean = false, rows: Int = 4) {
         compose.setContent {
             var slots by remember { mutableStateOf(initial) }
             setSlots = { slots = it }
-            var viewport by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
-            val pageScroll = androidx.compose.foundation.rememberScrollState().also { scrollState = it }
             CompositionLocalProvider(LocalReduceMotion provides reduceMotion) {
-                Box(
-                    (if (scrolls) Modifier.height(380.dp).onGloballyPositioned { viewport = it }.verticalScroll(pageScroll) else Modifier.fillMaxSize())
-                        .padding(16.dp),
-                ) {
+                Box(Modifier.fillMaxSize().padding(16.dp)) {
                     CcSlotGrid(
                         slots, cols = 4, rows = rows, cell = cell, gap = gap, editing = true, raised = null,
                         removable = { true }, labelOf = { it },
                         onChange = { changes += it; slots = it }, onRemove = { id -> slots = slots.filter { it.id != id } },
-                        scroll = if (scrolls) pageScroll else null, viewport = { viewport },
+                    ) { slot -> Box(Modifier.fillMaxSize().testTag("tile-${slot.id}")) }
+                }
+            }
+        }
+        compose.waitForIdle()
+    }
+
+    /** The page being shown by [pagedHost]. */
+    private var pageShown = 0
+
+    /**
+     * The grid as Control Center's editor shows it when the window holds [perPage] rows: one page at a time, the layout in whole-grid rows (so
+     * what is seen is `changes.last()`), and a control held at a page's edge carried to the next page or the one before.
+     */
+    private fun pagedHost(initial: List<CcSlot>, perPage: Int = 3, startPage: Int = 0) {
+        compose.setContent {
+            var slots by remember { mutableStateOf(initial) }
+            var page by remember { mutableStateOf(startPage) }
+            pageShown = page
+            var viewport by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
+            val starts = ccPageStarts(slots, perPage, perPage * 2)
+            fun endOf(i: Int) = starts.getOrNull(i + 1) ?: (starts[i] + perPage)
+            val start = starts[page]
+            val end = endOf(page)
+            fun carry(id: String, to: Int, fromBottom: Boolean): Boolean {
+                val next = ccCarry(slots, id, 4, starts[to], endOf(to), fromBottom) ?: return false
+                changes += next; slots = next; page = to
+                return true
+            }
+            CompositionLocalProvider(LocalReduceMotion provides false) {
+                Box(Modifier.padding(16.dp).onGloballyPositioned { viewport = it }) {
+                    CcSlotGrid(
+                        ccPageSlots(slots, start, end), cols = 4, rows = end - start, cell = cell, gap = gap, editing = true, raised = null,
+                        removable = { true }, labelOf = { it },
+                        onChange = { next -> val merged = ccMergePage(slots, start, end, next); changes += merged; slots = merged },
+                        onRemove = { id -> slots = slots.filter { it.id != id } },
+                        viewport = { viewport },
+                        carryNext = if (page < starts.lastIndex) { id -> carry(id, page + 1, false) } else null,
+                        carryBack = if (page > 0) { id -> carry(id, page - 1, true) } else null,
                     ) { slot -> Box(Modifier.fillMaxSize().testTag("tile-${slot.id}")) }
                 }
             }
@@ -81,7 +110,7 @@ class CcSlotGridDragTest {
     /** Injected touches reach the UI thread a moment after the call returns and the test clock does not wait for them; this queues behind them. */
     private fun delivered() = compose.runOnUiThread { }
 
-    // While a control is held the page runs a frame loop (for the scroll at its edges), so Compose is never "idle" and waiting for it would
+    // While a control is held the page runs a frame loop (for the carry at its edges), so Compose is never "idle" and waiting for it would
     // never end: the clock is driven by hand from the moment the finger goes down until it comes up.
     private fun hold(id: String) {
         held = id
@@ -250,18 +279,52 @@ class CcSlotGridDragTest {
         assertEquals(resources.getString(R.string.cc_tile_place, 2, 3, 1, 1), said)
     }
 
-    @Test fun heldNearTheBottomOfAPageThatScrollsScrollsItAndTheControlStaysUnderTheFinger() {
-        host(listOf(one("a", 0, 0)), rows = 8, scrolls = true)
-        val (_, y0) = centerOf("a")
+    @Test fun heldAtThePageTopForAMomentCarriesTheControlToTheNextPage() {
+        pagedHost(listOf(one("a", 0, 0), one("b", 3, 3)))
         hold("a")
-        // Take the finger to the page's lower edge (the page is 380 dp tall, the control starts 56 dp down) and hold it there for a while.
-        moveFinger("a", 0.dp, 280.dp, settle = false)
-        repeat(400) { compose.mainClock.advanceTimeByFrame() }
-        val scrolled = scrollState!!
-        assertTrue("the page should have scrolled to its end, was ${scrolled.value} of ${scrolled.maxValue}", scrolled.value > 0 && scrolled.value == scrolled.maxValue)
-        // (Bounds are clipped to the page, so the finger stops where the whole control is still in view.) At the end of the page the control is still under the finger (it started y0 down and the finger has gone 280 dp).
-        within(y0 + 280.dp, centerOf("a").second, by = 2f)
+        // The control's middle is 40 dp down the page; 30 dp up puts the finger 10 dp from the page's top edge, inside its 36 dp edge.
+        moveFinger("a", 0.dp, (-30).dp, settle = false)
+        compose.mainClock.advanceTimeBy(900)
+        assertEquals("a is on the next page, in its first free place", one("a", 0, 3), changes.last().first { it.id == "a" })
+        assertEquals(1, pageShown)
         release("a")
+        assertEquals("letting go afterwards changes nothing more", one("a", 0, 3), changes.last().first { it.id == "a" })
+    }
+
+    @Test fun heldAtThePageBottomForAMomentCarriesTheControlToThePageBefore() {
+        pagedHost(listOf(one("a", 0, 3), one("b", 3, 0)), startPage = 1)
+        hold("a")
+        // Row 0 of this page, 40 dp down; 3 rows of 92 dp is the page, so 3 rows down puts the finger past its bottom edge.
+        moveFinger("a", 0.dp, step * 3 - 40.dp, settle = false)
+        compose.mainClock.advanceTimeBy(900)
+        assertEquals("a is on the page before, at its end", one("a", 0, 2), changes.last().first { it.id == "a" })
+        assertEquals(0, pageShown)
+        release("a")
+    }
+
+    @Test fun passingTheEdgeWithoutStayingCarriesNothing() {
+        pagedHost(listOf(one("a", 0, 0)))
+        hold("a")
+        moveFinger("a", 0.dp, (-30).dp, settle = false)
+        compose.mainClock.advanceTimeBy(150)
+        moveFinger("a", 0.dp, 30.dp, settle = false)
+        compose.mainClock.advanceTimeBy(900)
+        assertEquals(0, pageShown)
+        assertTrue("nothing was committed while the finger was in motion", changes.isEmpty())
+        release("a")
+    }
+
+    @Test fun aPageWithNoRoomLeavesTheControlWhereItIs() {
+        // Page 2 (rows 3 to 5) is full: twelve one-cell controls.
+        val full = (3 until 6).flatMap { r -> (0 until 4).map { c -> one("f$r$c", c, r) } }
+        pagedHost(listOf(one("a", 0, 0)) + full)
+        hold("a")
+        moveFinger("a", 0.dp, (-30).dp, settle = false)
+        compose.mainClock.advanceTimeBy(900)
+        assertEquals(0, pageShown)
+        assertTrue(changes.isEmpty())
+        release("a")
+        assertTrue("the control went home and nothing changed", changes.isEmpty())
     }
 
     @Test fun aSecondFingerCannotLiftAnotherControlWhileOneIsHeld() {

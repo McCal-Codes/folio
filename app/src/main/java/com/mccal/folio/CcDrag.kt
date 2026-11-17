@@ -50,17 +50,14 @@ internal fun ccPreviewDrop(slots: List<CcSlot>, id: String, col: Float, row: Flo
 }
 
 /**
- * How far to scroll a page this frame while a control is held with the finger at [fingerY] and the page shows [top] to [bottom] (window pixels): up
- * (negative) within [edge] of the top, down (positive) within [edge] of the bottom, faster the deeper in, at most [maxStep] a frame. Zero in the middle.
+ * Which edge of a page a held control is at, for carrying it to the next page: 1 within [edge] of the top (the next page comes from above) or
+ * higher, -1 within [edge] of the bottom or lower (the page before), 0 anywhere else. The finger is at [fingerY] and the page shows [top] to
+ * [bottom] (window pixels). A page too short to have a middle has no edges.
  */
-internal fun ccAutoScrollStep(fingerY: Float, top: Float, bottom: Float, edge: Float, maxStep: Float): Float {
-    if (bottom <= top || edge <= 0f || maxStep <= 0f) return 0f
+internal fun ccEdgeZone(fingerY: Float, top: Float, bottom: Float, edge: Float): Int {
+    if (bottom <= top || edge <= 0f) return 0
     val zone = min(edge, (bottom - top) / 2f)
-    val intoTop = (top + zone) - fingerY
-    if (intoTop > 0f) return -maxStep * min(1f, intoTop / zone)
-    val intoBottom = fingerY - (bottom - zone)
-    if (intoBottom > 0f) return maxStep * min(1f, intoBottom / zone)
-    return 0f
+    return if (fingerY < top + zone) 1 else if (fingerY > bottom - zone) -1 else 0
 }
 
 /** The page the Controls are on as one thing to put back: the chosen controls and the saved places (null: the default places). */
