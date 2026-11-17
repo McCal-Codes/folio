@@ -71,6 +71,9 @@ internal fun foldSafeSpan(hinges: List<IntRange>, extent: Int, trailing: Boolean
     return if (trailing) usable.last() else usable.first()
 }
 
+/** This padding or room, never below zero: an underdamped spring passes below its target, and `Modifier.padding` crashes on a negative value. */
+internal fun androidx.compose.ui.unit.Dp.atLeastZero(): androidx.compose.ui.unit.Dp = if (value < 0f) 0.dp else this
+
 /** What an overlay is for, which decides where it goes when the device is partially folded. */
 internal enum class FoldRole {
     /** Alerts and status: trailing half like a book (where they continue when closed), top half on a table (visible at a distance). */
@@ -103,6 +106,9 @@ internal fun FoldAvoidingBox(modifier: Modifier = Modifier, contentAlignment: Al
         val end by animateDpAsState(if (hinge?.vertical == true) trail else 0.dp, motion, label = "fold end")
         val top by animateDpAsState(if (hinge != null && !hinge.vertical) lead else 0.dp, motion, label = "fold top")
         val bottom by animateDpAsState(if (hinge != null && !hinge.vertical) trail else 0.dp, motion, label = "fold bottom")
-        Box(Modifier.fillMaxSize().padding(start = start, end = end, top = top, bottom = bottom), contentAlignment = contentAlignment, content = content)
+        // The spring dips a little under zero on its way back to the window's edge (its damping is .9), and padding throws on a negative
+        // value: opening the phone with Notification Center or Control Center up closed Folio ("Padding must be non-negative", 0.6.9.1).
+        Box(Modifier.fillMaxSize().padding(start = start.atLeastZero(), end = end.atLeastZero(), top = top.atLeastZero(), bottom = bottom.atLeastZero()),
+            contentAlignment = contentAlignment, content = content)
     }
 }
