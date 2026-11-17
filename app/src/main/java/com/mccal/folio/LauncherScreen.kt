@@ -754,6 +754,7 @@ fun LauncherScreen(
         val palette = if (LocalSolidGlass.current) tinted.copy(glass = tintedGlass(
             if (homeInk.dark) FolioColors.LightBackground else FolioColors.SecondaryBackground, tone.primary, tintAmount * .5f)) else tinted
         val homeApps = remember(state.apps, state.hiddenApps) { HomeApps(state.apps.filter { it.id !in state.hiddenApps && it.available }) { onLaunchFrom(it, null) } }
+        val removedIcons = remember { RemovedIcons() }
         val bigClockStyles = remember(state.bigClockStyles) { BigClockStyles(state.bigClockStyles, model::setBigClockStyle) }
         // iOS "dark appearance dims wallpaper" and its legibility gradient over the background. They are worked out here, above
         // everything that draws on the wallpaper, so the Big Clock can measure its picture as it really looks (LocalHomeDarkening).
@@ -766,6 +767,7 @@ fun LauncherScreen(
             LocalHomeInk provides homeInk, LocalDuoPalette provides palette,
             // Remembered so every icon isn't recomposed each time Home recomposes (a new lambda changes the local).
             LocalStackedApps provides state.iconStacks.keys,
+            LocalRemovedIcons provides removedIcons,
             // Icon Actions: an icon's saved swipes and double tap, while the gate is open, Home is not being edited and Safe Mode is off
             // (in Safe Mode icons keep their normal gestures, rather than a swipe being taken and then refused).
             LocalIconActions provides remember(state.iconActions, homeEdit.active, haptic, launcherActivity) {
@@ -796,6 +798,8 @@ fun LauncherScreen(
             if (scrim.draws) Box(Modifier.fillMaxSize().homeScrim(scrim))
         }
         if (dim > 0f) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = dim)))
+        // Behind the grid: a removed icon's copy plays out in the cell that was just emptied.
+        RemovedIconsHost(removedIcons)
         // Home never moves for the keyboard: including IME insets here re-measured the whole grid on every
         // frame of the keyboard animation (Spotlight/search jank). Sheets that need it use imePadding themselves.
         var homeBoxTop by remember { mutableFloatStateOf(0f) }
