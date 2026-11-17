@@ -257,6 +257,8 @@ internal fun <T> List<T>.slicePage(range: IntRange): List<T> =
 internal fun FolderTile(folder: FolderEntry, apps: Map<String, AppEntry>, size: Float, labels: Boolean,
     drag: HomeDragState, page: Int, modifier: Modifier = Modifier,
     onLaunchApp: ((AppEntry) -> Unit)? = null,
+    /** The minus in the corner while icons wiggle; null outside edit mode. */
+    onRemove: (() -> Unit)? = null,
     onClick: () -> Unit) {
     val counts0 = LocalBadgeCounts.current
     val unread = folder.appIds.mapNotNull { apps[it]?.let(BadgeKey::of) }.distinct().sumOf { counts0[it] ?: 0 }
@@ -326,13 +328,15 @@ internal fun FolderTile(folder: FolderEntry, apps: Map<String, AppEntry>, size: 
             }
             val pop = rememberBadgeAppeared(total)
             if (total > 0) IconBadge(total, look.badges, look.badgeColor.fixed?.let { Color(it) } ?: BadgeRed, look.badgeLook, look.badgeSize.scale, pop = pop)
+            if (onRemove != null) JiggleRemoveButton(stringResource(R.string.remove_folder_from_home, folder.title), onRemove = onRemove)
         }
         // The same line height as an app's label (AppTile), cap and all (A11Y-13): left to the theme's, the folder's name sat lower in its
         // cell the larger the font, under the Search pill at 200%.
         val labelFactor = glanceFontFactor(LocalDensity.current.fontScale)
         if (labels) Text(folder.title, color = LocalHomeInk.current.primary, fontSize = (LocalLabelSize.current.sp * labelFactor).sp,
             lineHeight = (LocalLabelSize.current.lineSp * labelFactor).sp, maxLines = 1,
-            overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = FolioSpace.TINY.dp))
+            overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = FolioSpace.TINY.dp),
+            style = TextStyle(shadow = LocalHomeInk.current.labelShadow))
     }
 }
 
