@@ -174,6 +174,7 @@ fun LauncherScreen(
     // Held back for the beta until 0.6.9 (FeatureGate): the new ways to shape a folder, and the Big Clock's own menu rows.
     val homeView = androidx.compose.ui.platform.LocalView.current
     val folderEditing = rememberGateOpen(FeatureGate.FOLDER_EDITING)
+    val wallpaperFraming = rememberGateOpen(FeatureGate.WALLPAPER_PREVIEW)
     val newFolderTitle = stringResource(R.string.new_folder_name) // in the phone's language, not always English
     val clockCustomize = rememberGateOpen(FeatureGate.CLOCK_CUSTOMIZE)
     val overlays = rememberHomeOverlays()
@@ -2180,6 +2181,11 @@ fun LauncherScreen(
         appsById[overlays.rename]?.let { app ->
             RenameAppAlert(app, onDismiss = { overlays.rename = null }, onRename = { model.renameApp(app.id, it); overlays.rename = null })
         }
+        // A photo chosen for the wallpaper (picked on the Wallpaper page, shared to Folio, or from the Edit menu) opens full screen here to
+        // frame and blur, so Set and Cancel both land on Home. With the gate closed the Wallpaper page's own preview rows do it.
+        launcherActivity.backgrounds.previewBitmap?.takeIf { launcherActivity.backgrounds.previewPending && !state.systemWallpaper && wallpaperFraming }?.let { photo ->
+            PhotoFrameDialog(photo, launcherActivity.backgrounds::cancelPreview) { crop, blur -> launcherActivity.backgrounds.applyPreview(crop, blur) }
+        }
         if (customizeHome) CustomizeHomeSheet(sample = state.apps.firstOrNull(), style = state.iconStyle, tint = state.iconTint,
             tintFromWallpaper = state.iconTintFromWallpaper, onStyle = { model.setIconStyle(it, state.iconTint) },
             onTintFromWallpaper = { model.setIconTintFromWallpaper(true) },
@@ -2191,6 +2197,7 @@ fun LauncherScreen(
                     picker.targetIndex = index; picker.exactTarget = true; picker.slot = model.nextWidgetSlot(); picker.packageName = null; picker.profileSerial = null
                     sheet = "widgets"
                 }, onWallpaper = { sheet = "settings:wallpaper" },
+                onPhoto = { if (wallpaperFraming) launcherActivity.chooseWallpaperPhoto() else sheet = "settings:wallpaper" },
                 onLook = { customizeHome = true },
                 onCustomize = { sheet = "settings" },
                 onAddPage = { val page = model.addPage(); if (page >= 0) scope.launch { pager.animateScrollToPage(page) } },
