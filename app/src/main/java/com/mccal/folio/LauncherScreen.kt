@@ -155,6 +155,8 @@ fun LauncherScreen(
     val cancelLabel = stringResource(R.string.cancel)
     val swappedApps = LocalSwappedApps.current
     var sheet by rememberSaveable { mutableStateOf("") }
+    // Customize (icon looks over Home), opened from the Edit menu.
+    var customizeHome by rememberSaveable { mutableStateOf(false) }
     var dockSlot by rememberSaveable { mutableIntStateOf(0) }
     var widgetSession by remember { mutableStateOf<WidgetPickerSession?>(null) }
     var widgetPlacementMessage by remember { mutableStateOf<String?>(null) }
@@ -2178,12 +2180,18 @@ fun LauncherScreen(
         appsById[overlays.rename]?.let { app ->
             RenameAppAlert(app, onDismiss = { overlays.rename = null }, onRename = { model.renameApp(app.id, it); overlays.rename = null })
         }
+        if (customizeHome) CustomizeHomeSheet(sample = state.apps.firstOrNull(), style = state.iconStyle, tint = state.iconTint,
+            tintFromWallpaper = state.iconTintFromWallpaper, onStyle = { model.setIconStyle(it, state.iconTint) },
+            onTintFromWallpaper = { model.setIconTintFromWallpaper(true) },
+            onTint = { model.setIconTintFromWallpaper(false); model.setIconStyle(IconStyle.TINTED, it) },
+            onDone = { customizeHome = false })
         overlays.emptyCell?.let { index ->
             HomeEditMenu(anchor = editPillBounds.takeIf { homeEdit.active }, onDismiss = { overlays.emptyCell = null },
                 onWidgets = {
                     picker.targetIndex = index; picker.exactTarget = true; picker.slot = model.nextWidgetSlot(); picker.packageName = null; picker.profileSerial = null
                     sheet = "widgets"
                 }, onWallpaper = { sheet = "settings:wallpaper" },
+                onLook = { customizeHome = true },
                 onCustomize = { sheet = "settings" },
                 onAddPage = { val page = model.addPage(); if (page >= 0) scope.launch { pager.animateScrollToPage(page) } },
                 onRemovePage = if (homeCellPage(index) == homePages - 1 && homePages > 1 && state.layout.contentPageCount < homePages) {{
