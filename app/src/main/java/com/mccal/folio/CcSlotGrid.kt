@@ -81,7 +81,7 @@ internal fun ccDragTarget(col: Int, row: Int, dxPx: Float, dyPx: Float, stepPx: 
  * page scrolls under a swipe. [onDragStart] gets where in the control the finger is.
  */
 private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.detectHeldDrag(
-    onDragStart: (Offset) -> Unit, onDrag: (Offset) -> Unit, onDragEnd: () -> Unit, onDragCancel: () -> Unit,
+    onDragStart: (Offset) -> Boolean, onDrag: (Offset) -> Unit, onDragEnd: () -> Unit, onDragCancel: () -> Unit,
 ) {
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false)
@@ -92,7 +92,8 @@ private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.detectHe
             }
         } == null
         if (!timedOut) return@awaitEachGesture
-        onDragStart(down.position)
+        // [onDragStart] says no when another control is already in hand (a second finger): that press is ignored, it never takes over the first.
+        if (!onDragStart(down.position)) return@awaitEachGesture
         // Own loop instead of drag(): on a page that scrolls an ancestor has already consumed the moves, and drag() then reports none of them.
         var finished = false
         while (true) {
@@ -219,6 +220,14 @@ internal fun CcSlotGrid(
     LaunchedEffect(slots) { if (pending == slots) pending = null }
     // Leaving edit mode mid-gesture (Done, Back) drops whatever is held; the handlers go with the editing layer and would never say so.
     LaunchedEffect(editing) { if (!editing) { dragging = null; drag = Offset.Zero; resizing = null; resize = Offset.Zero } }
+    // A control taken away under the finger (Undo, or a second finger on its minus) takes its gesture with it; nothing may stay held for it,
+    // or no other control could be lifted (only one is in hand at a time).
+    LaunchedEffect(base) {
+        val held = dragging
+        if (held != null && base.none { it.id == held }) { dragging = null; drag = Offset.Zero }
+        val sized = resizing
+        if (sized != null && base.none { it.id == sized }) { resizing = null; resize = Offset.Zero }
+    }
 
     // A tick each time the place the control would take changes, as the Home screen does when an icon crosses to the next cell.
     val landingKey: Any? = dropPreview?.landing?.let { it.col to it.row } ?: resizePreview?.firstOrNull { it.id == resizing }?.let { it.w to it.h }
@@ -348,9 +357,13 @@ internal fun CcSlotGrid(
                             .pointerInput(id) {
                                 detectHeldDrag(
                                     onDragStart = { pos ->
-                                        scope.launch { settle.stop() }
-                                        landing = null; dragging = id; drag = Offset.Zero; grab = pos
-                                        haptic.perform(FolioHaptic.PickedUp)
+                                        // One control in hand at a time: a second finger on another control (or a corner) does not take it over.
+                                        if (dragging != null || resizing != null) false else {
+                                            scope.launch { settle.stop() }
+                                            landing = null; dragging = id; drag = Offset.Zero; grab = pos
+                                            haptic.perform(FolioHaptic.PickedUp)
+                                            true
+                                        }
                                     },
                                     onDrag = { by -> drag += by * (1f + CC_LIFT_GROW * liftNow) },
                                     onDragEnd = { endDrag(id, commit = true) },
@@ -380,14 +393,17 @@ internal fun CcSlotGrid(
                         if (ccAllowedSizes(id, cols).size > 1) Box(Modifier.align(Alignment.BottomEnd).offset(handleOut, handleOut).size(handleBox)
                             .pointerInput(id) {
                                 detectDragGestures(
-                                    onDragStart = { resizing = id; resize = Offset.Zero; haptic.perform(FolioHaptic.PickedUp) },
-                                    onDrag = { change, by -> change.consume(); resize += by },
+                                    // Only when nothing else is in hand; a corner dragged meanwhile (a second finger) is ignored.
+                                    onDragStart = { if (dragging == null && resizing == null) { resizing = id; resize = Offset.Zero; haptic.perform(FolioHaptic.PickedUp) } },
+                                    onDrag = { change, by -> change.consume(); if (resizing == id) resize += by },
                                     onDragEnd = {
-                                        val next = resizePreview
-                                        resizing = null; resize = Offset.Zero
-                                        if (next != null && next != latestBase) { hold(next); latestChange(next); haptic.perform(FolioHaptic.Commit) }
+                                        if (resizing == id) {
+                                            val next = resizePreview
+                                            resizing = null; resize = Offset.Zero
+                                            if (next != null && next != latestBase) { hold(next); latestChange(next); haptic.perform(FolioHaptic.Commit) }
+                                        }
                                     },
-                                    onDragCancel = { resizing = null; resize = Offset.Zero },
+                                    onDragCancel = { if (resizing == id) { resizing = null; resize = Offset.Zero } },
                                 )
                             }, contentAlignment = Alignment.Center) {
                             // A curved handle that follows the control's own corner, as iOS draws it, instead of a dot on the corner.

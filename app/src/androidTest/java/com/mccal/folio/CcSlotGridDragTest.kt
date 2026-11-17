@@ -20,6 +20,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -45,10 +46,14 @@ class CcSlotGridDragTest {
 
     private var scrollState: androidx.compose.foundation.ScrollState? = null
 
+    /** Replaces the layout from outside the grid, as Undo does. */
+    private var setSlots: ((List<CcSlot>) -> Unit)? = null
+
     /** The grid alone, or (with [scrolls]) in a 380 dp page that scrolls, as Control Center's Controls page does when its rows do not fit. */
     private fun host(initial: List<CcSlot>, reduceMotion: Boolean = false, scrolls: Boolean = false, rows: Int = 4) {
         compose.setContent {
             var slots by remember { mutableStateOf(initial) }
+            setSlots = { slots = it }
             var viewport by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
             val pageScroll = androidx.compose.foundation.rememberScrollState().also { scrollState = it }
             CompositionLocalProvider(LocalReduceMotion provides reduceMotion) {
@@ -257,5 +262,59 @@ class CcSlotGridDragTest {
         // (Bounds are clipped to the page, so the finger stops where the whole control is still in view.) At the end of the page the control is still under the finger (it started y0 down and the finger has gone 280 dp).
         within(y0 + 280.dp, centerOf("a").second, by = 2f)
         release("a")
+    }
+
+    @Test fun aSecondFingerCannotLiftAnotherControlWhileOneIsHeld() {
+        host(listOf(one("a", 0, 0), one("b", 3, 0)))
+        val (_, ay) = centerOf("a")
+        val (bx, by) = centerOf("b")
+        hold("a")
+        // A second finger presses and holds another control for the long-press time; the first control stays the one in hand.
+        compose.onNodeWithTag("tile-b").performTouchInput { down(1, center) }
+        delivered()
+        compose.mainClock.advanceTimeBy(900)
+        compose.mainClock.advanceTimeByFrame()
+        compose.onNodeWithTag("tile-a").performTouchInput { updatePointerBy(0, Offset(0f, step.toPx())); move(16) }
+        delivered()
+        compose.mainClock.advanceTimeByFrame()
+        compose.mainClock.advanceTimeBy(600)
+        within(ay + step, centerOf("a").second)
+        within(by, centerOf("b").second)
+        within(bx, centerOf("b").first)
+        compose.onNodeWithTag("tile-b").performTouchInput { up(1) }
+        delivered()
+        release("a")
+    }
+
+    @Test fun aControlTakenOffUnderTheFingerLeavesNothingHeldBehind() {
+        val start = listOf(one("a", 0, 0), one("b", 3, 3))
+        host(start)
+        val (x0, y0) = centerOf("a")
+        hold("a")
+        moveFinger("a", step * 2, 0.dp)
+        // A second finger taps the held control's minus: it is gone while the first finger is still down.
+        compose.onNodeWithTag("tile-a").performTouchInput { down(1, Offset(4.dp.toPx(), 4.dp.toPx())) }
+        delivered()
+        compose.mainClock.advanceTimeByFrame()
+        compose.onRoot().performTouchInput { up(1) }
+        delivered()
+        compose.mainClock.advanceTimeBy(600)
+        compose.onRoot().performTouchInput { up(0) }
+        held = null
+        delivered()
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.mainClock.autoAdvance = true
+        compose.waitForIdle()
+        // Undo brings it back: it must be at home, not lifted and carried where the finger last was.
+        compose.runOnUiThread { setSlots!!(start) }
+        compose.waitForIdle()
+        within(x0, centerOf("a").first)
+        within(y0, centerOf("a").second)
+        // And the next control can still be lifted and moved.
+        changes.clear()
+        hold("b")
+        moveFinger("b", -step, 0.dp)
+        release("b")
+        assertEquals(one("b", 2, 3), changes.last().first { it.id == "b" })
     }
 }
