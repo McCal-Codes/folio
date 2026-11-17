@@ -19,7 +19,12 @@ CREATE TABLE IF NOT EXISTS handled (
   type       TEXT NOT NULL DEFAULT '',       -- Tip, Donation, Subscription, Shop Order, or "By hand"
   amount     TEXT NOT NULL DEFAULT '',
   currency   TEXT NOT NULL DEFAULT '',
-  by_hand    INTEGER NOT NULL DEFAULT 0      -- 1 when handed out from Folio Dev or the Mac, not by a payment
+  by_hand    INTEGER NOT NULL DEFAULT 0,     -- 1 when handed out from Folio Dev or the Mac, not by a payment
+  -- Added with membership renewal (17 Nov 2026): a keyed hash of the payer's email on membership payments, so a phone
+  -- can ask for the member's newest code. Not an address, and can't be turned back into one without the worker's
+  -- PAYER_SECRET. A database made before this needs, once (the worker copes without it, it just can't renew):
+  --   ALTER TABLE handled ADD COLUMN payer TEXT NOT NULL DEFAULT '';
+  payer      TEXT NOT NULL DEFAULT ''
 );
 
 -- Payments that needed a hand: the pool was empty, or the money arrived in a currency no rate could

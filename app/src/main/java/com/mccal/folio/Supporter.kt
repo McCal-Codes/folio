@@ -15,6 +15,8 @@ internal object Supporter {
     private const val PREFS = "folio"
     private const val CODE = "supporter_code"
     private const val BETA = "supporter_beta_on"
+    /** Opt-in to [SupporterRenewal]: off until the person turns it on, and gone again when the code is removed. */
+    private const val AUTO_RENEW = "supporter_auto_renew"
 
     /**
      * The day a code was first redeemed on this phone, one key per serial. A code that buys months rather than a
@@ -198,7 +200,7 @@ internal object Supporter {
 
     fun remove(context: Context, onSupporterSource: (Boolean) -> Unit = { if (!it) MarketAccess.forgetSupporterSource(context) }) {
         checked = null
-        context.getSharedPreferences(PREFS, 0).edit().remove(CODE).remove(BETA).apply()
+        context.getSharedPreferences(PREFS, 0).edit().remove(CODE).remove(BETA).remove(AUTO_RENEW).apply()
         // The list goes; what it listed and anything installed from it stays. Removing a code says "not a
         // supporter on this phone any more", not "undo everything that ever came of it".
         runCatching { onSupporterSource(false) }
@@ -235,7 +237,14 @@ internal object Supporter {
         return { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
 
-    fun betaOn(context: Context): Boolean = context.getSharedPreferences(PREFS, 0).getBoolean(BETA, false)
+    /** Whether Folio may ask the supporter worker for a Ko-fi member's next code. Off unless the person turned it on. */
+    fun autoRenewOn(context: Context): Boolean = context.getSharedPreferences(PREFS, 0).getBoolean(AUTO_RENEW, false)
+
+    fun setAutoRenew(context: Context, on: Boolean) {
+        context.getSharedPreferences(PREFS, 0).edit().putBoolean(AUTO_RENEW, on).apply()
+    }
+
+    fun betaOn(context: Context): Boolean =context.getSharedPreferences(PREFS, 0).getBoolean(BETA, false)
 
     fun setBetaOn(context: Context, on: Boolean) {
         context.getSharedPreferences(PREFS, 0).edit().putBoolean(BETA, on).apply()
