@@ -571,6 +571,7 @@ internal fun SharedHomeGrid(
                     Modifier.offset { placed }.width(cellWidth).height(rowHeight.dp)
                         .moveActions(folder.id, page, onMove).testTag("home-folder-${folder.id}"),
                     onLaunchApp = { onLaunch(it, null) },
+                    onRemove = if (edit.active && savedIndex != null) {{ edit.onRemove(DropTarget.Home(savedIndex)) }} else null,
                     onClick = { onFolder(folder.id) })
             }
         }

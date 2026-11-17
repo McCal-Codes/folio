@@ -8,6 +8,8 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.7.0] - Unreleased
 
 ### Added
+- **Remove a folder from Home:** while icons wiggle, a folder now has the same gray minus as an app. Tapping it takes the folder off Home; its apps stay installed and in the App Library, and Undo brings the folder back with everything in it. <!-- beta 5 -->
+- **A folder's name gets the label shadow:** the name under a folder now has the same soft shadow as the name under an app, so the two read alike over a busy wallpaper. <!-- beta 5 -->
 - **Blur a wallpaper photo:** the screen where you frame a photo has a Blur switch, like iOS. Turn it on and the picture softens with a short fade, so icons and labels stand out on a busy photo; Set saves it blurred, and Cancel changes nothing. <!-- beta 5 -->
 - **Wallpaper Photo on the Edit menu:** while icons wiggle, Edit has a Wallpaper Photo row that opens your photos straight away. Pick one, frame it, and Set or Cancel brings you back to Home, not to the settings page. A photo shared to Folio now does the same. <!-- beta 5 -->
 - **Frame a wallpaper photo:** a photo you pick opens full screen over a drawn Home. Pinch to zoom and drag to move it, then Set keeps exactly what you framed, the way Apple's Add Wallpaper step works. Cancel leaves your wallpaper as it was. <!-- beta 5 -->
