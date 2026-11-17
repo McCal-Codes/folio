@@ -97,7 +97,8 @@ private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.detectHe
         var finished = false
         while (true) {
             val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
-            if (change.changedToUpIgnoreConsumed()) { change.consume(); finished = true; break }
+            // A cancelled touch (the system took it back) arrives as a release that is already consumed: that one goes home, it does not drop.
+            if (change.changedToUpIgnoreConsumed()) { finished = !change.isConsumed; change.consume(); break }
             onDrag(change.positionChangeIgnoreConsumed())
             change.consume()
         }
@@ -121,6 +122,9 @@ internal fun ccNextSize(slots: List<CcSlot>, id: String, cols: Int, rows: Int): 
 /** How close to the top or bottom of the page, in dp, a held control starts scrolling it, and the most it scrolls a frame. */
 private const val CC_SCROLL_EDGE_DP = 56
 private const val CC_SCROLL_STEP_DP = 14
+
+/** How much a lifted control grows (5%); the drag adds it back, since the pointer measures inside the grown control. */
+private const val CC_LIFT_GROW = .05f
 
 /** A control tile's corner, the same one `CcTile` draws, so the outline and the lift match the tile exactly. */
 private val CcTileCorner = RoundedCornerShape(26.dp)
@@ -291,6 +295,8 @@ internal fun CcSlotGrid(
                 val settling = landing == id
                 val live = resizing == id
                 val lift by animateFloatAsState(if (lifted) 1f else 0f, if (reduceMotion) snap() else FolioMotion.spring(FolioMotion.Quick), label = "cc lift")
+                // The pointer reports its moves in the control's own (scaled) space, so a finger travels `grow` times as far as the numbers say.
+                val liftNow by rememberUpdatedState(lift)
                 // The held control stays at the place it was lifted from (the drag translates it); the rest slide to the places the drop would give them.
                 val at = if (lifted) origin else slot
                 val place by animateIntOffsetAsState(IntOffset((stepPx * at.col).roundToInt(), (stepPx * at.row).roundToInt()),
@@ -302,7 +308,7 @@ internal fun CcSlotGrid(
                         .graphicsLayer {
                             if (lifted) { translationX = drag.x; translationY = drag.y }
                             else if (settling) { translationX = settle.value.x; translationY = settle.value.y }
-                            val grow = 1f + .05f * lift
+                            val grow = 1f + CC_LIFT_GROW * lift
                             scaleX = grow; scaleY = grow
                             if (lift > 0f) { shadowElevation = 16.dp.toPx() * lift; shape = CcTileCorner; clip = false }
                         }
@@ -346,7 +352,7 @@ internal fun CcSlotGrid(
                                         landing = null; dragging = id; drag = Offset.Zero; grab = pos
                                         haptic.perform(FolioHaptic.PickedUp)
                                     },
-                                    onDrag = { by -> drag += by },
+                                    onDrag = { by -> drag += by * (1f + CC_LIFT_GROW * liftNow) },
                                     onDragEnd = { endDrag(id, commit = true) },
                                     // Cancelled (the system took the touch): the control goes home.
                                     onDragCancel = { endDrag(id, commit = false) },

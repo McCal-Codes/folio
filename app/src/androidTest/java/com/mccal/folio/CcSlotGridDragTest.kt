@@ -1,0 +1,261 @@
+package com.mccal.folio
+
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+
+/**
+ * Control Center's editor drag, on the real grid with real touches (the pure rules are in CcDragTest): the held control stays under the finger,
+ * a drop lands where the preview said, a drop that cannot work goes home, TalkBack's actions give the same results, and Reduce Motion keeps
+ * everything still but the control in the finger.
+ */
+class CcSlotGridDragTest {
+    @get:Rule val compose = createComposeRule()
+
+    private val cell = 80.dp
+    private val gap = 12.dp
+    private val step = cell + gap
+    private val changes = mutableListOf<List<CcSlot>>()
+
+    private fun one(id: String, col: Int, row: Int) = CcSlot(id, col, row, 1, 1)
+
+    private var scrollState: androidx.compose.foundation.ScrollState? = null
+
+    /** The grid alone, or (with [scrolls]) in a 380 dp page that scrolls, as Control Center's Controls page does when its rows do not fit. */
+    private fun host(initial: List<CcSlot>, reduceMotion: Boolean = false, scrolls: Boolean = false, rows: Int = 4) {
+        compose.setContent {
+            var slots by remember { mutableStateOf(initial) }
+            var viewport by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
+            val pageScroll = androidx.compose.foundation.rememberScrollState().also { scrollState = it }
+            CompositionLocalProvider(LocalReduceMotion provides reduceMotion) {
+                Box(
+                    (if (scrolls) Modifier.height(380.dp).onGloballyPositioned { viewport = it }.verticalScroll(pageScroll) else Modifier.fillMaxSize())
+                        .padding(16.dp),
+                ) {
+                    CcSlotGrid(
+                        slots, cols = 4, rows = rows, cell = cell, gap = gap, editing = true, raised = null,
+                        removable = { true }, labelOf = { it },
+                        onChange = { changes += it; slots = it }, onRemove = { id -> slots = slots.filter { it.id != id } },
+                        scroll = if (scrolls) pageScroll else null, viewport = { viewport },
+                    ) { slot -> Box(Modifier.fillMaxSize().testTag("tile-${slot.id}")) }
+                }
+            }
+        }
+        compose.waitForIdle()
+    }
+
+    private fun centerOf(id: String): Pair<Dp, Dp> =
+        compose.onNodeWithTag("tile-$id").getBoundsInRoot().let { (it.left + it.right) / 2 to (it.top + it.bottom) / 2 }
+
+    private var held: String? = null
+
+    /** Injected touches reach the UI thread a moment after the call returns and the test clock does not wait for them; this queues behind them. */
+    private fun delivered() = compose.runOnUiThread { }
+
+    // While a control is held the page runs a frame loop (for the scroll at its edges), so Compose is never "idle" and waiting for it would
+    // never end: the clock is driven by hand from the moment the finger goes down until it comes up.
+    private fun hold(id: String) {
+        held = id
+        compose.mainClock.autoAdvance = false
+        compose.onNodeWithTag("tile-$id").performTouchInput { down(center) }
+        // The press-and-hold timeout runs on the test clock, not on the injected event time.
+        compose.mainClock.advanceTimeBy(900)
+        compose.mainClock.advanceTimeByFrame()
+    }
+
+    /** A test that fails with a finger down must still let go, or the page keeps drawing and the test can never wind down. */
+    @org.junit.After fun letGo() {
+        held?.let { id -> runCatching { release(id) } }
+        compose.mainClock.autoAdvance = true
+    }
+
+    /**
+     * Moves the held finger by [dx] by [dy] (in dp) in one move, then lets the animations it caused finish unless [settle] is false. One move, not a
+     * stream of small ones: the test harness hands a gesture that is still working on a move the next one and the gesture never sees it, which
+     * would make the control fall short of the finger for a reason that is the harness's, not the control's (the finger was always where it was sent).
+     */
+    private fun moveFinger(id: String, dx: Dp, dy: Dp, settle: Boolean = true) {
+        compose.onNodeWithTag("tile-$id").performTouchInput { moveBy(Offset(dx.toPx(), dy.toPx()), 16) }
+        delivered()
+        compose.mainClock.advanceTimeByFrame()
+        if (settle) compose.mainClock.advanceTimeBy(600)
+    }
+
+    private fun release(id: String) {
+        held = null
+        compose.onNodeWithTag("tile-$id").performTouchInput { up() }
+        delivered()
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.mainClock.autoAdvance = true
+        compose.waitForIdle()
+    }
+
+    private fun within(expected: Dp, actual: Dp, by: Float = 1.2f) =
+        assertTrue("expected about $expected, was $actual", kotlin.math.abs(expected.value - actual.value) <= by)
+
+    @Test fun theHeldControlStaysUnderTheFingerAtEveryDistance() {
+        host(listOf(one("a", 0, 0)))
+        val (x0, y0) = centerOf("a")
+        hold("a")
+        // The lift grows the control around its middle; the pointer measures inside the grown control, so a drag that did not add that back
+        // would fall 5% short of the finger (found on the emulator, 17 Nov 2026).
+        moveFinger("a", step * 2, step)
+        val (x1, y1) = centerOf("a")
+        within(x0 + step * 2, x1)
+        within(y0 + step, y1)
+        release("a")
+    }
+
+    @Test fun letGoInAFreeCellMovesThereAndTheControlSettlesInIt() {
+        host(listOf(one("a", 0, 0)))
+        hold("a")
+        moveFinger("a", step * 2, step)
+        release("a")
+        assertEquals(listOf(listOf(one("a", 2, 1))), changes)
+        val (x, y) = centerOf("a")
+        within(cell / 2 + step * 2 + 16.dp, x)
+        within(cell / 2 + step + 16.dp, y)
+    }
+
+    @Test fun aControlDroppedOnANeighborTradesPlacesWithIt() {
+        host(listOf(one("a", 0, 0), one("b", 1, 0)))
+        hold("a")
+        moveFinger("a", step, 0.dp)
+        release("a")
+        assertEquals(1, changes.size)
+        assertEquals(setOf(one("a", 1, 0), one("b", 0, 0)), changes.last().toSet())
+    }
+
+    @Test fun aDragThatHasNotGoneHalfwayChangesNothing() {
+        host(listOf(one("a", 0, 0), one("b", 1, 0)))
+        hold("a")
+        moveFinger("a", step * .3f, 0.dp)
+        release("a")
+        assertTrue(changes.isEmpty())
+    }
+
+    @Test fun aDragOffTheGridChangesNothingAndTheControlGoesHome() {
+        host(listOf(one("a", 0, 0)))
+        val (x0, y0) = centerOf("a")
+        hold("a")
+        moveFinger("a", -step * 4, -step * 4)
+        release("a")
+        assertTrue(changes.isEmpty())
+        within(x0, centerOf("a").first)
+        within(y0, centerOf("a").second)
+    }
+
+    @Test fun aCancelledTouchChangesNothingAndTheControlGoesHome() {
+        host(listOf(one("a", 0, 0)))
+        val (x0, y0) = centerOf("a")
+        hold("a")
+        moveFinger("a", step, step)
+        held = null
+        compose.onNodeWithTag("tile-a").performTouchInput { cancel() }
+        delivered()
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.mainClock.autoAdvance = true
+        compose.waitForIdle()
+        assertTrue(changes.isEmpty())
+        within(x0, centerOf("a").first)
+        within(y0, centerOf("a").second)
+    }
+
+    @Test fun aNeighborSlidesIntoTheHeldControlsPlaceWhileItIsStillHeld() {
+        host(listOf(one("a", 0, 0), one("b", 1, 0)))
+        val (bx, _) = centerOf("b")
+        hold("a")
+        moveFinger("a", step, 0.dp)
+        // Still held: b has already made room.
+        within(bx - step, centerOf("b").first)
+        assertTrue(changes.isEmpty())
+        release("a")
+    }
+
+    private fun neighborAfterOneFrame(reduce: Boolean): Pair<Dp, Dp> {
+        host(listOf(one("a", 0, 0), one("b", 1, 0)), reduceMotion = reduce)
+        val (bx, _) = centerOf("b")
+        hold("a")
+        moveFinger("a", step, 0.dp, settle = false)
+        compose.mainClock.advanceTimeByFrame()
+        val now = centerOf("b").first
+        release("a")
+        return bx to now
+    }
+
+    @Test fun underReduceMotionTheNeighborJumpsAtOnce() {
+        val (bx, now) = neighborAfterOneFrame(reduce = true)
+        within(bx - step, now)
+    }
+
+    @Test fun withMotionTheNeighborSlidesRatherThanJumps() {
+        val (bx, now) = neighborAfterOneFrame(reduce = false)
+        assertTrue("b should still be on its way, was at $now (from $bx)", now > bx - step + 1.dp && now <= bx + 1.dp)
+    }
+
+    @Test fun talkBackMovesTradePlacesLikeADropAndSaySoWhenTheyCannot() {
+        host(listOf(one("a", 0, 0), one("b", 1, 0)))
+        val resources = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext.resources
+        fun act(id: String, label: Int): Boolean {
+            val node = compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsActions.CustomActions)).fetchSemanticsNodes()
+                .first { it.config[SemanticsActions.CustomActions].any { a -> a.label == "${resources.getString(label)}, $id" } }
+            val action = node.config[SemanticsActions.CustomActions].first { it.label == "${resources.getString(label)}, $id" }
+            var result = false
+            compose.runOnUiThread { result = action.action() }
+            compose.waitForIdle()
+            return result
+        }
+        assertEquals(false, act("a", R.string.cc_move_left))
+        assertEquals(false, act("a", R.string.cc_move_up))
+        assertEquals(true, act("a", R.string.cc_move_right))
+        assertEquals(setOf(one("a", 1, 0), one("b", 0, 0)), changes.last().toSet())
+        assertEquals(true, act("a", R.string.cc_move_down))
+        assertEquals(one("a", 1, 1), changes.last().first { it.id == "a" })
+    }
+
+    @Test fun eachControlSaysWhereItIsWhileEditing() {
+        host(listOf(one("a", 2, 1)))
+        val node = compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.StateDescription)).fetchSemanticsNodes().first()
+        val said = node.config[SemanticsProperties.StateDescription]
+        val resources = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext.resources
+        assertEquals(resources.getString(R.string.cc_tile_place, 2, 3, 1, 1), said)
+    }
+
+    @Test fun heldNearTheBottomOfAPageThatScrollsScrollsItAndTheControlStaysUnderTheFinger() {
+        host(listOf(one("a", 0, 0)), rows = 8, scrolls = true)
+        val (_, y0) = centerOf("a")
+        hold("a")
+        // Take the finger to the page's lower edge (the page is 380 dp tall, the control starts 56 dp down) and hold it there for a while.
+        moveFinger("a", 0.dp, 280.dp, settle = false)
+        repeat(400) { compose.mainClock.advanceTimeByFrame() }
+        val scrolled = scrollState!!
+        assertTrue("the page should have scrolled to its end, was ${scrolled.value} of ${scrolled.maxValue}", scrolled.value > 0 && scrolled.value == scrolled.maxValue)
+        // (Bounds are clipped to the page, so the finger stops where the whole control is still in view.) At the end of the page the control is still under the finger (it started y0 down and the finger has gone 280 dp).
+        within(y0 + 280.dp, centerOf("a").second, by = 2f)
+        release("a")
+    }
+}
