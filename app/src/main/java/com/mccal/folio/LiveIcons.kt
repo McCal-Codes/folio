@@ -231,7 +231,7 @@ internal fun AppIcon(app: AppEntry, contentDescription: String?, modifier: Modif
     val darkSource = iconsAreDark ?: remember(src.icon) { kind != null && isDarkIcon(src.icon) }
     val palette = when {
         look.style == IconStyle.TINTED -> LivePalette.of(IconStyle.TINTED, accent)
-        look.style == IconStyle.CLEAR -> LivePalette.of(IconStyle.CLEAR, null)
+        look.style == IconStyle.CLEAR -> LivePalette.of(IconStyle.CLEAR, null, onLight = LocalWallpaperTone.current.prefersDarkText)
         look.liveLook == "LIGHT" -> LivePalette.of(IconStyle.DEFAULT, null)
         look.liveLook == "DARK" -> LivePalette.of(IconStyle.DARK, null)
         else -> LivePalette.of(if (look.style == IconStyle.DEFAULT && darkSource) IconStyle.DARK else look.style, accent)
@@ -288,16 +288,26 @@ private fun ClearIcon(app: AppEntry, packIcon: android.graphics.Bitmap?, modifie
         if (packIcon == null && value == null)
             value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { ClearGlyphs.load(context, app) }
     }
-    Box(modifier.background(ClearTile).border(1.dp, Color.White.copy(alpha = .3f), RoundedCornerShape(22)), contentAlignment = Alignment.Center) {
+    val onLight = LocalWallpaperTone.current.prefersDarkText
+    Box(modifier.background(if (onLight) ClearTileOnLight else ClearTile)
+        .border(1.dp, (if (onLight) Color.Black else Color.White).copy(alpha = .3f), RoundedCornerShape(22)), contentAlignment = Alignment.Center) {
         val symbol = glyph
-        if (symbol != null) Image(remember(symbol) { symbol.asImageBitmap() }, null, Modifier.fillMaxSize())
+        if (symbol != null) Image(remember(symbol) { symbol.asImageBitmap() }, null, Modifier.fillMaxSize(),
+            colorFilter = if (onLight) androidx.compose.ui.graphics.ColorFilter.tint(ClearInkOnLight) else null)
         else {
             val source = packIcon ?: app.icon
             val bitmap = remember(source) { source.asImageBitmap() }
-            Image(bitmap, null, Modifier.fillMaxSize(.78f), colorFilter = remember { filterFor(IconLook(style = IconStyle.CLEAR)) })
+            Image(bitmap, null, Modifier.fillMaxSize(.78f), colorFilter = remember(onLight) { if (onLight) clearOnLightFilter else filterFor(IconLook(style = IconStyle.CLEAR)) })
         }
     }
 }
+
+/** Clear for apps without their own symbol, on a light Home: the icon as a dark, colorless version of itself. */
+private val clearOnLightFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(androidx.compose.ui.graphics.ColorMatrix(floatArrayOf(
+    -.17f, -.34f, -.07f, 0f, 175f,
+    -.17f, -.34f, -.07f, 0f, 175f,
+    -.17f, -.34f, -.07f, 0f, 175f,
+    0f, 0f, 0f, .88f, 0f)))
 
 /** White symbols for Clear icons, from the monochrome layer of adaptive icons (Android 13+), cached per app. */
 internal object ClearGlyphs {
@@ -413,9 +423,12 @@ internal fun isDarkIcon(bitmap: android.graphics.Bitmap): Boolean = runCatching 
 internal data class LivePalette(val calendarBackground: Color, val calendarNumber: Color, val accent: Color,
     val clockBackground: Color, val clockFace: Color, val clockHands: Color, val secondHand: Color) {
     companion object {
-        fun of(style: IconStyle, tint: Color?): LivePalette = when {
+        /** [onLight]: Home's background is light, so Clear draws dark on a dark-tinted tile instead of white on a white one. */
+        fun of(style: IconStyle, tint: Color?, onLight: Boolean = false): LivePalette = when {
             style == IconStyle.TINTED && tint != null -> LivePalette(IconDark, tint, tint, IconDark, IconFace, tint, tint.copy(alpha = .7f))
             style == IconStyle.DARK -> LivePalette(IconDark, Color.White, IconRed, IconDark, IconFace, Color.White, IconOrange)
+            style == IconStyle.CLEAR && onLight -> LivePalette(ClearTileOnLight, ClearInkOnLight, ClearInkOnLight.copy(alpha = .85f), ClearTileOnLight,
+                Color.Black.copy(alpha = .06f), ClearInkOnLight, ClearInkOnLight.copy(alpha = .7f))
             style == IconStyle.CLEAR -> LivePalette(ClearTile, Color.White, Color.White.copy(alpha = .85f), ClearTile,
                 Color.White.copy(alpha = .1f), Color.White, Color.White.copy(alpha = .7f))
             else -> LivePalette(Color.White, Color.Black, IconRedLight, Color.Black, Color.White, Color.Black, IconOrange)
@@ -426,6 +439,9 @@ internal data class LivePalette(val calendarBackground: Color, val calendarNumbe
 private val IconRedLight = FolioColors.RedLight
 /** The frosted tile behind Clear icons. */
 internal val ClearTile = Color.White.copy(alpha = .2f)
+/** The same tile and symbol color on a light Home, where white on white would vanish (iOS adapts Clear the same way). */
+internal val ClearTileOnLight = Color.Black.copy(alpha = .1f)
+internal val ClearInkOnLight = Color.Black.copy(alpha = .72f)
 private val IconDark = FolioColors.SecondaryBackground
 private val IconFace = FolioColors.SheetSurface
 private val IconRed = FolioColors.Red
