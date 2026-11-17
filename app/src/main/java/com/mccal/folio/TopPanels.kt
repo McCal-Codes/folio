@@ -1138,7 +1138,9 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         // control in the sixth row made the page "too tall", it became a scroll container and cut off the resize handles in the last column).
         fun controlsRows(index: Int) = if (slotMode && index == 0) slotMoveRows else ccPlanRows(plan, index, cols, focusOn) + if (index == plan.perPage.lastIndex) galleryRows else 0
         val neededRows = maxOf(if (CcPage.MEDIA in extraPages) ccMediaRows(plan, focusOn) else 0, (if (slotMode) listOf(0) else plan.perPage.indices.toList()).maxOf { controlsRows(it) })
-        val wantedHeight = cell * neededRows + gap * (neededRows - 1)
+        // The editor's "Add a Control" row stands under its grid, so the page is as tall as the grid plus that row (it was half cut off below the last row).
+        val addRowHeight = if (slotMode && edit.active) FolioTouch.MIN.dp + gap else 0.dp
+        val wantedHeight = cell * neededRows + gap * (neededRows - 1) + addRowHeight
         val pageHeight = if (pagesAvailable == null) wantedHeight else minOf(wantedHeight, pagesAvailable).coerceAtLeast(cell)
 
         // The sliders: beside the small controls with four columns, at the end of the top row with six or eight.
@@ -1251,7 +1253,9 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
             val rowsNeeded = when (spec.page) { CcPage.CONTROLS -> controlsRows(spec.index); CcPage.MEDIA -> ccMediaRows(plan, focusOn); CcPage.CONNECTIVITY -> 4 }
             @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
             CompositionLocalProvider(androidx.compose.foundation.LocalOverscrollConfiguration provides null) {
-            val scrolls = rowsNeeded > rowsFit
+            // The editor's page also scrolls when only its "Add a Control" row does not fit under the grid (the rows alone fit, so the count above says no).
+            val scrolls = rowsNeeded > rowsFit ||
+                (slotMode && spec.page == CcPage.CONTROLS && addRowHeight > 0.dp && cell * rowsNeeded + gap * (rowsNeeded - 1) + addRowHeight > pageHeight + 1.dp)
             // A scroll container cuts off what is drawn outside it, and the editor draws outside the grid (the minus badges on the left, the resize
             // arcs on the right), so the page that scrolls is made a little wider than the grid, centered on it, and the grid is padded back in.
             val editorScroll = scrolls && slotMode && spec.page == CcPage.CONTROLS
