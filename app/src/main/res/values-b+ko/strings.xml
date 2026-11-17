@@ -1604,6 +1604,7 @@
     <string name="label_island_listener">Folio Dynamic Island</string>
     <!-- Shown when opening a Folio theme file. -->
     <string name="label_theme_import">Folio 테마</string>
+    <string name="label_wallpaper_import">Folio 배경화면</string>
     <!-- Shown when opening a supporter code link. -->
     <string name="label_redeem">Folio 후원자 코드</string>
     <string name="label_settings_shortcut">Folio 설정</string>

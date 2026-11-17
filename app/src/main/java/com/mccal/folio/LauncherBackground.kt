@@ -205,6 +205,7 @@ class LauncherBackgroundController(
         private set
 
     fun stageArt(id: String) {
+        revertOnCancel = null
         // A photo mid-preview and a piece of art cannot both be the candidate.
         if (previewPending) cancelPreview()
         justSet = false
@@ -315,7 +316,34 @@ class LauncherBackgroundController(
         }
     }
 
+    /**
+     * Runs if a shared photo is cancelled or cannot be read, to put back the wallpaper choice that showing its preview
+     * changed. Cleared by anything that moves on: a Set, another photo, art, or Reset.
+     */
+    private var revertOnCancel: (() -> Unit)? = null
+
+    /**
+     * A photo shared to Folio, staged exactly as a picked one: the page's preview shows it and Set writes it. The caller
+     * says how to undo the switch to Folio's own background it made to show the preview (null when already there).
+     */
+    fun stageSharedPhoto(uri: Uri, revert: (() -> Unit)?) {
+        cancelPendingArt()
+        justSet = false
+        discardPreview()
+        releasePreviewGrant()
+        cleanupStagedFiles()
+        generation++; pickerPending = false; loading = false; errorMessage = null; successMessage = null
+        if (revert != null) revertOnCancel = revert
+        val operation = UUID.randomUUID().toString()
+        prefs.edit().putString(PENDING_OPERATION, operation).remove(PICKER_PENDING).remove(PENDING_URI)
+            .remove(PREVIEW_PHASE).remove(PREVIEW_FILE).apply()
+        beginPreview(uri, operation)
+    }
+
+    private fun revertSharedChoice() { revertOnCancel?.also { revertOnCancel = null }?.invoke() }
+
     fun choosePhoto() {
+        revertOnCancel = null
         cancelPendingArt()
         justSet = false
         discardPreview()
@@ -334,6 +362,7 @@ class LauncherBackgroundController(
     }
 
     fun reset() {
+        revertOnCancel = null
         generation++; pickerPending = false; loading = false
         discardPreview()
         releasePreviewGrant()
@@ -372,6 +401,7 @@ class LauncherBackgroundController(
                 previewBitmap = null
                 previewPending = false
                 loading = false
+                revertOnCancel = null
                 LauncherBackgroundCache.changed(staged.bitmap, staged.operation)
                 photoSelected = true
                 justSet = true
@@ -391,6 +421,7 @@ class LauncherBackgroundController(
         errorMessage = null
         successMessage = null
         cleanupStagedFiles()
+        revertSharedChoice()
     }
 
     override fun onDestroy(owner: LifecycleOwner) {
@@ -524,6 +555,7 @@ class LauncherBackgroundController(
         discardPreview()
         clearPreviewPersistence()
         cleanupStagedFiles()
+        revertSharedChoice()
     }
 
     private fun discardPreview() {

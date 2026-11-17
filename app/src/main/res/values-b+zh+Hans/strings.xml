@@ -1588,6 +1588,7 @@
     <string name="label_dune_wallpaper">Folio 背景</string>
     <string name="label_island_listener">Folio 灵动岛</string>
     <string name="label_theme_import">Folio 主题</string>
+    <string name="label_wallpaper_import">Folio 壁纸</string>
     <string name="label_redeem">Folio 支持者代码</string>
     <string name="label_settings_shortcut">Folio 设置</string>
     <string name="label_dock_tile">Folio 程序坞</string>
