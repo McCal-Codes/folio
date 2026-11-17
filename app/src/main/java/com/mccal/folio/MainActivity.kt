@@ -737,8 +737,25 @@ class MainActivity : ComponentActivity() {
         }
         if (wasSystem) choose(false)
         backgrounds.stageSharedPhoto(uri, if (wasSystem) ({ choose(true) }) else null)
-        SettingsLink.page = CustomizationPage.WALLPAPER
-        settingsRequests.intValue++
+        // The framing screen opens over Home; only without it does the Wallpaper page's own preview need to be showing.
+        if (!FeatureGate.WALLPAPER_PREVIEW.isOpen(this)) {
+            SettingsLink.page = CustomizationPage.WALLPAPER
+            settingsRequests.intValue++
+        }
+    }
+
+    /**
+     * The Edit menu's Wallpaper Photo row: the photo picker straight away, then the framing screen over Home. Like a shared photo, it
+     * shows Folio's own background for the preview, and puts Android's wallpaper back if the picker or the framing is cancelled.
+     */
+    fun chooseWallpaperPhoto() {
+        val wasSystem = showsWallpaper
+        fun choose(system: Boolean) {
+            applyWallpaperWindow(system)
+            lifecycleScope.launch { model.state.first { it.homeReady }; model.setSystemWallpaper(system) }
+        }
+        if (wasSystem) choose(false)
+        backgrounds.choosePhotoWith(if (wasSystem) ({ choose(true) }) else null)
     }
 
     override fun onNewIntent(intent: Intent) {
