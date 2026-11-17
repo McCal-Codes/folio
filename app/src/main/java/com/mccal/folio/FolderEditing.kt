@@ -113,6 +113,15 @@ fun removeAppFromFolder(layout: HomeLayout, folderId: String, appId: String, tar
     return if (placed == next) layout else placed
 }
 
+/**
+ * Takes a folder off Home (the minus on its corner while icons wiggle): its place empties and the folder goes, while its apps
+ * stay installed and in the App Library, as removing a single app from Home does. Undo brings the folder back whole.
+ */
+fun removeFolder(layout: HomeLayout, folderId: String): HomeLayout {
+    if (layout.folder(folderId) == null) return layout
+    return layout.withoutShortcut(folderId).copy(folders = layout.folders.filterNot { it.id == folderId })
+}
+
 fun reconcileFolders(layout: HomeLayout, removedAppIds: Set<String>): HomeLayout {
     var next = layout
     removedAppIds.forEach { appId ->
