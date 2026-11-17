@@ -45,6 +45,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.automirrored.rounded.VolumeDown
 import androidx.compose.material.icons.automirrored.rounded.VolumeOff
@@ -924,7 +925,23 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
     val edit = remember { HomeEditMode() }
     // Moving controls (FeatureGate.CC_REORDER): while it is shut, edit mode only adds and removes, as before.
     val reorder = if (FeatureGate.CC_REORDER.isOpen(context)) remember { CcReorderState() } else null
-    val moveControl: (String, String) -> Unit = { moving, target -> onControls(ccMoveControl(controlNames, moving, target)) }
+    // What this edit session changed, so Undo can take it back a step at a time (a drag, a resize, a remove, an add, a reset). It ends with the session.
+    var history by remember { mutableStateOf(CcEditHistory()) }
+    val editView = androidx.compose.ui.platform.LocalView.current
+    val record = { history = history.push(CcEditState(controlNames, ccLayout)) }
+    val changeControls: (List<String>) -> Unit = { next -> record(); onControls(next) }
+    val changeLayout: (List<CcSlot>, Int, Boolean) -> Unit = { next, columns, focus -> record(); onCcLayout(CcSavedLayout(columns, next, focus)) }
+    val undoEdit = {
+        history.pop()?.let { (before, rest) ->
+            history = rest
+            if (before.controls != controlNames) onControls(before.controls)
+            if (before.layout != ccLayout) onCcLayout(before.layout)
+            editView.announceForAccessibility(context.getString(R.string.cc_undone))
+        }
+        Unit
+    }
+    LaunchedEffect(edit.active) { history = CcEditHistory() }
+    val moveControl: (String, String) -> Unit = { moving, target -> changeControls(ccMoveControl(controlNames, moving, target)) }
     SafeBackHandler(edit.active) { edit.stop() }
     // Pages that would repeat the first are left out, Now Playing is a slim row while nothing plays and the battery ring stands apart from the dots (FeatureGate.CC_PAGES_DEDUPE).
     val dedupe = remember { FeatureGate.CC_PAGES_DEDUPE.isOpen(context) }
@@ -1114,7 +1131,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                 CcControl.entries.filter { it !in chosen && available(it) }.map { c -> CcGalleryItem(c.name, stringResource(c.label), c.icon(), false) }
         }
         if (galleryOpen && edit.active) CcControlGallery(galleryItems, panel = panelBounds, fit = fitNow, minFit = FolioTouch.MIN / cell.value, onFit = { galleryFit = it }, onDismiss = { galleryOpen = false }, onAdd = { item ->
-            if (item.module) onCcLayout(CcSavedLayout(cols, ccAdd(slots, item.id, cols, slotMoveRows) ?: slots, focusOn)) else onControls(controlNames + item.id)
+            if (item.module) changeLayout(ccAdd(slots, item.id, cols, slotMoveRows) ?: slots, cols, focusOn) else changeControls(controlNames + item.id)
             if (galleryItems.size <= 1) galleryOpen = false
         })
         // The editor's gallery is a sheet, not rows under the grid, so the places page counts only its own rows (with the gallery's two counted too, a
@@ -1238,8 +1255,12 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
             // A scroll container cuts off what is drawn outside it, and the editor draws outside the grid (the minus badges on the left, the resize
             // arcs on the right), so the page that scrolls is made a little wider than the grid, centered on it, and the grid is padded back in.
             val editorScroll = scrolls && slotMode && spec.page == CcPage.CONTROLS
+            // The page's own scroll state and box, so a control held near its edge can scroll it (see CcSlotGrid).
+            val pageScroll = rememberScrollState()
+            var pageBox by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
             Column((if (editorScroll) Modifier.wrapContentWidth(Alignment.CenterHorizontally, unbounded = true).width(gridWidth + 24.dp) else Modifier.width(gridWidth))
-                .then(if (scrolls) Modifier.fadingVerticalScroll() else Modifier).then(if (editorScroll) Modifier.padding(horizontal = 12.dp) else Modifier), verticalArrangement = Arrangement.spacedBy(gap)) {
+                .onGloballyPositioned { pageBox = it }
+                .then(if (scrolls) Modifier.fadingVerticalScroll(pageScroll) else Modifier).then(if (editorScroll) Modifier.padding(horizontal = 12.dp) else Modifier), verticalArrangement = Arrangement.spacedBy(gap)) {
                 when (spec.page) {
                     CcPage.CONTROLS -> {
                         val first = spec.index == 0
@@ -1256,8 +1277,9 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                                 else -> CcControl.entries.firstOrNull { it.name == id }?.let { stringResource(it.label) } ?: id } }
                             CcSlotGrid(slots, cols, slotMoveRows, cell, gap, edit.active, raised = if (slotConnectivityOpen) CC_CONNECTIVITY else null,
                                 removable = { true }, labelOf = labelOfSlot,
-                                onChange = { next -> onCcLayout(CcSavedLayout(cols, next, focusOn)) },
-                                onRemove = { id -> if (CcControl.entries.any { it.name == id }) onControls(controlNames - id) else onCcLayout(CcSavedLayout(cols, ccRemove(slots, id), focusOn)) }) { slot ->
+                                onChange = { next -> changeLayout(next, cols, focusOn) },
+                                onRemove = { id -> if (CcControl.entries.any { it.name == id }) changeControls(controlNames - id) else changeLayout(ccRemove(slots, id), cols, focusOn) },
+                                onEnterEdit = { edit.start() }, scroll = if (scrolls) pageScroll else null, viewport = { pageBox }) { slot ->
                                 when (slot.id) {
                                     CC_CONNECTIVITY ->
                                         // The open list is wider and taller than the 2 by 2 place it came from, so it is measured without that place's limits
@@ -1331,7 +1353,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                         // A small bar, as in the editor: two cells wide, with the first two controls beside it.
                         if (focusBesideCount > 0) Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
                             focusModuleAt(span(2), cell)
-                            allPageControls.take(focusBesideCount).forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }, reorder = reorder, onMove = moveControl, onNudge = { by -> onControls(ccMoveControlBy(controlNames, c.name, by)) }, value = valueOf(c),
+                            allPageControls.take(focusBesideCount).forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { changeControls(controlNames - c.name) }, reorder = reorder, onMove = moveControl, onNudge = { by -> changeControls(ccMoveControlBy(controlNames, c.name, by)) }, value = valueOf(c),
                                 settleIndex = if (first) allPageControls.indexOf(c) else -1, panelOpen = panelOpen) { run(c) } }
                         } else if (first && focusOn && plan.focusOnFirst) focusModuleAt(span(2), cell)
                         // Row 3–4 with four columns: the first four small controls (2×2) and brightness + volume sliders
@@ -1343,7 +1365,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                                 if (beside.isNotEmpty()) Column(Modifier.width(span(2)), verticalArrangement = Arrangement.spacedBy(gap)) {
                                     beside.chunked(2).forEach { pair ->
                                         Row(Modifier.zIndex(if (reorder?.moving in pair.map { it.name }) 1f else 0f), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                                            pair.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }, reorder = reorder, onMove = moveControl, onNudge = { by -> onControls(ccMoveControlBy(controlNames, c.name, by)) }, value = valueOf(c),
+                                            pair.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { changeControls(controlNames - c.name) }, reorder = reorder, onMove = moveControl, onNudge = { by -> changeControls(ccMoveControlBy(controlNames, c.name, by)) }, value = valueOf(c),
                                                 settleIndex = if (first) beside.indexOf(c) else -1, panelOpen = panelOpen) { run(c) } }
                                         }
                                     }
@@ -1355,7 +1377,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                         (if (cols >= 6 || spec.index != plan.sliderPage) pageControls else pageControls.drop(4)).chunked(cols).forEach { row ->
                             // The row holding the control being dragged is drawn above the rows after it.
                             Row(Modifier.zIndex(if (reorder?.moving in row.map { it.name }) 1f else 0f), horizontalArrangement = Arrangement.spacedBy(gap)) {
-                                row.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { onControls(controlNames - c.name) }, reorder = reorder, onMove = moveControl, onNudge = { by -> onControls(ccMoveControlBy(controlNames, c.name, by)) }, value = valueOf(c),
+                                row.forEach { c -> EditableControl(c, isOn(c), accent(c), cell, edit, onRemove = { changeControls(controlNames - c.name) }, reorder = reorder, onMove = moveControl, onNudge = { by -> changeControls(ccMoveControlBy(controlNames, c.name, by)) }, value = valueOf(c),
                                     settleIndex = if (first) pageControls.indexOf(c) else -1, panelOpen = panelOpen) { run(c) } }
                             }
                         }
@@ -1475,6 +1497,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                         if (edit.active) {
                             PanelPill(stringResource(R.string.done)) { edit.stop() }
                             if (galleryItems.isNotEmpty()) { Spacer(Modifier.width(gap)); GlassIconButton(Icons.Rounded.Add, stringResource(R.string.add_a_control)) { galleryOpen = true } }
+                            if (history.canUndo) { Spacer(Modifier.width(gap)); GlassIconButton(Icons.AutoMirrored.Rounded.Undo, stringResource(R.string.undo)) { undoEdit() } }
                         }
                         else if (pages.getOrNull(current)?.page == CcPage.CONTROLS) GlassIconButton(Icons.Rounded.Add, stringResource(R.string.edit_controls)) { edit.start() }
                         Spacer(Modifier.weight(1f))

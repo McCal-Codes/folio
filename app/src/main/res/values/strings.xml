@@ -2700,6 +2700,12 @@
     <string name="cc_move_down">Move down</string>
     <string name="cc_change_size">Change size</string>
     <string name="cc_remove">Remove</string>
+    <string name="cc_moved_to">%1$s moved to row %2$d, column %3$d</string>
+    <string name="cc_cant_move">%1$s can\'t go there</string>
+    <string name="cc_resized">%1$s is now %2$d by %3$d</string>
+    <string name="cc_tile_place">Row %1$d, column %2$d, %3$d by %4$d</string>
+    <string name="cc_removed_undo">%1$s removed. Undo is at the top.</string>
+    <string name="cc_undone">Undid the last change</string>
     <string name="cc_dark_theme">Dark theme</string>
     <string name="cc_compact_panel">Compact panel on wide screens</string>
     <string name="cc_rail">Page rail beside the controls</string>

@@ -85,6 +85,12 @@ than Apple", "there should be some standards for the control center and notifica
   turns after a drag of a fifth of its height or a flick, never half the screen. Test any change to a page with slow and short drags
   that start on a tile, in a gap and on empty space.
 
+- **PNL-33 MUST** make a drag in Control Center's editor honest about what letting go does: the held control lifts and follows the
+  finger with no lag, the place it would take is outlined, a control that would trade places slides into the place it leaves, a drop
+  that cannot work or one off the grid returns the control home, and a page that scrolls scrolls while a control is held near its
+  edge (`ccPreviewDrop`, `ccAutoScrollStep`). Every change in an edit session can be undone, and the same moves are TalkBack actions
+  that announce where the control went. Under Reduce Motion only the held control moves; nothing flashes ([A11Y](accessibility.md)).
+
 ### Notification Center
 
 - **PNL-22 MUST** share one presentation of a notification between the Dynamic Island and Notification Center: a message can

@@ -8,6 +8,10 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.7.0] - Unreleased
 
 ### Added
+- **Control Center drags like iOS:** a held control lifts with a soft shadow and follows your finger, the place it would take is outlined, and a neighbor that would trade places slides into the one you leave, so letting go is never a surprise. A light tick marks each new place, a drop that cannot work (or a drag off the grid) sends the control home, and holding near the top or bottom of a page that scrolls scrolls it. Resizing moves the controls it would push aside as you drag. With Reduce Motion nothing slides except the control in your finger. <!-- beta 5 -->
+- **Undo in Control Center's editor:** an Undo button next to + takes back your last moves, resizes, removals and additions one at a time, until you tap Done. <!-- beta 5 -->
+- **Press and hold to edit Control Center:** hold an empty spot between the controls to start editing, as on iOS. The + button still works. <!-- beta 5 -->
+- **TalkBack in Control Center's editor:** each control says its row, column and size while editing, the move actions trade places with a control in the way, and moving, resizing and removing are announced. <!-- beta 5 -->
 - **Frame a wallpaper photo:** a photo you pick opens full screen over a drawn Home. Pinch to zoom and drag to move it, then Set keeps exactly what you framed, the way Apple's Add Wallpaper step works. Cancel leaves your wallpaper as it was. <!-- beta 5 -->
 - **New icons for Folio's own packages:** the icons in the Market for Cabinet, Harborline, Roll Call, Palette, Colored Albums, Flipbook, Duet and the four themes are shaded from top to bottom with a soft highlight, and the picture on each is lifted off the tile, so they have some depth in a list. <!-- beta 5 -->
 - **Tweak pages open on a picture:** Cabinet, Colored Albums, Duet, Flipbook, Harborline, Palette and Roll Call each have a still picture at the top of their Market page, in the tweak's own color with its icon drawn large, so a page no longer starts with plain text. Pages in the Folio source also say "color" instead of "colour". <!-- beta 5 -->
