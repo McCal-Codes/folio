@@ -341,7 +341,9 @@ class MainActivity : ComponentActivity() {
                     iconsMostlyDark(state.apps.filter { LiveIcons.kind(this@MainActivity, it.packageName) == null && it.shortcutId == null }.map { it.icon })
                 }
             }
-            val postedBadges = androidx.compose.runtime.remember(notificationItems, clearedBadges) { BadgeClears.counts(notificationItems, clearedBadges) }
+            val postedTallies = androidx.compose.runtime.remember(notificationItems, clearedBadges) { BadgeClears.tallies(notificationItems, clearedBadges) }
+            val postedBadges = androidx.compose.runtime.remember(postedTallies) { postedTallies.mapValues { it.value.count } }
+            val badgeDots = androidx.compose.runtime.remember(postedTallies) { postedTallies.filterValues { !it.exact }.keys }
             // Clear Badges When Opened: the counts already seen are hidden, and a seen count follows its app down when
             // notifications go away elsewhere. Nothing of this runs while the switch is off or the gate is shut.
             val clearsBadgesWhenOpened = clearsBadgesWhenOpened(state.badgesWhenOpened)
@@ -381,7 +383,7 @@ class MainActivity : ComponentActivity() {
                 LocalIconsAreDark provides iconsAreDark,
                 LocalRecentPackages provides recentPackages,
                 LocalSwappedApps provides androidx.compose.runtime.remember(state.apps) { swappedByPackage(state.apps) },
-                LocalBadgeCounts provides badgeCounts, LocalInstallProgress provides installProgress, LocalNewApps provides newApps, LocalFolderColors provides state.folderColors) { FoldTransitionHost(FeatureScopes.on(state.featureScopes, DUET_ID, state.foldEffect,
+                LocalBadgeCounts provides badgeCounts, LocalBadgeDots provides badgeDots, LocalInstallProgress provides installProgress, LocalNewApps provides newApps, LocalFolderColors provides state.folderColors) { FoldTransitionHost(FeatureScopes.on(state.featureScopes, DUET_ID, state.foldEffect,
                     screenFor(androidx.compose.ui.platform.LocalConfiguration.current.fitsRegularHomeLayout())), state.foldIntensity, state.stayAwakeOnFold,
                     // Reduce Motion: a plain shade, no frost, tilt, shrink or picture moving (DYN-11: motion becomes a fade).
                     state.foldSnapshot && !reduceMotion, state.haptics,

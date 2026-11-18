@@ -70,7 +70,11 @@ data class NotificationItem(val key: String, val packageName: String, val appLab
     /** For StandBy 2 notification dots and glow: accent color, lock-screen visibility, badge allowance, and DND/visual suppression. */
     val color: Int? = null, val visibility: Int = Notification.VISIBILITY_PUBLIC, val canShowBadge: Boolean = true, val silenced: Boolean = false,
     /** The profile it was posted for, null for the one Folio runs in: a Dual Messenger copy has the same package name as the original. */
-    val user: android.os.UserHandle? = null)
+    val user: android.os.UserHandle? = null,
+    /** For badge numbers (see [UnreadCount]): a count Folio can trust for this notification alone, 0 when it cannot tell. Never message text. */
+    val unread: Int = 0,
+    /** Its group, and the count its group summary gives (a summary is never listed here), 0 when the summary has none. */
+    val group: String? = null, val groupUnread: Int = 0)
 
 /** A messaging app's notification channel and whether Android pops it up itself (importance HIGH or above). */
 data class MessageChannel(val packageName: String, val appLabel: String, val channelId: String, val channelName: String?, val importance: Int,
@@ -332,7 +336,12 @@ class IslandListenerService : NotificationListenerService() {
         messageChannelsMutable.value = messageChannelsMutable.value + seen.associateBy { "${it.packageName}|${it.channelId}" }
     }
 
-    private fun currentNotifications(): List<NotificationItem> = activeNotifications.orEmpty()
+    private fun currentNotifications(): List<NotificationItem> {
+        val active = activeNotifications.orEmpty()
+        // A group summary is not listed, but a count it carries stands for the whole group's badge.
+        val summaryCounts = active.filter { it.notification.flags and Notification.FLAG_GROUP_SUMMARY != 0 && it.notification.number > 0 }
+            .associate { it.groupKey to it.notification.number }
+        return active
         .filter { sbn ->
             val n = sbn.notification
             sbn.packageName != packageName && n.flags and Notification.FLAG_GROUP_SUMMARY == 0 && !isOverflowPlaceholder(sbn) &&
@@ -364,8 +373,11 @@ class IslandListenerService : NotificationListenerService() {
                 color = n.color.takeIf { it != Notification.COLOR_DEFAULT },
                 visibility = effectiveVisibility,
                 canShowBadge = !ranked || ranking.canShowBadge(),
-                silenced = silenced, user = sbn.user)
+                silenced = silenced, user = sbn.user,
+                unread = UnreadCount.of(n),
+                group = sbn.groupKey.takeIf { sbn.isGroup }, groupUnread = summaryCounts[sbn.groupKey] ?: 0)
         }
+    }
 
     /** Calls, alarms, timers and the like: never put in Quiet, whatever the channel's importance says. */
     private val URGENT_CATEGORIES = setOf(Notification.CATEGORY_CALL, Notification.CATEGORY_ALARM, Notification.CATEGORY_REMINDER,
