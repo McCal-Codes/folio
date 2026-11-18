@@ -18,7 +18,8 @@ than Apple", "there should be some standards for the control center and notifica
   page strip counts it), never to a scroll. Lists, such as the notification list, scroll: that is what a list is for.
 - **PNL-2 MUST NOT** overlap: the header, the pages, the page strip, the plate, the system bars, the camera cutout and the
   hinge never cover one another. When a window is too short, first move the chrome (the page strip goes into the header),
-  then paginate; do not shrink a tile below its floor.
+  then paginate; do not shrink a tile below its floor. Adding a control never shrinks a tile: the height is fitted to what must stand
+  on the first page (the sliders and the modules), so the same window and size give the same cells and the rest paginate.
 - **PNL-3 MUST** work the size of every cell, gap and column out of the window and the size the person chose
   (`controlCenterGrid`), never out of a device name ([ADP](adaptive-layout.md)). No fixed ceiling on a list's height; a card
   is at most two thirds of the window.
