@@ -143,8 +143,9 @@ internal fun SupporterPage(onSoftwareUpdate: () -> Unit = {}) {
     }
 
     // Opt-in, and off until turned on: Ko-fi members only, and the one thing here that contacts Folio's server about
-    // the code. It stays shown for a code that has run out, since that is who it is most useful to.
-    if (stored != null) SettingsCard(stringResource(R.string.supporter_auto_renew_card)) {
+    // the code. It stays shown for a code that has run out, since that is who it is most useful to. Hidden where Folio
+    // does not check for updates (the debug build, forks), because renewal rides on that check and the switch would do nothing.
+    if (stored != null && SoftwareUpdate.supported(context)) SettingsCard(stringResource(R.string.supporter_auto_renew_card)) {
         SettingsSwitch(stringResource(R.string.supporter_auto_renew), autoRenew, { on -> Supporter.setAutoRenew(context, on); autoRenew = on }, "supporter-auto-renew-switch")
         CardNote(stringResource(R.string.supporter_auto_renew_note))
     }

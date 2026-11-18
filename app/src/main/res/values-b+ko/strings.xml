@@ -2023,7 +2023,7 @@
     <string name="supporter_ends_soon_note">이 코드는 %1$s에 끝납니다. 그 전에 Ko-fi에서 갱신하면 베타를 끊김 없이 받을 수 있습니다.</string>
     <string name="supporter_renew">Ko-fi에서 갱신</string>
     <string name="supporter_auto_renew_card">갱신</string>
-    <string name="supporter_auto_renew">자동으로 갱신</string>
+    <string name="supporter_auto_renew">월간 코드 자동 갱신</string>
     <string name="supporter_auto_renew_note">Ko-fi 월간 멤버용입니다. 코드가 끝나기 일주일 전부터, 그리고 끝난 뒤에도 하루에 한 번 Folio의 후원자 서버에 가장 최근 결제로 받은 코드를 요청해 적용하므로 이메일을 열 필요가 없습니다. 지금 가진 코드만 전송합니다. 기본값은 꺼짐이며 언제든 끌 수 있습니다. 일회성 코드는 갱신할 것이 없습니다.</string>
     <string name="beta_teaser_title">Folio %1$s이(가) 후원자용으로 나왔습니다. 추가되는 기능:</string>
     <string name="beta_teaser_more">그 외 %1$d개는 릴리스 노트에서 확인하세요</string>
