@@ -68,7 +68,7 @@ Good:
 - Runtime requests use `ActivityResultContracts.RequestPermission` from the screen that needs them; special access
   opens the matching Settings page; Settings lists each permission's purpose (`CustomizationSheet.kt:1136`).
 - No analytics or crash SDKs; `CrashLog` is local (last 5 reports) and shared by hand.
-- Network only for updates (checked daily by default, with the supporter worker for supporters' betas), the roadmap, the Supporters list and added Market sources; cleartext blocked; `allowBackup="false"`.
+- Network only for updates (checked daily by default, with the supporter worker for supporters' betas, and for a new code when the supporter has turned on Renew automatically), the roadmap, the Supporters list and added Market sources; cleartext blocked; `allowBackup="false"`.
 - Market packages are declarative, signed and pinned; `:market` has Jazzer fuzz targets and a weekly fuzz job.
 
 ## Gaps

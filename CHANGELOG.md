@@ -8,6 +8,7 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.7.0] - Unreleased
 
 ### Added
+- **Ko-fi members can renew automatically:** a new Renew automatically switch in Settings › Supporter, off until you turn it on. With a monthly Ko-fi membership, Folio then picks up the code your newest payment earned when your current one is in its last week or has ended, so you no longer open the email each month. It sends only the code you already have, and checks the new one on your phone like any other. Cancel the membership and the current code simply runs out. The Korean and Chinese text is machine translated. <!-- beta 5 -->
 - **Removed icons shrink away:** tapping the minus on an app or a dock icon now shrinks and fades the icon where it stood, instead of it vanishing at once. Undo still brings it back. Reduce Motion fades it without the shrink. <!-- beta 5 -->
 - **Wallpaper changes fade in:** when you set a new wallpaper, the old picture eases into the new one on Home instead of switching at once. Reduce Motion keeps the instant switch. <!-- beta 5 -->
 - **Remove a folder from Home:** while icons wiggle, a folder now has the same gray minus as an app. Tapping it takes the folder off Home; its apps stay installed and in the App Library, and Undo brings the folder back with everything in it. <!-- beta 5 -->

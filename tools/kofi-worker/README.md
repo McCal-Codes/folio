@@ -240,3 +240,27 @@ in `beta_seen`, so it ends on the same day the phone says it does.
 
 Run `node beta.test.mjs` for the checks: they mint real signed codes against a throwaway key, so the gate is exercised
 rather than described.
+
+## Renewal for members (17 Nov 2026)
+
+A monthly member's payment already earns a fresh code, emailed. `GET /renew` lets the phone pick it up without the
+email: it sends the code it holds (`Authorization: Bearer`), and the worker answers `200 {"code"}` with the newest code
+that member's membership payments earned, `204` when the phone already has it, `404` when the code was not earned by
+a membership payment, and `400` / `403` for something that is not a Folio code, was not signed by Folio, or is
+withdrawn. An ended code is accepted: that is the member whose phone was off. It never makes or extends a code; it can
+only hand back one that a real Ko-fi payment already claimed for the same payer.
+
+"The same payer" is `HMAC-SHA256(PAYER_SECRET, lower-cased email)`, first 16 bytes, written to `handled.payer` for
+`Subscription` payments only. The address is still used to send the email and still not stored. Without
+`PAYER_SECRET`, or on a database without the column, nothing is written and nothing breaks: the code is claimed and
+emailed exactly as before, that payment just cannot be renewed from the phone.
+
+Setting it up, in this order:
+
+1. Add the column to the live database, once: `npx wrangler d1 execute folio-codes --remote --command "ALTER TABLE handled ADD COLUMN payer TEXT NOT NULL DEFAULT ''"`
+2. `npx wrangler secret put PAYER_SECRET` (any long random string; keep a copy, since changing it makes every member's
+   earlier payments unrecognizable and renewal starts over from their next payment).
+3. `npx wrangler deploy`.
+
+Payments from before step 2 have no payer, so a member's first renewal by phone comes after their first payment
+following the deploy. Run `node renew.test.mjs` for the checks.
