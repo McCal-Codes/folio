@@ -96,4 +96,16 @@ class CcPagesTest {
         val full = (0 until 4).flatMap { col -> (6 until 8).map { row -> c("f$col$row", col, row) } } + c("a", 0, 0)
         assertNull(ccCarry(full, "a", cols, 6, 8, fromBottom = false))
     }
+
+    @Test fun `a page holds a set number of rows for each size of screen`() {
+        assertEquals(3, ccRowsForWindow(360f))   // a phone on its side
+        assertEquals(4, ccRowsForWindow(704f))   // the unfolded Fold, wide
+        assertEquals(5, ccRowsForWindow(751f))   // the Fold's cover
+        assertEquals(5, ccRowsForWindow(932f))
+        assertEquals(6, ccRowsForWindow(1100f))
+        // Never fewer for a taller window, and the same for any height inside one size.
+        var last = 0
+        for (h in 200..1400 step 10) { val r = ccRowsForWindow(h.toFloat()); assertTrue("$h", r >= last); last = r }
+        assertEquals(ccRowsForWindow(740f), ccRowsForWindow(900f))
+    }
 }

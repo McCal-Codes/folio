@@ -1065,7 +1065,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         // break in the same places whether or not the editor is open. The editor adds one empty row to drop into, which opens a page when the last is full.
         val slots = remember(ccLayout, cols, chosen, focusOn) { ccLayoutFor(ccLayout, cols, chosen.map { it.name }, focusOn) }
         val addRowHeight = if (slotMode) FolioTouch.MIN.dp + gap else 0.dp
-        val slotPerPage = if (pagesAvailable == null) 40 else maxOf(3, ccRowsThatFit((pagesAvailable - addRowHeight).value, cell.value, gap.value))
+        val slotPerPage = if (pagesAvailable == null) 40 else maxOf(3, minOf(ccRowsForWindow(LocalConfiguration.current.screenHeightDp.toFloat()), ccRowsThatFit((pagesAvailable - addRowHeight).value, cell.value, gap.value)))
         // Pages come only from overflow: the empty row never opens a page of its own, so a full last page has no spare row (as iOS, which has no empty page).
         val slotUsed = if (slotMode) maxOf(ccRowsUsed(slots), ccRowsUsed(ccDefaultLayout(cols, chosen.map { it.name }, focusOn))).coerceAtLeast(1) else 0
         val slotSpare = slotMode && edit.active && slotUsed - ccPageStarts(slots, slotPerPage, slotUsed).last() < slotPerPage

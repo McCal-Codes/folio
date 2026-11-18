@@ -146,6 +146,18 @@ internal fun ccAdd(slots: List<CcSlot>, id: String, cols: Int, rows: Int): List<
 }
 
 /**
+ * How many rows a Controls page holds for a window [windowHeightDp] tall: a set amount per size of screen (McCal 17 Nov 2026), so the pages break in the same
+ * places on the same screen however many controls there are, and a taller window does not slip in an extra row. It is a ceiling: a window that cannot
+ * hold that many at the cell size (a short or wide one) holds fewer, so nothing is cut off or scrolls (PNL-1).
+ */
+internal fun ccRowsForWindow(windowHeightDp: Float): Int = when {
+    windowHeightDp < 480f -> 3
+    windowHeightDp < 720f -> 4
+    windowHeightDp < 960f -> 5
+    else -> 6
+}
+
+/**
  * The first row of each page of the editor, for a window that holds [rowsPerPage] rows (PNL-1: what does not fit goes to another page, never into
  * a scroll). [totalRows] is how many rows the page set must cover at least (the editor adds one empty row to drop into). A page ends at the
  * last row boundary within [rowsPerPage] that no control stands across, so a tall control is never cut in two; a page that begins in an empty
