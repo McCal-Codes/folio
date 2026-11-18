@@ -136,6 +136,8 @@ internal fun ExpandedWorkspace(
     onMove: (String, Int) -> Unit = { _, _ -> },
     /** Back swipe progress over the App Library (predictive back), 0–1. */
     libraryBack: () -> Float = { 0f },
+    /** Where the App Library was left, kept by Home across a fold or an unfold. */
+    libraryPlace: LibraryPlace? = null,
     /** A tap on the message Home shows when apps or the layout couldn't be loaded. */
     onProblem: () -> Unit,
 ) {
@@ -255,7 +257,7 @@ internal fun ExpandedWorkspace(
                             .graphicsLayer { val b = libraryBack(); scaleX = 1f - .14f * b; scaleY = scaleX; alpha = 1f - .35f * b; translationX = size.width * .08f * b }
                             .padding(start = FolioSpace.LARGE.dp, top = FolioSpace.LARGE.dp, bottom = bottomSpace)
                             .testTag("library-page"),
-                        drag = drag, page = visibleHomePages, onLaunchFrom = onLaunchFrom, onTurnOnWork = onTurnOnWork)
+                        drag = drag, page = visibleHomePages, onLaunchFrom = onLaunchFrom, onTurnOnWork = onTurnOnWork, place = libraryPlace)
                 }
             }
         }

@@ -8,6 +8,7 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.7.0] - Unreleased
 
 ### Added
+- **Folding remembers where you were:** each screen keeps its own Home page. Fold the phone and the cover shows the page it had, unfold and the inner screen goes back to its own; a screen you have not used yet keeps the page you were on. An open App Library stays open through a fold or an unfold, with the same Personal or Work list, the same open category and the same scroll. Nothing moves while you are carrying an icon or a widget. <!-- beta 5 -->
 - **Removed icons shrink away:** tapping the minus on an app or a dock icon now shrinks and fades the icon where it stood, instead of it vanishing at once. Undo still brings it back. Reduce Motion fades it without the shrink. <!-- beta 5 -->
 - **Wallpaper changes fade in:** when you set a new wallpaper, the old picture eases into the new one on Home instead of switching at once. Reduce Motion keeps the instant switch. <!-- beta 5 -->
 - **Remove a folder from Home:** while icons wiggle, a folder now has the same gray minus as an app. Tapping it takes the folder off Home; its apps stay installed and in the App Library, and Undo brings the folder back with everything in it. <!-- beta 5 -->

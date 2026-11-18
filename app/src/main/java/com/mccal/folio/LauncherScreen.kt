@@ -184,6 +184,9 @@ fun LauncherScreen(
     }
     var savedPage by rememberSaveable { mutableIntStateOf(0) }
     var lastHomePage by rememberSaveable { mutableIntStateOf(0) }
+    // Each screen's own resting Home page, and the App Library's place: a fold or an unfold goes back to what that screen had.
+    var homeMemory by rememberSaveable(stateSaver = HomePageMemory.Saver) { mutableStateOf(HomePageMemory()) }
+    val libraryPlace = remember { LibraryPlace() }
     var revealFolderPage by remember { mutableStateOf<Int?>(null) }
     var libraryQuery by rememberSaveable { mutableStateOf("") }
     var pinQuery by rememberSaveable { mutableStateOf("") }
@@ -385,10 +388,33 @@ fun LauncherScreen(
     var previousEditRevision by remember { mutableIntStateOf(state.editRevision) }
     val focus = androidx.compose.ui.platform.LocalFocusManager.current
     val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    // Folding or unfolding is a change of screen. A split screen only shrinks the window, so it never counts as one.
+    val inSplitScreen = launcherActivity.isInMultiWindowMode
+    val windowScreen = screenFor(screenConfig.fitsRegularHomeLayout())
+    val screenHolder = remember { arrayOf(windowScreen) }
+    if (!inSplitScreen) screenHolder[0] = windowScreen
+    val homeScreen = screenHolder[0]
+    val recordScreen by rememberUpdatedState(homeScreen)
+    val recordSplit by rememberUpdatedState(inSplitScreen)
     LaunchedEffect(pager, homePages) {
         snapshotFlow { pager.settledPage to drag.active }.distinctUntilChanged().collect { (page, moving) ->
-            if (!moving) { savedPage = page; if (page in 0 until homePages) lastHomePage = page }
+            if (!moving) {
+                savedPage = page
+                if (page in 0 until homePages) {
+                    lastHomePage = page
+                    if (!recordSplit) homeMemory = homeMemory.with(recordScreen, page)
+                }
+            }
         }
+    }
+    // Back on a screen used before, Home shows the page that screen was on, not the page the other one was on. A screen not
+    // used yet keeps the page it is on, the App Library stays open, and nothing moves under an icon or widget being carried.
+    val screenBefore = remember { arrayOf(homeScreen) }
+    LaunchedEffect(homeScreen) {
+        val before = screenBefore[0]
+        screenBefore[0] = homeScreen
+        if (before == homeScreen || drag.active || widgetSession != null || resize.active) return@LaunchedEffect
+        pageAfterScreenChange(pager.settledPage, homePages, homeMemory.page(homeScreen))?.let { pager.scrollToPage(it) }
     }
     LaunchedEffect(homePages, state.editRevision) {
         if (homePages != previousHomePages && !drag.active) {
@@ -403,7 +429,9 @@ fun LauncherScreen(
     }
     LaunchedEffect(pager.settledPage) { if (pager.settledPage != homePages) focus.clearFocus() }
     // Paging away from the App Library, or the Home button taking you back, leaves its search behind like iOS does.
-    LaunchedEffect(pager.settledPage, visibleHomePages) { if (pager.settledPage != visibleHomePages && libraryQuery.isNotEmpty()) libraryQuery = "" }
+    LaunchedEffect(pager.settledPage, visibleHomePages) {
+        if (pager.settledPage != visibleHomePages) { libraryPlace.clear(); if (libraryQuery.isNotEmpty()) libraryQuery = "" }
+    }
     LaunchedEffect(pager.settledPage, visibleHomePages) { if (pager.settledPage !in 0 until visibleHomePages) homeEdit.stop() }
     LaunchedEffect(state.verticalStatus) { onStatusMode(state.verticalStatus) }
     LaunchedEffect(homeRequests) { if (homeRequests > 0) {
@@ -420,7 +448,7 @@ fun LauncherScreen(
         pager.animateScrollToPage(page)
     } }
     // Given half of a split screen, show a Home page (one cover-sized page beside the app) rather than where Folio was left.
-    val splitScreen = androidx.compose.ui.platform.LocalConfiguration.current.let { launcherActivity.isInMultiWindowMode }
+    val splitScreen = inSplitScreen
     LaunchedEffect(splitScreen) { splitViewHomePage(splitScreen, pager.currentPage, homePages, lastHomePage)?.let { pager.scrollToPage(it) } }
     // Turning on a Focus with a Home page goes straight there.
     LaunchedEffect(state.activeFocus) {
@@ -1051,7 +1079,7 @@ fun LauncherScreen(
                         onEmptyWidget = onEmptyLongPress,
                         onMove = { id, offset -> if (focusLock != null) lockNotice++ else model.move(id, offset) },
                         onProblem = onProblem,
-                        libraryBack = { libraryBack },
+                        libraryBack = { libraryBack }, libraryPlace = libraryPlace,
                         leftPageContent = leftPageContent,
                         besideContent = if (todayMode && state.todayUnfolded == "BESIDE") todayContent else null,
                     )
@@ -1082,7 +1110,7 @@ fun LauncherScreen(
                                 .padding(top = FolioSpace.LARGE.dp, bottom = bottomSpace)
                                 .padding(libraryEdges(geometry.horizontalDock && !geometry.dockBesideRail && state.verticalStatus, preset.dockWidth, state.leftHanded,
                                     spansWindow = geometry.horizontalDock && !geometry.dockBesideRail)).testTag("library-page"),
-                            drag = drag, page = visibleHomePages, onLaunchFrom = onLaunchFrom, onTurnOnWork = { model.turnOnWork(it) })
+                            drag = drag, page = visibleHomePages, onLaunchFrom = onLaunchFrom, onTurnOnWork = { model.turnOnWork(it) }, place = libraryPlace)
                     } else {
                         // Centered beside the rail when the grid is narrower than the space (short, wide windows).
                         // Page Effects turn the page as it goes by, and only here, where one page fills the window.
