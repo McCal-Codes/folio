@@ -72,6 +72,9 @@ internal class RemovedIcons {
     fun finished(icon: RemovedIcon) { icons.remove(icon) }
 }
 
+/** The corner of the small icons inside a folder tile, the same as FolderTile draws them. */
+private val FOLDER_MINI_ICON_RADIUS = 6.dp
+
 /** What a removed folder's copy draws: its name, its colour (null for the glass plate) and the apps its tile shows. */
 internal class RemovedFolder(val title: String, val tint: androidx.compose.ui.graphics.Color?, val apps: List<AppEntry>)
 
@@ -122,7 +125,7 @@ private fun RemovedIconView(icon: RemovedIcon, origin: Offset, onDone: () -> Uni
                 folder.apps.take(4).forEachIndexed { index, app ->
                     AppIcon(app, null, Modifier.align(when (index) {
                         0 -> Alignment.TopStart; 1 -> Alignment.TopEnd; 2 -> Alignment.BottomStart; else -> Alignment.BottomEnd
-                    }).padding(5.dp).size(icon.size * .38f).clip(RoundedCornerShape(6.dp)))
+                    }).padding(5.dp).size(icon.size * .38f).clip(RoundedCornerShape(FOLDER_MINI_ICON_RADIUS)))
                 }
             }
         } else icon.app?.let { AppIcon(it, null, Modifier.fillMaxSize(), shape = RoundedCornerShape(icon.radius)) }
