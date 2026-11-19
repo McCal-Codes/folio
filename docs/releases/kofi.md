@@ -509,6 +509,15 @@ member codes with a longer window (`--months 3`) and post a fresh one to the sup
 posts are a benefit anyway — or deploy the worker, which mints a code per payment, two months for a member and
 one for a one-off, and needs no post at all.
 
+**Renewal without the email (17 Nov 2026).** A member still gets each month's code by email, but the phone no longer
+has to wait for them to open it: in the last week of a code (or after it ends) Folio asks the worker's `GET /renew`
+for the code that member's newest payment earned and redeems it. The worker matches payments to a member by a keyed
+hash of the email Ko-fi sends, kept on membership payments only (see `tools/kofi-worker/README.md` and PRIVACY.md).
+Ko-fi has no API to ask whether someone is still subscribed, so this rides on the payment webhook alone: cancel, and
+the payments stop, and the last code runs out. It is opt-in: nothing is sent until the member turns on Renew automatically
+in Settings › Supporter (off by default). Not live until the `payer` column and `PAYER_SECRET` are added and the worker is
+redeployed, in that order.
+
 **Settled (McCal, 19 Sep 2026).** The shop item was $3 for a code that *never* expired, while Backer at $7/month
 leads on that same early access — anyone who noticed would have bought the $3 item instead, and been right. One price
 now means one month everywhere:

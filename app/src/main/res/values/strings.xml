@@ -2054,6 +2054,9 @@
     <string name="supporter_expired_note_undated">This code has run out. Renew on Ko-fi, then redeem the new code here.</string>
     <string name="supporter_ends_soon_note">This code ends on %1$s. Renew on Ko-fi before then to keep getting betas without a gap.</string>
     <string name="supporter_renew">Renew on Ko-fi</string>
+    <string name="supporter_auto_renew_card">RENEWAL</string>
+    <string name="supporter_auto_renew">Renew my monthly code automatically</string>
+    <string name="supporter_auto_renew_note">For monthly Ko-fi members. In the last week of your code, and after it ends, Folio asks Folio\'s supporter server once a day for the code your latest payment earned and applies it, so you don\'t have to open the email. It sends only the code you already have. Off by default; turn it off any time. A one-off code has nothing to renew.</string>
     <string name="beta_teaser_title">Folio %1$s is out for supporters. It adds:</string>
     <string name="beta_teaser_more">and %1$d more in its notes</string>
     <string name="beta_teaser_get_access">Get beta access on Ko-fi</string>

@@ -131,7 +131,11 @@ internal object SoftwareUpdate {
     fun startCheckIfDue(context: Context) {
         // The supporter reminder is local and cheap, and Manual mode has no daily job, so it also runs when Folio opens.
         val app = context.applicationContext
-        scope.launch { runCatching { SupporterReminder.check(app) } }
+        // Renewal first, so a member whose next code is already waiting is never told their access is ending.
+        scope.launch {
+            runCatching { SupporterRenewal.check(app) }
+            runCatching { SupporterReminder.check(app) }
+        }
         launchExclusive { checkIfDue(app) }
     }
 
