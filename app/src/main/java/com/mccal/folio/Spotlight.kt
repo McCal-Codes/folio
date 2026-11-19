@@ -247,6 +247,8 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
     val aboveKeyboard = configuration.screenHeightDp.dp -
         with(androidx.compose.ui.platform.LocalDensity.current) { WindowInsets.imeAnimationTarget.getBottom(this).toDp() }
     val tight = aboveKeyboard < SPOTLIGHT_TIGHT_ABOVE_KEYBOARD
+    // Not even one compact row fits: the top hit rides in the field (below) and no row is drawn for the keyboard to cut in half.
+    val inlineHit = tight && aboveKeyboard < SPOTLIGHT_INLINE_HIT_ABOVE_KEYBOARD && appHits.isNotEmpty()
     val shortcuts = remember(context, configuration) { systemSettingShortcuts(context) }
     val settingsLabel = stringResource(R.string.settings)
     val settingsVisible = shows(SpotlightSection.SETTINGS)
@@ -309,7 +311,7 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
                 }
                 // With almost no room above the keyboard (a cover screen with a tall keyboard) not even a compact result row fits,
                 // so the top hit rides in the field: its icon opens it, the same thing the keyboard's search key does.
-                if (tight && aboveKeyboard < SPOTLIGHT_INLINE_HIT_ABOVE_KEYBOARD) appHits.firstOrNull()?.let { top ->
+                if (inlineHit) appHits.firstOrNull()?.let { top ->
                     Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape).clickable(onClickLabel = top.label) { launch(top) }.testTag("spotlight-inline-hit"),
                         contentAlignment = Alignment.Center) {
                         AppIcon(top, top.label, Modifier.size(32.dp).clip(RoundedCornerShape(9.dp)))
@@ -326,7 +328,8 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
             }
 
             val resultsState = androidx.compose.foundation.lazy.rememberLazyListState()
-            LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false).edgeFade(resultsState), state = resultsState, verticalArrangement = Arrangement.spacedBy(FolioSpace.COMFY.dp),
+            // The keyboard leaves only the field in that state, so nothing below it is drawn to be cut in half.
+            if (!inlineHit) LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false).edgeFade(resultsState), state = resultsState, verticalArrangement = Arrangement.spacedBy(FolioSpace.COMFY.dp),
                 contentPadding = PaddingValues(bottom = 24.dp)) {
                 if (q.isEmpty()) {
                     if (shows(SpotlightSection.SUGGESTIONS) && recent.isNotEmpty()) item("suggestions") {
