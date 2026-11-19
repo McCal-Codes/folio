@@ -2640,6 +2640,16 @@
     <string name="cc_move_down">向下移动</string>
     <string name="cc_change_size">更改大小</string>
     <string name="cc_remove">移除</string>
+    <string name="cc_moved_to">%1$s已移到第%2$d行第%3$d列</string>
+    <string name="cc_cant_move">%1$s无法移到那里</string>
+    <string name="cc_move_next_page">移到下一页</string>
+    <string name="cc_move_prev_page">移到上一页</string>
+    <string name="cc_moved_to_page">%1$s已移到第%2$d页</string>
+    <string name="cc_page_full">第%1$d页没有放%2$s的空间</string>
+    <string name="cc_resized">%1$s现在为%2$d×%3$d</string>
+    <string name="cc_tile_place">第%1$d行第%2$d列，%3$d×%4$d</string>
+    <string name="cc_removed_undo">已移除%1$s。顶部有“撤销”。</string>
+    <string name="cc_undone">已撤销上一次更改</string>
     <string name="cc_dark_theme">深色主题</string>
     <string name="cc_compact_panel">宽屏上使用紧凑面板</string>
     <string name="cc_rail">控件旁的页面侧栏</string>
