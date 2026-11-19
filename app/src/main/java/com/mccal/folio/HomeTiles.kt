@@ -335,7 +335,12 @@ internal fun FolderTile(folder: FolderEntry, apps: Map<String, AppEntry>, size: 
             }
             val pop = rememberBadgeAppeared(total)
             if (total > 0) IconBadge(total, folderBadge, look.badgeColor.fixed?.let { Color(it) } ?: BadgeRed, look.badgeLook, look.badgeSize.scale, pop = pop)
-            if (onRemove != null) JiggleRemoveButton(stringResource(R.string.remove_folder_from_home, folder.title), onRemove = onRemove)
+            // Removing leaves a copy of the tile behind to shrink away (RemovedIcons); the layout itself changes at once.
+            val removedIcons = LocalRemovedIcons.current
+            if (onRemove != null) JiggleRemoveButton(stringResource(R.string.remove_folder_from_home, folder.title), onRemove = {
+                removedIcons?.launchFolder(RemovedFolder(folder.title, tint, folder.appIds.take(4).mapNotNull { apps[it] }), bounds, size.dp, labels)
+                onRemove()
+            })
         }
         // The same line height as an app's label (AppTile), cap and all (A11Y-13): left to the theme's, the folder's name sat lower in its
         // cell the larger the font, under the Search pill at 200%.

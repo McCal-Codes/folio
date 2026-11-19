@@ -70,11 +70,19 @@ internal fun DuneWallpaper(modifier: Modifier = Modifier, scrim: HomeScrim = Hom
     val reduceMotion = LocalReduceMotion.current
     val firstRevision = remember { revision }
     var settled by remember { mutableStateOf(photo) }
+    // A picture still fading in when the next one arrives stays under it at the strength it had reached, so a second change continues
+    // from what is on screen instead of dropping back to the last settled picture. Plain fields: the fade's own value redraws the layer.
+    val layers = remember { BackgroundLayers<android.graphics.Bitmap>() }
     // Made anew for each picture, so the first frame of a change already has the new one at zero and never flashes it at full.
-    val fade = remember(photo) { Animatable(if (backgroundFades(revision != firstRevision, reduceMotion, settled !== photo)) 0f else 1f) }
+    val fade = remember(photo) {
+        val fades = backgroundFades(revision != firstRevision, reduceMotion, settled !== photo)
+        layers.change(photo, fades)
+        Animatable(if (fades) 0f else 1f).also { layers.fade = it }
+    }
     LaunchedEffect(fade) {
         if (fade.value < 1f) fade.animateTo(1f, FolioMotion.spring(FolioMotion.Glide))
         settled = photo
+        layers.under.clear()
     }
     // Drawn once into its own layer and reused: the background never redraws itself, but during a swipe everything
     // above it does, so it was redrawn every frame (a gradient, three dunes and 29 strokes, full screen) and the GPU
@@ -86,13 +94,34 @@ internal fun DuneWallpaper(modifier: Modifier = Modifier, scrim: HomeScrim = Hom
         .homeScrim(scrim)) {
         // Read here, in the draw phase, so the fade redraws this layer and nothing else (DYN-16).
         val progress = fade.value.coerceIn(0f, 1f)
-        if (progress < 1f) drawLauncherBackground(settled?.takeUnless { it.isRecycled }?.asImageBitmap(), palette.dark)
+        if (progress < 1f) {
+            drawLauncherBackground(settled?.takeUnless { it.isRecycled }?.asImageBitmap(), palette.dark)
+            layers.under.forEach { (bitmap, strength) -> if (!bitmap.isRecycled) drawLauncherBackground(bitmap.asImageBitmap(), palette.dark, alpha = strength) }
+        }
         drawLauncherBackground(photo?.asImageBitmap(), palette.dark, alpha = progress)
     }
 }
 
 /** A new background fades in over the old one only when it arrives after the screen was up, motion is on, and it really is a different picture. */
 internal fun backgroundFades(arrivedLate: Boolean, reduceMotion: Boolean, changed: Boolean) = arrivedLate && !reduceMotion && changed
+
+/**
+ * The pictures a change leaves under the new one: each earlier picture that was still fading in, with how visible it had got, lowest first.
+ * Drawn in order they are exactly what was on screen when the change came, so the next fade starts from it (DYN-9, nothing jumps).
+ */
+internal class BackgroundLayers<T : Any> {
+    val under = mutableListOf<Pair<T, Float>>()
+    private var top: T? = null
+    var fade: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>? = null
+
+    /** [next] is arriving; [fades] says whether it fades in (otherwise it simply replaces everything). */
+    fun change(next: T?, fades: Boolean) {
+        val shown = top
+        val reached = fade?.value ?: 1f
+        if (!fades) under.clear() else if (shown != null && reached < 1f) under += shown to reached
+        top = next
+    }
+}
 
 /** The flat surface Home draws with no picture chosen, in dark and in light appearance. Automatic ink reads these (see [flatBackgroundTone]). */
 internal val FLAT_BACKGROUND_DARK = Color(0xFF0B0B0C)
