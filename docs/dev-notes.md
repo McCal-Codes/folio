@@ -2,6 +2,8 @@
 
 Optional. Each "- " line becomes a checkbox on Folio Dev's "New build" page (Settings > General > Tips > This build). The build number is the branch's commit count, so a higher number is always the newer build.
 
+- Fold position: on a foldable, swipe to page 3 on the cover, unfold and swipe to page 1, then fold. The cover should be back on page 3, and unfolding again goes back to page 1. A screen you have not used yet keeps the page you were on.
+- Fold with the App Library: open the App Library, open a category or scroll down, then fold or unfold. The library, the open category and the scroll should stay where they were.
 - Photos widget: add Photos from the widget picker, pick a few photos, and watch it advance. Tap it for Show the date, Shuffle and the speed.
 - Photos menu: hold the widget. Customize opens its options and Remove this photo takes the showing photo out.
 - Widget menu: hold any widget. Remove sits at the bottom, and More options holds custom size and pages.
