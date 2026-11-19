@@ -305,6 +305,14 @@
       "steps": [
         "Drop a widget on apps. They should move aside."
       ]
+    },
+    {
+      "id": "badge-unread-numbers",
+      "title": "Badge numbers",
+      "where": "Home",
+      "steps": [
+        "Get several messages in one chat. The badge should show how many, and a dot where an app gives no count."
+      ]
     }
   ]
 }
