@@ -2001,6 +2001,9 @@
     <string name="supporter_expired_note_undated">此代码已到期。请在 Ko-fi 续期，然后在此处兑换新代码。</string>
     <string name="supporter_ends_soon_note">此代码将于 %1$s 结束。请在此之前到 Ko-fi 续期，以便不间断地获取测试版。</string>
     <string name="supporter_renew">在 Ko-fi 续期</string>
+    <string name="supporter_auto_renew_card">续期</string>
+    <string name="supporter_auto_renew">自动续期月度代码</string>
+    <string name="supporter_auto_renew_note">适用于 Ko-fi 月度会员。在代码到期前一周以及到期后，Folio 每天向 Folio 的支持者服务器请求一次你最近一次付款所获得的代码并自动应用，这样你无需打开邮件。只会发送你已有的代码。默认关闭，可随时关闭。一次性代码无需续期。</string>
     <string name="beta_teaser_title">Folio %1$s 已面向支持者发布。它新增：</string>
     <string name="beta_teaser_more">另有 %1$d 项见发行说明</string>
     <string name="beta_teaser_get_access">在 Ko-fi 获取测试版权限</string>
@@ -2637,6 +2640,16 @@
     <string name="cc_move_down">向下移动</string>
     <string name="cc_change_size">更改大小</string>
     <string name="cc_remove">移除</string>
+    <string name="cc_moved_to">%1$s已移到第%2$d行第%3$d列</string>
+    <string name="cc_cant_move">%1$s无法移到那里</string>
+    <string name="cc_move_next_page">移到下一页</string>
+    <string name="cc_move_prev_page">移到上一页</string>
+    <string name="cc_moved_to_page">%1$s已移到第%2$d页</string>
+    <string name="cc_page_full">第%1$d页没有放%2$s的空间</string>
+    <string name="cc_resized">%1$s现在为%2$d×%3$d</string>
+    <string name="cc_tile_place">第%1$d行第%2$d列，%3$d×%4$d</string>
+    <string name="cc_removed_undo">已移除%1$s。顶部有“撤销”。</string>
+    <string name="cc_undone">已撤销上一次更改</string>
     <string name="cc_dark_theme">深色主题</string>
     <string name="cc_compact_panel">宽屏上使用紧凑面板</string>
     <string name="cc_rail">控件旁的页面侧栏</string>

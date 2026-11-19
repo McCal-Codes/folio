@@ -31,6 +31,7 @@ Every new piece of state gets a row here (or in its feature's KDoc) before it's 
 | Control Center volume (music stream) and brightness sliders | `SystemLevels` reads the system, one `LiveLevel` per slider shows it; the system stays the source of truth | None | Read again when the panel opens; observed only while it is composed |
 | Island activity | `Island` / `IslandEvents` | None | Recomputed |
 | Crash reports | `CrashLog` | `filesDir/crashes`, last 5 | Until shared or rotated |
+| Supporter code, early-access switch, badge, Renew automatically switch and the day the worker was last asked | `Supporter` (and `SupporterRenewal` for the ask) | `folio` prefs, keys `supporter_code`, `supporter_beta_on`, `supporter_badge_since`, `supporter_auto_renew` (off by default, cleared with the code) and `supporter_renewal_asked`; the code is checked on the phone, so no account exists | Everything; removed together by Remove code; not in Layout Backup |
 
 ## Rules
 

@@ -43,8 +43,19 @@ class ControlCenterColumnsTest {
     @Test fun `a phone on its side is wide and short, so it takes eight columns and fits`() {
         val g = grid(880f, 327f)
         assertEquals(8, g.columns)
-        val rows = controlCenterRows(8, 8, false)
+        // What has to stand on the first page (the sliders and the modules) fits; the other controls go to another page.
+        val rows = controlCenterRows(8, 0, false)
         assertTrue("the rows fit: ${g.cellDp}", g.cellDp * rows + g.gapDp * (rows - 1) + 48f + g.gapDp <= 327f + 0.5f)
+    }
+
+    @Test fun `adding controls never makes a tile smaller`() {
+        // McCal, 17 Nov 2026: "the cc settings shouldn't get smaller". The same window and size give the same cell for any number of controls
+        // (the controls that do not fit go to another page), and only the columns a window can use depend on how many there are.
+        for ((w, h) in listOf(379f to 700f, 379f to 520f, 672f to 848f, 880f to 620f)) for (focus in listOf(false, true)) {
+            val few = grid(w, h, controls = 4, focus = focus); val many = grid(w, h, controls = 15, focus = focus)
+            if (few.columns == many.columns) assertEquals("${w}x$h focus $focus", few.cellDp, many.cellDp, 0.01f)
+        }
+        for (n in 0..16) assertEquals("$n controls", grid(379f, 700f, controls = 4).cellDp, grid(379f, 700f, controls = n).cellDp, 0.01f)
     }
 
     @Test fun `a panel with no height limit is as wide as its width allows`() {
