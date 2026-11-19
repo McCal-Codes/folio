@@ -1110,7 +1110,11 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         val pageScope = rememberCoroutineScope()
         val reduceMotion = LocalReduceMotion.current
         // Editing carries across the Controls pages (the gallery to add from is on the last); it ends on Media and Connectivity.
-        LaunchedEffect(current, pages.getOrNull(current)?.page) { if (pages.getOrNull(current)?.page != CcPage.CONTROLS && pageCountSeen[0] == pages.size) edit.stop() }
+        LaunchedEffect(current, pages.getOrNull(current)?.page) {
+            // A pager index past the new page count (a page just went away) is not a page the person went to.
+            val shown = pages.getOrNull(current) ?: return@LaunchedEffect
+            if (shown.page != CcPage.CONTROLS && pageCountSeen[0] == pages.size) edit.stop()
+        }
         // Swipe away: an upward drag that the first page cannot use (there is no page before it) pulls the whole panel up with the finger. Past
         // CC_SWIPE_AWAY_DP, or with a quick flick up, it closes; otherwise it springs back on Quick. Not while editing, where a drag is for moving things.
         val closeLabel = stringResource(R.string.close)

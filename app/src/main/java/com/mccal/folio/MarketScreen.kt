@@ -855,12 +855,17 @@ private fun MarketTabs(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
 private fun MarketRail(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
     val glide = rememberGlide(selected.ordinal)
     var itemHeight by remember { mutableIntStateOf(0) }
+    BoxWithConstraints(Modifier.width(76.dp).fillMaxHeight().background(FolioColors.SecondaryBackground)) {
+    // A short window (a flip's cover, a phone on its side) cannot hold five tabs at their usual height: the tabs share what the rail
+    // has and tighten their padding, so the pill stays inside the rail and every label shows. A tall window is unchanged.
+    val short = maxHeight < 380.dp
+    val itemPad = if (short) FolioSpace.TINY.dp else FolioSpace.COMPACT.dp
     Column(
-        Modifier.width(76.dp).fillMaxHeight().background(FolioColors.SecondaryBackground).padding(vertical = FolioSpace.SMALL.dp),
+        Modifier.fillMaxSize().padding(vertical = FolioSpace.SMALL.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(Modifier.fillMaxWidth()) {
+        Box(Modifier.fillMaxWidth().weight(1f, fill = false)) {
             if (FolioMotion.v2 && itemHeight > 0) Box(
                 Modifier.fillMaxWidth().height(with(LocalDensity.current) { itemHeight.toDp() })
                     .graphicsLayer { translationY = glide.value * itemHeight }
@@ -870,14 +875,16 @@ private fun MarketRail(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
             Column(Modifier.fillMaxWidth()) {
                 for ((index, tab) in MarketTab.entries.withIndex()) {
                     Column(
-                        Modifier.fillMaxWidth().then(if (index == 0) Modifier.onSizeChanged { itemHeight = it.height } else Modifier)
+                        Modifier.fillMaxWidth().weight(1f, fill = false).then(if (index == 0) Modifier.onSizeChanged { itemHeight = it.height } else Modifier)
                             .padding(horizontal = 6.dp, vertical = 2.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
-                            .marketTab(tab, onSelect).padding(vertical = FolioSpace.COMPACT.dp),
+                            .marketTab(tab, onSelect).padding(vertical = itemPad),
+                        verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) { MarketTabIcon(tab, tab == selected); MarketTabLabel(tab, tab == selected) }
                 }
             }
         }
+    }
     }
 }
 
