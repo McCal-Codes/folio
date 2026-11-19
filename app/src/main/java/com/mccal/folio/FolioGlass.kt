@@ -305,6 +305,9 @@ internal fun androidx.compose.ui.Modifier.fadingVerticalScroll() = composed {
     edgeFade(state).verticalScroll(state)
 }
 
+/** The same on a scroll state the caller owns, for a page that has to scroll itself (a held control near its edge, Control Center's editor). */
+internal fun androidx.compose.ui.Modifier.fadingVerticalScroll(state: androidx.compose.foundation.ScrollState) = edgeFade(state).verticalScroll(state)
+
 /** Reduce Transparency is in effect (the setting, or Android's high contrast): glass controls show as nearly solid. */
 internal val LocalSolidGlass = androidx.compose.runtime.staticCompositionLocalOf { false }
 

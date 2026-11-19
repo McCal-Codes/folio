@@ -18,7 +18,8 @@ than Apple", "there should be some standards for the control center and notifica
   page strip counts it), never to a scroll. Lists, such as the notification list, scroll: that is what a list is for.
 - **PNL-2 MUST NOT** overlap: the header, the pages, the page strip, the plate, the system bars, the camera cutout and the
   hinge never cover one another. When a window is too short, first move the chrome (the page strip goes into the header),
-  then paginate; do not shrink a tile below its floor.
+  then paginate; do not shrink a tile below its floor. Adding a control never shrinks a tile: the height is fitted to what must stand
+  on the first page (the sliders and the modules), so the same window and size give the same cells and the rest paginate.
 - **PNL-3 MUST** work the size of every cell, gap and column out of the window and the size the person chose
   (`controlCenterGrid`), never out of a device name ([ADP](adaptive-layout.md)). No fixed ceiling on a list's height; a card
   is at most two thirds of the window.
@@ -84,6 +85,12 @@ than Apple", "there should be some standards for the control center and notifica
   that container has no edge stretch, because a scroll container that cannot scroll still takes the downward drag at its top. A page
   turns after a drag of a fifth of its height or a flick, never half the screen. Test any change to a page with slow and short drags
   that start on a tile, in a gap and on empty space.
+
+- **PNL-33 MUST** make a drag in Control Center's editor honest about what letting go does: the held control lifts and follows the
+  finger with no lag, the place it would take is outlined, a control that would trade places slides into the place it leaves, a drop
+  that cannot work or one off the grid returns the control home, and a page that scrolls scrolls while a control is held near its
+  edge (`ccPreviewDrop`, `ccAutoScrollStep`). Every change in an edit session can be undone, and the same moves are TalkBack actions
+  that announce where the control went. Under Reduce Motion only the held control moves; nothing flashes ([A11Y](accessibility.md)).
 
 ### Notification Center
 

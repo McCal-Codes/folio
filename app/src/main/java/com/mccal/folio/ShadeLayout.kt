@@ -223,7 +223,9 @@ internal data class CcGrid(val columns: Int, val cellDp: Float, val gapDp: Float
  * ([sidePaddingDp]) and the controls they have ([controls]).
  *  - Columns come in pairs (4, 6, 8 ...): the fewest whose cell is not bigger than [CC_FILL_MAX] times the chosen size, so a wide window
  *    gets more columns, not giant tiles, but never more than the controls can use.
- *  - A window too short for the rows takes the next pair while that makes the cell at least a gap bigger.
+ *  - The height is shared out over the rows the sliders and modules need, not over all the controls, so adding a control never shrinks a tile:
+ *    the same window and size give the same cells, and the controls that do not fit go to another page. A window too short for even those takes the
+ *    next pair of columns while that makes the cell at least a gap bigger.
  *  - The page strip is one touch target wide plus a gap. It stands at the edge when the panel is wide enough for that to cost little, and
  *    lies under the grid otherwise.
  * A null [heightDp] means no height limit.
@@ -240,8 +242,12 @@ internal fun controlCenterGrid(panelWidthDp: Float, heightDp: Float?, controls: 
     val maxCell = sizeCellDp * CC_FILL_MAX
     val maxColumns = (((controls + 1) / 2) * 2).coerceIn(4, 12)
     fun widthCell(c: Int) = (gridWidth - gap * (c - 1)) / c
+    // The cell does not depend on how many controls there are (McCal 17 Nov 2026: "the cc settings shouldn't get smaller", "a set amount per size of
+    // screen"): adding a control used to shrink every tile, because the height was shared out over all the rows. Now only what has to stand on the first page
+    // (the sliders and the modules) is fitted to the height, so the same window and size always give the same tiles and the controls that do not fit go to
+    // another page.
     fun heightCell(c: Int): Float {
-        val rows = controlCenterRows(c, controls, focus)
+        val rows = controlCenterRows(c, 0, focus)
         return heightDp?.let { (it - (touchDp + gap) - (if (edge || inHeader) 0f else strip) - gap * (rows - 1)) / rows } ?: Float.MAX_VALUE
     }
     fun cell(c: Int) = minOf(widthCell(c), heightCell(c), maxCell)

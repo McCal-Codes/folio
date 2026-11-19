@@ -9,7 +9,7 @@ import worker from './worker.js'
 const TOKEN = 'token-from-kofi'
 
 /** Just enough of D1 for the four statements the worker runs. */
-function database(codes = [{ code: 'CODE-1', pool: 'beta' }]) {
+function database(codes = [{ code: 'CODE-1', pool: 'beta' }], { failPayer = false } = {}) {
   const free = [...codes]
   const handled = new Map()
   const problems = []
@@ -37,7 +37,10 @@ function database(codes = [{ code: 'CODE-1', pool: 'beta' }]) {
           if (sql.startsWith('INSERT OR IGNORE INTO problems') && !problems.some((p) => p.message_id === args[0])) {
             problems.push({ message_id: args[0], pool: args[1] })
           }
-          if (sql.startsWith('UPDATE handled')) handled.get(args[1]).emailed = args[0]
+          if (sql.startsWith('UPDATE handled SET payer')) {
+            if (failPayer) throw new Error('no such column: payer')
+            handled.get(args[1]).payer = args[0]
+          } else if (sql.startsWith('UPDATE handled')) handled.get(args[1]).emailed = args[0]
           return { success: true }
         },
       }
@@ -200,4 +203,41 @@ test('the email goes to Resend as both HTML and plain text, with the link and th
   assert.ok(body.text.includes('CODE-1') && body.html.includes('CODE-1'))
   assert.ok(body.html.includes('href="https://foliolauncher.com/redeem/#CODE-1"'))
   assert.equal(DB.handled.get('m1').emailed, 1)
+})
+
+// Membership renewal: what is written down so a phone can later ask for the member's newest code.
+test('a membership payment remembers who paid, as a hash and never as an address', async () => {
+  const DB = database([{ code: 'CODE-1', pool: 'beta' }, { code: 'CODE-2', pool: 'beta' }])
+  const env = { DB, KOFI_TOKEN: TOKEN, POOLS, PAYER_SECRET: 'only-the-worker-knows' }
+  await worker.fetch(payment({ message_id: 'm1', type: 'Subscription', tier_name: 'Bronze', email: 'Jo@Example.com' }), env)
+  await worker.fetch(payment({ message_id: 'm2', type: 'Subscription', tier_name: 'Bronze', email: 'jo@example.com' }), env)
+  const first = DB.handled.get('m1').payer
+  assert.match(first, /^[0-9a-f]{32}$/)
+  assert.ok(!first.includes('example'))
+  // Capitals in the address do not make a different member, so the second month finds the first.
+  assert.equal(DB.handled.get('m2').payer, first)
+})
+
+test('a different payer, a tip, or no secret each leave the right payer', async () => {
+  const env = (DB, extra = {}) => ({ DB, KOFI_TOKEN: TOKEN, POOLS, PAYER_SECRET: 's', ...extra })
+  const two = database([{ code: 'A', pool: 'beta' }, { code: 'B', pool: 'beta' }])
+  await worker.fetch(payment({ message_id: 'm1', type: 'Subscription', tier_name: 'Bronze', email: 'a@example.com' }), env(two))
+  await worker.fetch(payment({ message_id: 'm2', type: 'Subscription', tier_name: 'Bronze', email: 'b@example.com' }), env(two))
+  assert.notEqual(two.handled.get('m1').payer, two.handled.get('m2').payer)
+
+  const tip = database([{ code: 'A', pool: 'beta' }])
+  await worker.fetch(payment({ type: 'Tip', amount: '10.00' }), env(tip))
+  assert.equal(tip.handled.get('m1').payer, undefined)
+
+  const open = database([{ code: 'A', pool: 'beta' }])
+  await worker.fetch(payment({ type: 'Subscription', tier_name: 'Bronze' }), env(open, { PAYER_SECRET: undefined }))
+  assert.equal(open.handled.get('m1').payer, undefined)
+})
+
+test('a database without the payer column still hands out the code', async () => {
+  const DB = database([{ code: 'CODE-1', pool: 'beta' }], { failPayer: true })
+  const response = await worker.fetch(payment({ type: 'Subscription', tier_name: 'Bronze' }),
+    { DB, KOFI_TOKEN: TOKEN, POOLS, PAYER_SECRET: 's' })
+  assert.equal(response.status, 200)
+  assert.equal(DB.handled.get('m1').code, 'CODE-1')
 })
