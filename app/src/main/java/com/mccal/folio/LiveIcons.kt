@@ -138,6 +138,8 @@ internal data class IconLook(val style: IconStyle = IconStyle.DEFAULT, val tint:
 
 /** Unread notification counts per package, for icon badges. */
 internal val LocalBadgeCounts = androidx.compose.runtime.compositionLocalOf { emptyMap<String, Int>() }
+/** Badge keys whose count is not reliable, drawn as a dot even when the badge style is a number ([BadgeClears.dots]). */
+internal val LocalBadgeDots = androidx.compose.runtime.compositionLocalOf { emptySet<String>() }
 
 private val SquircleShape = androidx.compose.foundation.shape.GenericShape { size, _ ->
     // Superellipse (n = 4), the iOS-style continuous-corner icon shape.
@@ -236,7 +238,9 @@ internal fun AppIcon(app: AppEntry, contentDescription: String?, modifier: Modif
         look.liveLook == "DARK" -> LivePalette.of(IconStyle.DARK, null)
         else -> LivePalette.of(if (look.style == IconStyle.DEFAULT && darkSource) IconStyle.DARK else look.style, accent)
     }
-    val badgeCount = if (!badge || look.badges == BadgeStyle.OFF || app.iconFrom != null) 0 else LocalBadgeCounts.current[BadgeKey.of(src.component.packageName, app.user)] ?: 0
+    val badgeKey = BadgeKey.of(src.component.packageName, app.user)
+    val badgeCount = if (!badge || look.badges == BadgeStyle.OFF || app.iconFrom != null) 0 else LocalBadgeCounts.current[badgeKey] ?: 0
+    val badgeStyle = badgeShape(look.badges, badgeKey in LocalBadgeDots.current)
     Box(modifier.semantics { contentDescription?.let { this.contentDescription = it } }) {
         val fill = Modifier.fillMaxSize().then(if (clipShape != null) Modifier.clip(clipShape) else Modifier)
         // App icon bitmaps carry a small transparent margin; inset the drawn live icons to the same visual size.
@@ -270,7 +274,7 @@ internal fun AppIcon(app: AppEntry, contentDescription: String?, modifier: Modif
                     accent?.let { Color(it) } ?: if (soft) SoftNeutral else BadgeRed
                 }
             }
-            IconBadge(badgeCount, look.badges, color, look.badgeLook, look.badgeSize.scale, badgePlacement, pop)
+            IconBadge(badgeCount, badgeStyle, color, look.badgeLook, look.badgeSize.scale, badgePlacement, pop)
         }
         // Updating: the icon dims under an iOS-style progress ring until the installer finishes.
         if (app.iconFrom == null) installProgressFor(app.component.packageName)?.let { progress -> InstallRing(progress, fill) }
@@ -648,8 +652,16 @@ internal object BadgeClears {
         if (keys.isNotEmpty()) cleared.value = cleared.value + keys
     }
 
+    /** Per badge key: the number, and whether it is reliable ([BadgeTally]). */
+    fun tallies(items: List<NotificationItem>, cleared: Set<String>): Map<String, BadgeTally> =
+        items.filter { it.key !in cleared }.groupBy { BadgeKey.of(it.packageName, it.user) }.mapValues { BadgeTally.of(it.value) }
+
     fun counts(items: List<NotificationItem>, cleared: Set<String>): Map<String, Int> =
-        items.filter { it.key !in cleared }.groupingBy { BadgeKey.of(it.packageName, it.user) }.eachCount()
+        tallies(items, cleared).mapValues { it.value.count }
+
+    /** The badge keys that show a dot instead of a number, because Folio only knows a notification exists. */
+    fun dots(items: List<NotificationItem>, cleared: Set<String>): Set<String> =
+        tallies(items, cleared).filterValues { !it.exact }.keys
 }
 
 /**

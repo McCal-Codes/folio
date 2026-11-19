@@ -317,8 +317,11 @@ internal fun FolderTile(folder: FolderEntry, apps: Map<String, AppEntry>, size: 
             // Like iOS: a folder's badge is the total of its apps' badges (each app counted once).
             val look = LocalIconLook.current
             val counts = LocalBadgeCounts.current
-            val total = if (look.badges == BadgeStyle.OFF) 0
-                else folder.appIds.mapNotNull { apps[it]?.let(BadgeKey::of) }.distinct().sumOf { counts[it] ?: 0 }
+            val dots = LocalBadgeDots.current
+            val keys = folder.appIds.mapNotNull { apps[it]?.let(BadgeKey::of) }.distinct()
+            val total = if (look.badges == BadgeStyle.OFF) 0 else keys.sumOf { counts[it] ?: 0 }
+            // One app with a count Folio cannot trust makes the folder's total just as unsure.
+            val folderBadge = badgeShape(look.badges, keys.any { it in dots && (counts[it] ?: 0) > 0 })
             Box(Modifier.fillMaxSize().clip(RoundedCornerShape((size * .24f).dp))
                 .background(tint?.copy(alpha = .78f) ?: Glass.copy(alpha = .72f)).border(1.dp, Color.White.copy(alpha = .55f), RoundedCornerShape((size * .24f).dp))
                 .testTag("folder-drop-${folder.id}")) {
@@ -331,7 +334,7 @@ internal fun FolderTile(folder: FolderEntry, apps: Map<String, AppEntry>, size: 
             }
             }
             val pop = rememberBadgeAppeared(total)
-            if (total > 0) IconBadge(total, look.badges, look.badgeColor.fixed?.let { Color(it) } ?: BadgeRed, look.badgeLook, look.badgeSize.scale, pop = pop)
+            if (total > 0) IconBadge(total, folderBadge, look.badgeColor.fixed?.let { Color(it) } ?: BadgeRed, look.badgeLook, look.badgeSize.scale, pop = pop)
             if (onRemove != null) JiggleRemoveButton(stringResource(R.string.remove_folder_from_home, folder.title), onRemove = onRemove)
         }
         // The same line height as an app's label (AppTile), cap and all (A11Y-13): left to the theme's, the folder's name sat lower in its
