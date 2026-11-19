@@ -858,8 +858,10 @@ private fun MarketRail(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
     BoxWithConstraints(Modifier.width(76.dp).fillMaxHeight().background(FolioColors.SecondaryBackground)) {
     // A short window (a flip's cover, a phone on its side) cannot hold five tabs at their usual height: the tabs share what the rail
     // has and tighten their padding, so the pill stays inside the rail and every label shows. A tall window is unchanged.
-    val short = maxHeight < 380.dp
-    val itemPad = if (short) FolioSpace.TINY.dp else FolioSpace.COMPACT.dp
+    // What is left of the rail after five icons, one line of label each (it grows with the font scale) and the rail's own padding,
+    // shared by the ten paddings above and below the tabs, never more than the usual.
+    val fontScale = LocalDensity.current.fontScale
+    val itemPad = ((maxHeight.value - 16f - 5f * (26f + 18f * fontScale)) / 10f).coerceIn(0f, FolioSpace.COMPACT.toFloat()).dp
     Column(
         Modifier.fillMaxSize().padding(vertical = FolioSpace.SMALL.dp),
         verticalArrangement = Arrangement.Center,
