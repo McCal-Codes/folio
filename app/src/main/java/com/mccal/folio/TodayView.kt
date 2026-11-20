@@ -174,7 +174,7 @@ private fun TodayWidgetTile(widget: TodayWidget, widgets: WidgetController, widt
             }
         }
         if (edit.active) {
-            JiggleRemoveButton(stringResource(R.string.remove_widget), onRemove = onRemove)
+            JiggleRemoveButton(stringResource(R.string.remove_widget), inset = (-6).dp, onRemove = onRemove)
             Row(Modifier.align(Alignment.BottomEnd).padding(FolioSpace.SMALL.dp).clip(CircleShape).background(Color.Black.copy(alpha = .45f))) {
                 if (canMoveUp) TodayArrow(Icons.Rounded.KeyboardArrowUp, stringResource(R.string.move_up)) { onMove(-1) }
                 if (canMoveDown) TodayArrow(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.move_down)) { onMove(1) }

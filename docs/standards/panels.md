@@ -88,8 +88,8 @@ than Apple", "there should be some standards for the control center and notifica
 
 - **PNL-33 MUST** make a drag in Control Center's editor honest about what letting go does: the held control lifts and follows the
   finger with no lag, the place it would take is outlined, a control that would trade places slides into the place it leaves, a drop
-  that cannot work or one off the grid returns the control home, and a page that scrolls scrolls while a control is held near its
-  edge (`ccPreviewDrop`, `ccAutoScrollStep`). Every change in an edit session can be undone, and the same moves are TalkBack actions
+  that cannot work or one off the grid returns the control home, and holding a control at a page's edge carries it to the next page
+  after a short dwell (`ccPreviewDrop`, `ccEdgeZone`). Every change in an edit session can be undone, and the same moves are TalkBack actions
   that announce where the control went. Under Reduce Motion only the held control moves; nothing flashes ([A11Y](accessibility.md)).
 
 ### Notification Center

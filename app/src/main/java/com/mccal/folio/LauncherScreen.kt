@@ -1385,8 +1385,13 @@ fun LauncherScreen(
                 // Above the dock when it runs along the bottom, not on top of its icons.
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottomControlsHeight + FolioSpace.COMFY.dp +
                     (if (geometry.horizontalDock && !geometry.dockBesideRail) (geometry.dockBarHeight + 8f).dp else 0.dp)),
-                enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { it / 2 },
-                exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { it / 2 }
+                // Settle in, Firm out; Reduce Motion fades in place with no slide (DYN-6, DYN-11).
+                enter = if (LocalReduceMotion.current) androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(FolioMotion.FADE_MS))
+                    else androidx.compose.animation.fadeIn(FolioMotion.spring(FolioMotion.Settle)) +
+                        androidx.compose.animation.slideInVertically(FolioMotion.spring(FolioMotion.Settle, androidx.compose.ui.unit.IntOffset(1, 1))) { it / 2 },
+                exit = if (LocalReduceMotion.current) androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(FolioMotion.FADE_MS))
+                    else androidx.compose.animation.fadeOut(FolioMotion.spring(FolioMotion.Firm)) +
+                        androidx.compose.animation.slideOutVertically(FolioMotion.spring(FolioMotion.Firm, androidx.compose.ui.unit.IntOffset(1, 1))) { it / 2 }
             ) {
                 androidx.compose.material3.Surface(
                     onClick = {

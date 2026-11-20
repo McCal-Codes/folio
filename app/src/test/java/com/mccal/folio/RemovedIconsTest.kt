@@ -27,6 +27,21 @@ class RemovedIconsTest {
         assertTrue(removed.icons.isEmpty())
     }
 
+    @Test fun aFolderLeavesACopyOfItsTileAndName() {
+        val removed = RemovedIcons()
+        removed.launchFolder(RemovedFolder("Work", null, listOf(app)), Rect(10, 20, 70, 80), 60.dp, true)
+        val copy = removed.icons.single()
+        assertEquals("Work", copy.label)
+        assertEquals(10f, copy.left)
+        assertTrue(copy.folder != null && copy.app == null)
+    }
+
+    @Test fun aFolderWithNoPlaceYetLeavesNothing() {
+        val removed = RemovedIcons()
+        removed.launchFolder(RemovedFolder("Work", null, listOf(app)), Rect(), 60.dp, true)
+        assertTrue(removed.icons.isEmpty())
+    }
+
     @Test fun finishedDropsOnlyThatCopy() {
         val removed = RemovedIcons()
         removed.launch(app, Rect(10, 20, 70, 80), 60.dp, 14.dp, true)
