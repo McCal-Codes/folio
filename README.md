@@ -28,7 +28,7 @@
 
 | Version | Price | Android | Root | Tested on |
 | :---: | :---: | :---: | :---: | :---: |
-| 0.6.7.3 | Free | 12+ | Not needed | Galaxy Z Fold8 |
+| 0.6.9.2 | Free | 12+ | Not needed | Galaxy Z Fold8 |
 
 </div>
 
@@ -76,7 +76,8 @@ way of bringing that back:
 - **The iPhone Duo Side Bar.** The status bar, Dynamic Island and dock live on the right edge. Thanks to
   [DuoLauncher](https://github.com/jakesgoodapps/DuoLauncher), whose dev made it possible for me to build on top of their work.
 - **Left-handed mode and Spotlight.** Flip the Side Bar to the left, and search everything from Spotlight.
-- **Coming soon: Page Effects,** inspired by Barrel. See Settings › Roadmap for what else is planned.
+- **Page effects and the fold.** Flipbook turns Home's pages in 3D as you swipe, inspired by Barrel, and Duet plays the
+  fold animation from the iPhone Duo. See Settings › Roadmap for what else is planned.
 
 There's a lot to this launcher, and it's fun. I hope you have as much fun with it as I've had making it.
 
@@ -224,7 +225,7 @@ Tests: `./gradlew :app:testDebugUnitTest`
 **Why does it ask for so many permissions?** It doesn't need most of them. Only being your Home app is required. The
 rest are optional and asked for where they're used, like notification access for the Dynamic Island, or the gestures
 service for pull-down panels. Every permission is listed with what it's for in Settings › Privacy & Permissions, in
-[PERMISSIONS.md](PERMISSIONS.md) (all 14, with what breaks if you say no) and in [PRIVACY.md](PRIVACY.md).
+[PERMISSIONS.md](PERMISSIONS.md) (every one, with what breaks if you say no) and in [PRIVACY.md](PRIVACY.md).
 
 **Does Folio send my data anywhere?** No. No accounts, no ads, no analytics. Crash reports stay on your phone unless you
 share one. Software Update only asks GitHub for the latest release when you check (or once a day if you turn that on).
