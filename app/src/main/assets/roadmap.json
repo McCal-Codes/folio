@@ -582,7 +582,8 @@
           "color": "#5E5CE6",
           "title": "Icon Actions",
           "detail": "Tap, long press, double tap and swipes on a Home icon, each set to an action you choose.",
-          "status": "planned"
+          "status": "building",
+          "beta": true
         },
         {
           "icon": "store",
@@ -617,7 +618,8 @@
           "color": "#FF9F0A",
           "title": "StandBy 2",
           "detail": "Folio's own StandBy for a phone charging on its side or half folded: a night clock, widgets, photos and Now Playing.",
-          "status": "planned"
+          "status": "building",
+          "beta": true
         },
         {
           "icon": "search",
@@ -631,7 +633,8 @@
           "color": "#FF9F0A",
           "title": "Music widget",
           "detail": "Now Playing as a widget in three looks: Strip, Card and Poster.",
-          "status": "planned"
+          "status": "building",
+          "beta": true
         },
         {
           "icon": "palette",
@@ -659,7 +662,8 @@
           "color": "#0A84FF",
           "title": "Control Center editor",
           "detail": "Move a control to any free slot and resize it from its corner, the way iOS's editor works.",
-          "status": "planned"
+          "status": "building",
+          "beta": true
         },
         {
           "icon": "notifications",
@@ -708,7 +712,8 @@
           "color": "#32ADE6",
           "title": "Hold cards",
           "detail": "Press and hold brightness, volume, Focus or Now Playing in Control Center for more controls, like iOS.",
-          "status": "planned"
+          "status": "building",
+          "beta": true
         },
         {
           "icon": "apps",
