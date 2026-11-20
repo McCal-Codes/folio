@@ -84,8 +84,8 @@ There's a lot to this launcher, and it's fun. I hope you have as much fun with i
 ## Screenshots
 
 <p align="center">
-  <img src="docs/images/folio-inner-home.webp" width="720" alt="Folio Home on the unfolded screen: clock and date widgets, a four-column app grid, the Side Bar dock on the right and a Naruto Whirlpools wallpaper"><br>
-  <sub>Folio on a Fold-sized screen, with the Naruto Whirlpools wallpaper that ships with it</sub>
+  <img src="docs/images/folio-inner-home.webp" width="720" alt="Folio Home on the unfolded screen: clock and date widgets, a four-column app grid, the Side Bar dock on the right and the Dark Violet wallpaper"><br>
+  <sub>Folio on a Fold-sized screen, with the Dark Violet wallpaper that ships with it (BoliviaInteligente, Unsplash License)</sub>
 </p>
 
 <table>
@@ -101,7 +101,7 @@ There's a lot to this launcher, and it's fun. I hope you have as much fun with i
     <th colspan="3">Unfolded</th>
   </tr>
   <tr>
-    <td align="center" colspan="3"><img src="docs/images/folio-inner-today.webp" width="640" alt="Today View on the unfolded screen: a search field, the date, and the clock and date widgets"><br><sub>Today View, one page left of Home</sub></td>
+    <td align="center" colspan="3"><img src="docs/images/folio-inner-today.webp" width="640" alt="Today View on the unfolded screen: a search field, the date, and the clock and date widgets over the Dark Violet wallpaper"><br><sub>Today View, one page left of Home</sub></td>
   </tr>
   <tr>
     <td align="center" colspan="3"><img src="docs/images/folio-inner-cc.webp" width="640" alt="Control Center on the unfolded screen: connectivity toggles, a music player, Focus, brightness and volume sliders, and quick controls"><br><sub>Control Center</sub></td>
