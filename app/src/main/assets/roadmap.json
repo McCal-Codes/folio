@@ -716,6 +716,20 @@
           "beta": true
         },
         {
+          "icon": "pages",
+          "color": "#32ADE6",
+          "title": "Three Home panes on very wide screens",
+          "detail": "On a very wide window such as a trifold, Home can show a third page beside the other two.",
+          "status": "planned"
+        },
+        {
+          "icon": "extension",
+          "color": "#FF9F0A",
+          "title": "Root tools and a clearer System Bridge",
+          "detail": "Root, Shizuku and System integration get one clearer page that says what each needs. Root tools become an optional Market package.",
+          "status": "planned"
+        },
+        {
           "icon": "apps",
           "color": "#8E8E93",
           "title": "Desktop, keyboard and mouse",
@@ -891,6 +905,13 @@
           "color": "#5E5CE6",
           "title": "Page feel and fold clicks",
           "detail": "Home's pages stretch at the ends and catch on touch, and the fold clicks as it opens and closes.",
+          "status": "planned"
+        },
+        {
+          "icon": "tap",
+          "color": "#0A84FF",
+          "title": "Widget menu like iOS",
+          "detail": "Hold a widget for a small menu beside it, like the one on app icons, instead of a large sheet.",
           "status": "planned"
         }
       ]
