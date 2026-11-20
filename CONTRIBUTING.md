@@ -50,6 +50,16 @@ Folio builds with Java 17:
 CI runs the same command on every pull request. Use disposable emulators for instrumentation tests. Fixtures that change
 Home selection, profiles, widgets or settings must restore them; never use a personal phone as a fixture.
 
+Connected tests (`connected*AndroidTest`) refuse to start unless `ANDROID_SERIAL` names one emulator, because Gradle runs
+them on every attached device and then uninstalls the app from each, which deletes its saved data:
+
+```bash
+adb devices
+ANDROID_SERIAL=emulator-5554 ./gradlew :app:connectedDebugAndroidTest
+```
+
+A phone kept only for testing needs `-Pfolio.allowPhone=true` as well.
+
 Preserve one-page-per-swipe behavior, native widget scrolling and long-press pickup, placements, widget bindings and
 Home-page retention. Keep access optional and explain it where it's used. Layouts follow screen size, not device
 checks. Tests should reproduce failures or protect meaningful behavior.
