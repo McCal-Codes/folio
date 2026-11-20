@@ -25,7 +25,8 @@ internal class DuetShader {
     /** [tiltX] and [tiltY] are the phone's turn since the fold began, already in screen axes (see [DuetMotion]); only Duo Clip reads them. */
     fun effect(width: Float, height: Float, m: Float, cover: Boolean, geometry: FoldGeometry,
         style: DuetStyle = DuetStyles.DEFAULT, cornerPx: Float = 0f, tiltX: Float = 0f, tiltY: Float = 0f): androidx.compose.ui.graphics.RenderEffect {
-        if (style.clip && !cover) return clipEffect(width, height, m, geometry, style, tiltX, tiltY)
+        if (style.clip) return if (cover) clipEffect(width, height, m, clipCoverPanel(width, height, geometry), style, 0f, 0f, soft = 1f)
+            else clipEffect(width, height, m, geometry, style, tiltX, tiltY)
         shader.setFloatUniform("size", width, height)
         shader.setFloatUniform("axis", if (geometry.horizontal) 1f else 0f)
         shader.setFloatUniform("hingePos", geometry.hingePx)
@@ -36,7 +37,7 @@ internal class DuetShader {
         shader.setFloatUniform("cover", if (cover) 1f else 0f)
         shader.setFloatUniform("frost", style.frost)
         shader.setFloatUniform("darken", style.darkening)
-        // Duo Clip's Tilt slider is the phone-tilt response, so the cover (which keeps the shared look) stays flat.
+        // Duo Clip has its own path above, so the older cover look below never sees it.
         shader.setFloatUniform("persp", if (style.clip) 0f else style.perspective)
         shader.setFloatUniform("blurFloor", style.blurFloor)
         shader.setFloatUniform("classic", if (style.classic) 1f else 0f)
@@ -53,7 +54,8 @@ internal class DuetShader {
      * there is no hard line, and shades it from the outer edge in. That is laid over the screen as it is, so the half behind
      * the hinge is never touched.
      */
-    private fun clipEffect(width: Float, height: Float, m: Float, geometry: FoldGeometry, style: DuetStyle, tiltX: Float, tiltY: Float): androidx.compose.ui.graphics.RenderEffect {
+    private fun clipEffect(width: Float, height: Float, m: Float, geometry: FoldGeometry, style: DuetStyle, tiltX: Float, tiltY: Float,
+        soft: Float = -1f): androidx.compose.ui.graphics.RenderEffect {
         val extent = if (geometry.horizontal) height else width
         clipShader.setFloatUniform("size", width, height)
         clipShader.setFloatUniform("axis", if (geometry.horizontal) 1f else 0f)
@@ -61,7 +63,7 @@ internal class DuetShader {
         clipShader.setFloatUniform("side", if (geometry.movingAfterHinge) 1f else -1f)
         clipShader.setFloatUniform("m", m)
         clipShader.setFloatUniform("darken", style.darkening)
-        clipShader.setFloatUniform("soft", extent * DuetClip.HINGE_SOFT)
+        clipShader.setFloatUniform("soft", if (soft >= 0f) soft else extent * DuetClip.HINGE_SOFT)
         // Duo Fold Live's motion glass: a turn along the fold stretches or squeezes the moving half away from the hinge, a turn
         // across it skews it. The half that moves after the hinge is the mirror of the one before it.
         val response = style.perspective
@@ -259,4 +261,14 @@ internal class DuetShader {
             }
         """
     }
+}
+
+/**
+ * The cover screen as Duo Clip's moving half: the whole screen swings away from the hinge edge, so the hinge sits on that edge
+ * and the half moves toward the other side. Blur, shade and timing are then exactly the inside's. (Duo Fold Live models the cover
+ * the same way, a panel that folds about its hinge edge; Folio's own cover look used its older curves.)
+ */
+internal fun clipCoverPanel(width: Float, height: Float, g: FoldGeometry): FoldGeometry {
+    val extent = if (g.horizontal) height else width
+    return FoldGeometry(g.horizontal, if (g.movingAfterHinge) extent else 0f, !g.movingAfterHinge)
 }
