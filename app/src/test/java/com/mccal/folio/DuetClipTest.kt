@@ -69,6 +69,17 @@ class DuetClipTest {
         assertTrue(DuetClip.shade(start, 1f) > .85f)
         assertTrue("the hinge strip is still lit", DuetClip.shade(start, .05f) < .4f)
     }
+
+    @Test fun `on the cover, Duo Clip's hinge is the screen's edge and the whole screen moves away from it`() {
+        // Natural orientation: the cover's hinge edge is on the left, so the half moves after a hinge at 0.
+        assertEquals(com.mccal.folio.FoldGeometry(false, 0f, true), com.mccal.folio.duet.clipCoverPanel(400f, 800f, com.mccal.folio.FoldGeometry(false, 123f, false)))
+        // Rotated 180 degrees: the edge is on the right, so the half moves before a hinge at the far side.
+        assertEquals(com.mccal.folio.FoldGeometry(false, 400f, false), com.mccal.folio.duet.clipCoverPanel(400f, 800f, com.mccal.folio.FoldGeometry(false, 123f, true)))
+        // Top and bottom edges use the height.
+        assertEquals(com.mccal.folio.FoldGeometry(true, 0f, true), com.mccal.folio.duet.clipCoverPanel(400f, 800f, com.mccal.folio.FoldGeometry(true, 5f, false)))
+        assertEquals(com.mccal.folio.FoldGeometry(true, 800f, false), com.mccal.folio.duet.clipCoverPanel(400f, 800f, com.mccal.folio.FoldGeometry(true, 5f, true)))
+    }
+
 }
 
 class DuetMotionTest {

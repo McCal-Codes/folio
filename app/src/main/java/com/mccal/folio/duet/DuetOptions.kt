@@ -36,7 +36,7 @@ data class DuetStyle(
     val startAt: Float = 1f,
     /**
      * Duo Clip: the moving half blurs at once and shades from its outer edge inward, each on its own curve of the fold
-     * ([DuetClip]); the open half stays sharp and bright and the whole screen does not dim. The cover keeps the shared cover look.
+     * ([DuetClip]); the open half stays sharp and bright and the whole screen does not dim. The cover is the same look with the whole screen as the moving half.
      * [frost] and [darkening] still scale it. The other looks ignore this.
      */
     val clip: Boolean = false,
