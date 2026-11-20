@@ -2554,6 +2554,8 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
             enabled = duet.frost != 1f || duet.darkening != 1f || duet.perspective != 1f) {
             model.setDuet(duet.copy(frost = 1f, darkening = 1f, perspective = 1f)) }
     }
+    // Android's wallpaper is the system's to draw: only with All files access can Duet blur it with the fold.
+    if (state.systemWallpaper && look.clip && android.os.Build.VERSION.SDK_INT >= 33) SettingsCard(stringResource(R.string.duet_wallpaper_title)) { PhoneWallpaperAccessRows() }
     SettingsCard(stringResource(R.string.duet_direction)) {
         IosSegmented(com.mccal.folio.duet.DuetDirection.entries.map { it to stringResource(it.label) }, duet.plays,
             { model.setDuet(duet.copy(direction = it.id)) }, Modifier.padding(vertical = FolioSpace.SNUG.dp), tag = "duet-direction")

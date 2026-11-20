@@ -294,6 +294,8 @@ internal fun SystemWallpaperParallax(pager: androidx.compose.foundation.pager.Pa
                 val token = view.windowToken ?: return@collect
                 val pages = if (live) count else maxOf(MIN_PARALLAX_SPAN, count)
                 val steps = (pages - 1).coerceAtLeast(1)
+                // The fold's copy of the wallpaper (PhoneWallpaperCopy.kt) sits where this puts Android's.
+                WallpaperPlacement.fraction = (position / steps).coerceIn(0f, 1f)
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
                     runCatching {
                         // yStep is 1f, not 0f: a wallpaper that works out its vertical pixel offset from the step

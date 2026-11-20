@@ -22,8 +22,10 @@ import com.mccal.folio.FoldGeometry
 internal class DuetShader {
     private val shader = RuntimeShader(SOURCE)
 
+    /** [tiltX] and [tiltY] are the phone's turn since the fold began, already in screen axes (see [DuetMotion]); only Duo Clip reads them. */
     fun effect(width: Float, height: Float, m: Float, cover: Boolean, geometry: FoldGeometry,
-        style: DuetStyle = DuetStyles.IPHONE, cornerPx: Float = 0f): androidx.compose.ui.graphics.RenderEffect {
+        style: DuetStyle = DuetStyles.DEFAULT, cornerPx: Float = 0f, tiltX: Float = 0f, tiltY: Float = 0f): androidx.compose.ui.graphics.RenderEffect {
+        if (style.clip && !cover) return clipEffect(width, height, m, geometry, style, tiltX, tiltY)
         shader.setFloatUniform("size", width, height)
         shader.setFloatUniform("axis", if (geometry.horizontal) 1f else 0f)
         shader.setFloatUniform("hingePos", geometry.hingePx)
@@ -34,7 +36,8 @@ internal class DuetShader {
         shader.setFloatUniform("cover", if (cover) 1f else 0f)
         shader.setFloatUniform("frost", style.frost)
         shader.setFloatUniform("darken", style.darkening)
-        shader.setFloatUniform("persp", style.perspective)
+        // Duo Clip's Tilt slider is the phone-tilt response, so the cover (which keeps the shared look) stays flat.
+        shader.setFloatUniform("persp", if (style.clip) 0f else style.perspective)
         shader.setFloatUniform("blurFloor", style.blurFloor)
         shader.setFloatUniform("classic", if (style.classic) 1f else 0f)
         shader.setFloatUniform("corner", cornerPx)
@@ -42,11 +45,102 @@ internal class DuetShader {
         return RenderEffect.createRuntimeShaderEffect(shader, "content").asComposeRenderEffect()
     }
 
+    private val clipShader by lazy(LazyThreadSafetyMode.NONE) { RuntimeShader(CLIP_SOURCE) }
+
+    /**
+     * Duo Clip on the open screen. The blur is the system's own Gaussian (smooth at any strength, where a shader's few taps turn
+     * grainy), taken of the whole screen; a small shader then keeps it only on the moving half, fades it out across the hinge so
+     * there is no hard line, and shades it from the outer edge in. That is laid over the screen as it is, so the half behind
+     * the hinge is never touched.
+     */
+    private fun clipEffect(width: Float, height: Float, m: Float, geometry: FoldGeometry, style: DuetStyle, tiltX: Float, tiltY: Float): androidx.compose.ui.graphics.RenderEffect {
+        val extent = if (geometry.horizontal) height else width
+        clipShader.setFloatUniform("size", width, height)
+        clipShader.setFloatUniform("axis", if (geometry.horizontal) 1f else 0f)
+        clipShader.setFloatUniform("hingePos", geometry.hingePx)
+        clipShader.setFloatUniform("side", if (geometry.movingAfterHinge) 1f else -1f)
+        clipShader.setFloatUniform("m", m)
+        clipShader.setFloatUniform("darken", style.darkening)
+        clipShader.setFloatUniform("soft", extent * DuetClip.HINGE_SOFT)
+        // Duo Fold Live's motion glass: a turn along the fold stretches or squeezes the moving half away from the hinge, a turn
+        // across it skews it. The half that moves after the hinge is the mirror of the one before it.
+        val response = style.perspective
+        val along = (if (geometry.horizontal) tiltY else tiltX) * (if (geometry.movingAfterHinge) -1f else 1f) * response
+        val across = (if (geometry.horizontal) tiltX else tiltY) * response
+        clipShader.setFloatUniform("along", along)
+        clipShader.setFloatUniform("skew", across)
+        val progress = DuetClip.progress(m)
+        val sigma = width * DuetClip.BLUR_SIGMA * style.frost * DuetClip.blur(progress)
+        val half = RenderEffect.createRuntimeShaderEffect(clipShader, "content")
+        val layer = if (sigma >= .5f) RenderEffect.createChainEffect(half, RenderEffect.createBlurEffect(sigma, sigma, android.graphics.Shader.TileMode.CLAMP)) else half
+        return RenderEffect.createBlendModeEffect(RenderEffect.createOffsetEffect(0f, 0f), layer, android.graphics.BlendMode.SRC_OVER).asComposeRenderEffect()
+    }
+
     companion object {
         /** hingewave's tuned eye distance, in widths of the moving half. */
         const val EYE_DISTANCE = 2f
         /** How far the moving half tilts at full perspective, half folded (60°). */
         const val MAX_TILT_RAD = 1.0471976f
+
+        private const val CLIP_SOURCE = """
+            uniform shader content;     // the whole screen, already blurred
+            uniform float2 size;
+            uniform float axis;
+            uniform float hingePos;
+            uniform float side;
+            uniform float m;
+            uniform float darken;
+            uniform float soft;         // how far across the hinge the blur fades out, px
+            uniform float along;        // phone turned along the fold: log2 of how much the half stretches away from the hinge
+            uniform float skew;         // phone turned across it: how far the half's far edge slides
+
+            // Duo Clip's shade, the same arithmetic as DuetClip.shade in Kotlin.
+            float clipShade(float a, float edge) {
+                float away = clamp((edge - ${DuetClip.HINGE_SPARED}) / (1.0 - ${DuetClip.HINGE_SPARED}), 0.0, 1.0);
+                float early = (1.0 - exp(-a / ${DuetClip.SHADE_TAU})) * pow(away, ${DuetClip.SHADE_REACH});
+                float late = smoothstep(${DuetClip.SHADE_ALL_FROM}, ${DuetClip.SHADE_ALL_TO}, a);
+                return max(early, late) * ${DuetClip.SHADE_PEAK};
+            }
+
+            // The frosted reflection, the same arithmetic as DuetClip.reflect in Kotlin.
+            float clipReflect(float a, float edge) {
+                float window = smoothstep(${DuetClip.REFLECT_IN_FROM}, ${DuetClip.REFLECT_IN_TO}, a)
+                    * (1.0 - smoothstep(${DuetClip.REFLECT_OUT_FROM}, ${DuetClip.REFLECT_OUT_TO}, a));
+                return ${DuetClip.REFLECT_PEAK} * window * pow(1.0 - clamp(edge, 0.0, 1.0), ${DuetClip.REFLECT_REACH});
+            }
+
+            half4 main(float2 p) {
+                float a = 2.0 * asin(sqrt(clamp(m / ${DuetClip.HOLD}, 0.0, 1.0))) / 3.14159265;
+                float coord = axis < 0.5 ? p.x : p.y;
+                float extent = axis < 0.5 ? size.x : size.y;
+                float into = side < 0.0 ? hingePos - coord : coord - hingePos;   // how far inside the moving half
+                float keep = smoothstep(-soft, soft, into);
+                if (keep <= 0.0) return half4(0.0);
+                float hs = side < 0.0 ? max(hingePos, 1.0) : max(extent - hingePos, 1.0);
+                float edge = clamp(into / hs, 0.0, 1.0);
+                float s = min(1.0, clipShade(a, edge) * darken);
+                float k = 1.0 - s;
+                // Motion glass (Duo Fold Live): sample the half from where a viewer who moved would see it. It grows in with the fold.
+                float tilt = smoothstep(0.0, 0.15, a);
+                float acrossExtent = axis < 0.5 ? size.y : size.x;
+                float srcInto = into / exp2(clamp(along * tilt, -2.0, 2.0));
+                float srcCoord = clamp(hingePos + side * srcInto, 0.0, extent);
+                float srcAcross = clamp((axis < 0.5 ? p.y : p.x) + 0.125 * skew * tilt * (into / extent) * acrossExtent, 0.0, acrossExtent);
+                half4 c = content.eval(axis < 0.5 ? float2(srcCoord, srcAcross) : float2(srcAcross, srcCoord));
+                half3 rgb = c.rgb * k;
+                // The lit half, mirrored about the hinge, as it shows on the dark glass. Only while the point mirrors onto the screen.
+                float mirrored = 2.0 * hingePos - coord;
+                float r = clipReflect(a, edge);
+                if (r > 0.0 && mirrored >= 0.0 && mirrored <= extent) {
+                    half4 lit = content.eval(axis < 0.5 ? float2(mirrored, p.y) : float2(p.x, mirrored));
+                    rgb = min(rgb + lit.rgb * r, half3(1.0));
+                }
+                // The shade is a black layer over everything the half shows, so where Folio draws nothing (the system's wallpaper
+                // shows through there) it darkens that too: the layer's alpha is what black at s over the screen would leave.
+                float alpha = c.a + s * (1.0 - c.a);
+                return half4(rgb * keep, alpha * keep);
+            }
+        """
 
         private const val SOURCE = """
             uniform shader content;
@@ -64,7 +158,6 @@ internal class DuetShader {
             uniform float classic;  // 1: Classic Glass (Duo Fold Live) projection and blur
             uniform float corner;   // the display's corner radius in px
             uniform float seam;     // soft edge: how far past the hinge the frost carries, share of the whole screen
-
             // Above 0 when a point on the flat screen falls outside the panel's rounded corners. A tilted pane is
             // the panel itself, so where its corners project there is nothing to see: they come out rounded.
             float outsidePanel(float2 q) {

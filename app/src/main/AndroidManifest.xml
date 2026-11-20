@@ -21,6 +21,8 @@
     <!-- Granted only by the owner, from a computer (adb shell pm grant). Nothing uses it yet; see PERMISSIONS.md. -->
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+    <!-- Android lets only an app with All files access read the phone's own wallpaper image. Duet uses it to blur that image with the fold. Optional: asked for only from Duet's settings. -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
