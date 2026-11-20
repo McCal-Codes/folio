@@ -84,13 +84,8 @@ There's a lot to this launcher, and it's fun. I hope you have as much fun with i
 ## Screenshots
 
 <p align="center">
-  <img src="docs/images/folio-060-home.gif" width="720" alt="Folio 0.6.0 on the unfolded Galaxy Z Fold8, one feature at a time: Home and the Side Bar, Spotlight, the App Library, Control Center, jiggle mode, the widget gallery, Dock Magnification and App Panels"><br>
-  <sub>Home, Spotlight, App Library, Control Center, jiggle mode, widgets and tweaks</sub>
-</p>
-
-<p align="center">
-  <img src="docs/images/folio-060-personalize.gif" width="720" alt="Folio 0.6.0 personalization: tinted icons in several colors, left-handed mode, the Classic, Dark, Tinted and Clear themes, the Tweak Library, the Roadmap and the Fold Effect preview"><br>
-  <sub>Tinted icons, left-handed mode, themes, the Tweak Library, the Roadmap and the fold effect</sub>
+  <img src="docs/images/folio-inner-home.webp" width="720" alt="Folio Home on the unfolded screen: clock and date widgets, a four-column app grid, the Side Bar dock on the right and a Naruto Whirlpools wallpaper"><br>
+  <sub>Folio on a Fold-sized screen, with the Naruto Whirlpools wallpaper that ships with it</sub>
 </p>
 
 <table>
@@ -99,28 +94,27 @@ There's a lot to this launcher, and it's fun. I hope you have as much fun with i
   </tr>
   <tr>
     <td align="center" width="33%"><img src="docs/images/folio-cover-home.webp" width="220" alt="Home on the cover screen: clock and date widgets, a four-column app grid, and the Side Bar with the status capsule and dock"><br><sub>Home and the Side Bar</sub></td>
-    <td align="center" width="33%"><img src="docs/images/folio-cover-spotlight.webp" width="220" alt="Spotlight on the cover screen: a search field with Cancel, app suggestions, and the keyboard"><br><sub>Spotlight</sub></td>
-    <td align="center" width="33%"><img src="docs/images/folio-cover-settings.webp" width="220" alt="Icons &amp; Side Bar settings: menu rows for icon pack, shape and badges, a switch, and a segmented control for icon style"><br><sub>iOS-style Settings</sub></td>
+    <td align="center" width="33%"><img src="docs/images/folio-cover-spotlight.webp" width="220" alt="Spotlight on the cover screen: a search field with Cancel and app suggestions"><br><sub>Spotlight</sub></td>
+    <td align="center" width="33%"><img src="docs/images/folio-cover-settings.webp" width="220" alt="Folio Settings on the cover screen: a Home preview, General and Accessibility, and the Launcher pages"><br><sub>iOS-style Settings</sub></td>
   </tr>
   <tr>
     <th colspan="3">Unfolded</th>
   </tr>
   <tr>
+    <td align="center" colspan="3"><img src="docs/images/folio-inner-today.webp" width="640" alt="Today View on the unfolded screen: a search field, the date, and the clock and date widgets"><br><sub>Today View, one page left of Home</sub></td>
+  </tr>
+  <tr>
     <td align="center" colspan="3"><img src="docs/images/folio-inner-cc.webp" width="640" alt="Control Center on the unfolded screen: connectivity toggles, a music player, Focus, brightness and volume sliders, and quick controls"><br><sub>Control Center</sub></td>
   </tr>
   <tr>
-    <td align="center" colspan="3"><img src="docs/images/folio-inner-settings.webp" width="640" alt="Settings in split view on the unfolded screen: the sidebar on the left and the Icons &amp; Side Bar page with a live Home preview on the right"><br><sub>Settings in split view, like iPad</sub></td>
+    <td align="center" colspan="3"><img src="docs/images/folio-inner-settings.webp" width="640" alt="Settings in split view on the unfolded screen: the sidebar on the left and the Wallpaper &amp; Appearance page with the bundled wallpapers on the right"><br><sub>Settings in split view, like iPad, with the bundled wallpapers</sub></td>
   </tr>
   <tr>
-    <th colspan="3">New in 0.6.0</th>
-  </tr>
-  <tr>
-    <td align="center" colspan="3"><img src="docs/images/folio-inner-tweak-library.webp" width="640" alt="The Tweak Library on the unfolded screen: App Panels, Dock Magnification, Notification App Row, Tinted Notifications and Album Art Colors, each with its inspiration and a Get or Open button"><br><sub>The Tweak Library: get only the tweaks you want</sub></td>
-  </tr>
-  <tr>
-    <td align="center" colspan="3"><img src="docs/images/folio-inner-roadmap.webp" width="640" alt="The Roadmap in Settings: Tweak Library, Software Update, Badge styles and Folder options marked In this update, then The Folio app and Home grid columns marked Planned"><br><sub>The Roadmap in Settings</sub></td>
+    <td align="center" colspan="3"><img src="docs/images/folio-inner-tweak-library.webp" width="640" alt="The Tweak Library on the unfolded screen: Cabinet, Harborline, Roll Call, Palette, Afterglow, Flipbook and Duet, each with its inspiration and a Get or Open button"><br><sub>The Tweak Library: get only the tweaks you want</sub></td>
   </tr>
 </table>
+
+<sub>Screenshots are from Folio 0.6.9.2 on an Android emulator sized like the Galaxy Z Fold8, so they show no personal data.</sub>
 
 <sub>Screenshots use the Minimal O icon pack, and the wallpaper is my own. Song details and album art are hidden.</sub>
 
