@@ -1813,6 +1813,7 @@
     <string name="saved_home_layout_could_not_be_read">저장된 홈 화면 레이아웃을 읽지 못해 그대로 두었습니다.</string>
     <string name="widget_waiting_for_setup">%1$s, 설정 대기 중</string>
     <string name="duet_style">스타일</string>
+    <string name="duet_style_clip">Duo Clip</string>
     <string name="duet_style_iphone">iPhone Duo</string>
     <string name="duet_style_duo">Duo</string>
     <string name="duet_style_deep">깊게</string>
@@ -1825,9 +1826,14 @@
     <string name="duet_direction_closing">닫을 때</string>
     <string name="duet_frost">서리</string>
     <string name="duet_shade">그늘</string>
+    <string name="duet_wallpaper_title">배경화면 흐림</string>
+    <string name="duet_wallpaper_allow">배경화면 접근 허용</string>
+    <string name="duet_wallpaper_manage">배경화면 접근이 켜져 있습니다</string>
+    <string name="duet_wallpaper_note_off">Duo Clip은 휴대폰 배경화면을 어둡게만 할 수 있고 흐리게는 못 합니다. Android가 Folio 뒤에 배경화면을 그리기 때문입니다. 앱이 배경화면을 읽으려면 모든 파일 접근이 필요합니다. Folio는 접히는 동안 배경화면만 읽고 아무것도 저장하거나 보내지 않습니다. 배경화면의 Folio 배경을 쓰면 이 권한 없이도 흐려집니다.</string>
+    <string name="duet_wallpaper_note_on">켜짐. Folio는 접힘 효과로 흐리게 하려고 배경화면만 읽습니다. 같은 화면에서 언제든 끌 수 있습니다. 라이브 배경화면은 읽을 그림이 없어 선명하게 남습니다.</string>
     <string name="duet_tilt">기울기</string>
     <string name="duet_adjust_note">선택한 스타일을 조정하며, 스타일을 바꿔도 유지됩니다.</string>
-    <string name="duet_tilt_only_deep">기울기는 깊게와 Classic Glass에만 적용됩니다.</string>
+    <string name="duet_tilt_only_deep">기울기는 Duo Clip, 깊게, Classic Glass에만 적용됩니다. Duo Clip에서는 휴대폰을 돌릴 때 유리가 따라 움직이는 정도입니다.</string>
     <string name="duet_minimal_no_frost">미니멀에는 서리 효과가 없습니다.</string>
     <string name="duet_reset_style">스타일 기본값으로</string>
     <string name="duet_handover">화면 전환</string>

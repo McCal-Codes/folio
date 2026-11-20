@@ -10,10 +10,19 @@ import org.junit.Test
 
 /** Duet, the fold animation as a tweak: a save from before Duet keeps the fold it had until someone picks another look. */
 class DuetTest {
-    @Test fun `the default is iPhone Duo, with Apple's numbers`() {
-        assertEquals(DuetStyles.IPHONE, DuetOptions().resolved())
-        assertEquals(DuetStyles.IPHONE, LauncherState().duet.resolved())
-        assertEquals("a save with no style gets the default", DuetStyles.IPHONE, DuetOptions.fromJson(JSONObject("{}")).look)
+    @Test fun `the default is Duo Clip`() {
+        assertEquals(DuetStyles.CLIP, DuetOptions().resolved())
+        assertEquals(DuetStyles.CLIP, LauncherState().duet.resolved())
+        assertEquals("a save with no style gets the default", DuetStyles.CLIP, DuetOptions.fromJson(JSONObject("{}")).look)
+        assertEquals(DuetStyles.DEFAULT, DuetStyles.all.first())
+        with(DuetStyles.CLIP) {
+            assertTrue(clip)
+            assertTrue("no hard-edge projection: blur, shade and the phone-tilt response (its Tilt slider)", !classic && perspective == 1f)
+            assertEquals("starts where the Fold8 lights its inner panel, about 125 degrees", .19f, startAt, 1e-6f)
+        }
+    }
+
+    @Test fun `iPhone Duo keeps Apple's numbers`() {
         with(DuetStyles.IPHONE) {
             // chuspeeism/iphone-duo: 72 px at the edge (Folio's 4.5% of the width), 2x shade, straight-on projection, full
             // tilt, and a hard edge at the hinge because the camera half never moves.
@@ -29,7 +38,7 @@ class DuetTest {
         val after = JSONObject().put("foldEffect", true).put("duet", DuetOptions(style = "deep").toJson())
         assertEquals("deep", decodeLauncherState(after.toString(), legacyRaw = null).duet.style)
         // Nothing saved at all is a new install, which starts on the default look.
-        assertEquals(DuetStyles.IPHONE.id, decodeLauncherState("{}", legacyRaw = null).duet.style)
+        assertEquals(DuetStyles.DEFAULT.id, decodeLauncherState("{}", legacyRaw = null).duet.style)
     }
 
     @Test fun `Duo is still Folio's earlier fold, number for number`() {
@@ -49,7 +58,7 @@ class DuetTest {
         assertEquals(mine, DuetOptions.fromJson(mine.toJson()))
         assertEquals(DuetOptions(), DuetOptions.fromJson(null))
         val damaged = DuetOptions.fromJson(JSONObject("""{"style":"nope","frost":99,"darkening":"x","perspective":-4}"""))
-        assertEquals(DuetOptions(style = "iphone", frost = 2f, darkening = 1f, perspective = 0f), damaged)
+        assertEquals(DuetOptions(style = "clip", frost = 2f, darkening = 1f, perspective = 0f), damaged)
     }
 
     @Test fun `the Market, the picker and the renderer list the same styles`() {

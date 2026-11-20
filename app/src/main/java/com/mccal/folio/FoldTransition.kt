@@ -39,6 +39,8 @@ import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.runtime.mutableStateOf
 import kotlinx.coroutines.launch
 import androidx.lifecycle.repeatOnLifecycle
+import com.mccal.folio.duet.DuetMotion
+import com.mccal.folio.duet.DuetMotionMath
 import com.mccal.folio.duet.DuetShader
 import com.mccal.folio.duet.DuetStyle
 import com.mccal.folio.duet.DuetStyles
@@ -58,7 +60,7 @@ import com.mccal.folio.duet.DuetStyles
  */
 @Composable
 fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake: Boolean = true,
-    snapshotMorph: Boolean = false, haptics: Boolean = true, style: DuetStyle = DuetStyles.IPHONE,
+    snapshotMorph: Boolean = false, haptics: Boolean = true, style: DuetStyle = DuetStyles.DEFAULT,
     direction: com.mccal.folio.duet.DuetDirection = com.mccal.folio.duet.DuetDirection.BOTH, reduceMotion: Boolean = false,
     content: @Composable () -> Unit) {
     // Which screen we're on, by size in both dimensions, so rotating the cover to landscape never looks like an unfold.
@@ -70,6 +72,8 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
     val hinge = LocalHinge.current
     val rotation = view.display?.rotation ?: android.view.Surface.ROTATION_0
     val shader = remember { if (Build.VERSION.SDK_INT >= 33) DuetShader() else null }
+    val tilt = remember { DuetMotion(context) }
+    DisposableEffect(tilt) { onDispose { tilt.run(false) } }
     val fold = remember { FoldTimeline(context) }
     // A device that cannot fold starts on its one screen: a tablet launched wide was not just unfolded, so nothing plays on its first frames.
     remember(fold) { foldStartsExpanded(hasHinge(context), expanded).also { fold.expanded = it } }
@@ -185,6 +189,11 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
     val plays by androidx.compose.runtime.rememberUpdatedState(direction)
     fun useBlurEffect() = enabled && plays.allows(fold.opening)
     fun useMotion() = useBlurEffect()
+    // Duo Clip blurs and shades the phone's wallpaper too, when All files access lets Folio read it (see PhoneWallpaperCopy.kt).
+    val phoneWallpaper = rememberPhoneWallpaper(enabled && style.clip && context.asActivity()?.showsWallpaper == true)
+    // Duo Clip turns the glass with the phone while the fold plays; the sensor runs only then, and not at all with Tilt at zero or Reduce Motion on.
+    val tiltOn by androidx.compose.runtime.rememberUpdatedState(enabled && style.clip && style.perspective > 0f && !reduceMotion)
+    LaunchedEffect(tilt) { androidx.compose.runtime.snapshotFlow { tiltOn && fold.expanded && useBlurEffect() && m > 0f }.collect { tilt.run(it) } }
     // Fold motion (ripple, depth, light) on the open screen: follows m, both ways, off under Reduce Motion.
     val motionOptions by rememberFoldMotionOptions(context)
     var hostSize by remember { mutableStateOf(androidx.compose.ui.unit.IntSize.Zero) }
@@ -203,7 +212,8 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
         if (shader != null) Modifier.graphicsLayer {
             renderEffect = if (useBlurEffect() && m > 0f && Build.VERSION.SDK_INT >= 33) shader.effect(size.width, size.height, (m * intensity).coerceIn(0f, 1.5f),
                 cover = !fold.expanded, geometry = foldGeometry(rotation, hinge, size.width, size.height), style = style,
-                cornerPx = cornerPx) else null
+                cornerPx = cornerPx, tiltX = DuetMotionMath.rotate(tilt.x, tilt.y, rotation).first,
+                tiltY = DuetMotionMath.rotate(tilt.x, tilt.y, rotation).second) else null
             // The open screen settles up to full size as it clears, and eases back down as it folds.
             val settle = when {
                 !useBlurEffect() -> 1f
@@ -222,6 +232,10 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
                 else drawRect(Color.Black.copy(alpha = (.5f * m * style.darkening).coerceIn(0f, 1f)))
             }
         })) {
+        // Under everything, and outside the recording below: the wallpaper's copy exists only while the half folds.
+        if (phoneWallpaper != null) androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            if (fold.expanded && useBlurEffect() && m > 0f) drawPhoneWallpaper(phoneWallpaper, foldGeometry(rotation, hinge, size.width, size.height))
+        }
         Box(Modifier.fillMaxSize()
             // Keep a live recording of Folio's screen so a snapshot can be taken instantly when folding starts.
             .then(if (enabled && snapshotMorph) Modifier.drawWithContent {
@@ -253,7 +267,8 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
         // It lets go with a spring as the fold reopens or stops, instead of vanishing while the fold is still easing back (a visible pop in a half fold).
         val dimGate by androidx.compose.animation.core.animateFloatAsState(if (enabled && direction.allows(false) && fold.closing) 1f else 0f,
             MotionSpeed.spring(.9f, androidx.compose.animation.core.Spring.StiffnessMedium), label = "fold dim")
-        if (enabled && dimGate > .002f) androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+        // Duo Clip changes only the moving half, so the whole screen keeps its light.
+        if (enabled && !style.clip && dimGate > .002f) androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
             drawRect(Color.Black.copy(alpha = (m * FOLD_DIM).coerceIn(0f, FOLD_DIM) * dimGate))
         }
     }
@@ -715,7 +730,7 @@ private const val REOPEN_DEG = 15f
  * with the hinge down the middle and the left half moving.
  */
 @Composable
-internal fun Modifier.foldPreviewEffect(style: DuetStyle = DuetStyles.IPHONE, m: () -> Float): Modifier {
+internal fun Modifier.foldPreviewEffect(style: DuetStyle = DuetStyles.DEFAULT, m: () -> Float): Modifier {
     val shader = remember { if (Build.VERSION.SDK_INT >= 33) DuetShader() else null }
     return graphicsLayer {
         val value = m()

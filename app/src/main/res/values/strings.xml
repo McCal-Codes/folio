@@ -1823,6 +1823,7 @@
     <string name="credit_foldfx_keeler">Gary Keeler · MIT · Duet\'s style catalog (code)</string>
     <string name="credit_duo_open">marcoazeem · MIT · ideas for Duet\'s frost and darkening controls (no code)</string>
     <string name="duet_style">Style</string>
+    <string name="duet_style_clip">Duo Clip</string>
     <string name="duet_style_iphone">iPhone Duo</string>
     <string name="duet_style_duo">Duo</string>
     <string name="duet_style_deep">Deep</string>
@@ -1835,9 +1836,14 @@
     <string name="duet_direction_closing">Closing</string>
     <string name="duet_frost">Frost</string>
     <string name="duet_shade">Shade</string>
+    <string name="duet_wallpaper_title">Wallpaper blur</string>
+    <string name="duet_wallpaper_allow">Allow wallpaper access</string>
+    <string name="duet_wallpaper_manage">Wallpaper access is on</string>
+    <string name="duet_wallpaper_note_off">Duo Clip can only darken your phone\'s wallpaper, not blur it: Android draws it behind Folio. Android lets an app read the wallpaper only with All files access. Folio would read only the wallpaper, only while the fold plays, and keep nothing and send nothing. Folio background, in Wallpaper, blurs without it.</string>
+    <string name="duet_wallpaper_note_on">On. Folio reads only your wallpaper, to blur it with the fold, and nothing else. Turn it off any time on the same screen. A live wallpaper has no picture to read, so it stays sharp.</string>
     <string name="duet_tilt">Tilt</string>
     <string name="duet_adjust_note">These adjust the style you picked, and stay when you switch.</string>
-    <string name="duet_tilt_only_deep">Tilt is only for Deep and Classic Glass.</string>
+    <string name="duet_tilt_only_deep">Tilt is for Duo Clip, Deep and Classic Glass only. In Duo Clip it is how far the glass follows your phone as you turn it.</string>
     <string name="duet_minimal_no_frost">Minimal has no frost.</string>
     <string name="duet_reset_style">Reset to Style</string>
     <string name="duet_handover">Handover</string>

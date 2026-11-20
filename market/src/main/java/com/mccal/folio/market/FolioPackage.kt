@@ -61,7 +61,7 @@ object TweakOptions {
 
     /** Duet: the style, and multipliers on it (1 = as the style comes). Intensity is the fold's existing slider. */
     val DUET: Map<String, Spec> = linkedMapOf(
-        "style" to Choice(listOf("iphone", "duo", "classic", "deep", "subtle", "minimal")),
+        "style" to Choice(listOf("clip", "iphone", "duo", "classic", "deep", "subtle", "minimal")),
         "direction" to Choice(listOf("both", "opening", "closing")),
         "intensity" to Number(.3..1.5),
         "frost" to Number(0.0..2.0),
