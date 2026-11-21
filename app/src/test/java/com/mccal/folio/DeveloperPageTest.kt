@@ -8,7 +8,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -40,25 +42,27 @@ class DeveloperPageTest {
         compose.waitForIdle()
         compose.onNodeWithTag("display-aid-show_touches").assertIsDisplayed()
         compose.onNodeWithTag("display-aid-pointer_location").assertIsDisplayed()
-        compose.onNodeWithTag("developer-hide").assertIsDisplayed()
+        compose.onNodeWithTag("developer-hide").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("developer-warning").assertDoesNotExist()
     }
 
     @Test fun `hiding the settings puts the warning back`() {
         page()
         compose.onNodeWithTag("developer-enable").performClick()
-        compose.onNodeWithTag("developer-hide").performClick()
+        compose.onNodeWithTag("developer-hide").performScrollTo().performClick()
         compose.waitForIdle()
-        compose.onNodeWithTag("developer-warning").assertIsDisplayed()
+        // The page stays scrolled to where the Hide row was, so scroll back up to the warning.
+        compose.onNodeWithTag("developer-warning").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("display-aid-show_touches").assertDoesNotExist()
     }
 
-    @Test fun `show the build page calls back`() {
+    @Test fun `show the build page calls back once the warning is agreed to`() {
         var shown = 0
         page { shown++ }
+        compose.onNodeWithText("Show the build page again").assertDoesNotExist()
         compose.onNodeWithTag("developer-enable").performClick()
         compose.waitForIdle()
-        compose.onNodeWithTag("developer-hide").assertIsDisplayed()
-        assertEquals(0, shown)
+        compose.onNodeWithText("Show the build page again").performClick()
+        assertEquals(1, shown)
     }
 }

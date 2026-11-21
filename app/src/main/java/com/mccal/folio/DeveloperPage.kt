@@ -13,7 +13,7 @@ import androidx.compose.ui.platform.testTag
 
 /** Developer's words stay English, one per line, like the rest of Folio Dev's page (DevBuild.kt). */
 private object DeveloperText {
-    const val WARNING = "Developer settings change how this phone behaves, not only Folio Dev. Show taps and Pointer location draw over every app, and Don't keep activities makes Android close apps when you leave them, which can lose unsaved work. They are for testing: turn them off when you finish. Only Folio Dev has this page; a release build never does." // english-only
+    const val WARNING = "Developer settings change how this phone behaves, not only Folio Dev. Show taps and Pointer location draw over every app, Don't keep activities makes Android close apps when you leave them, which can lose unsaved work, and Stay awake keeps the screen lit while charging. They are for testing: turn them off when you finish. Only Folio Dev has this page; a release build never does." // english-only
     const val ENABLE = "I understand, show developer settings" // english-only
     const val TURN_OFF = "Hide developer settings" // english-only
     const val BUILD_GROUP = "This build" // english-only

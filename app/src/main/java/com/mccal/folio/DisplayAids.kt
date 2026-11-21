@@ -17,14 +17,16 @@ import androidx.lifecycle.LifecycleEventObserver
 
 /**
  * Android's own developer switches that make a screenshot or a fold easier to read, and that an app is allowed to flip:
- * [SHOW_TAPS] and [POINTER_LOCATION] live in Settings.System (Modify system settings), [KEEP_ACTIVITIES] in Settings.Global
- * (the WRITE_SECURE_SETTINGS grant). Layout bounds, Force RTL, Force resizable and Smallest width are system properties or
+ * [SHOW_TAPS] and [POINTER_LOCATION] live in Settings.System (Modify system settings); [KEEP_ACTIVITIES], [STAY_AWAKE] and
+ * [FORCE_RESIZABLE] in Settings.Global (the WRITE_SECURE_SETTINGS grant). Stay awake is a bitmask: 7 is AC, USB and wireless. Layout bounds, Force RTL and Smallest width are system properties or
  * need Android's own page, so Folio only links there. None of these flash or strobe.
  */
-internal enum class DisplayAid(val heading: String, val note: String, val key: String, val global: Boolean) {
+internal enum class DisplayAid(val heading: String, val note: String, val key: String, val global: Boolean, val onValue: Int = 1) {
     SHOW_TAPS("Show taps", "A dot where each touch lands, so a screenshot shows what was pressed.", "show_touches", false), // english-only
     POINTER_LOCATION("Pointer location", "A bar of touch numbers along the top edge.", "pointer_location", false), // english-only
     KEEP_ACTIVITIES("Don't keep activities", "Android destroys Folio each time you leave it, to test coming back after a fold.", "always_finish_activities", true), // english-only
+    STAY_AWAKE("Stay awake while charging", "The screen stays lit while the phone is plugged in or on a charger. Turn it off when you finish.", "stay_on_while_plugged_in", true, onValue = 7), // english-only
+    FORCE_RESIZABLE("Force activities to be resizable", "Apps that refuse to resize follow a fold or flip window. Android may need a restart before it takes effect.", "force_resizable_activities", true), // english-only
 }
 
 /** What Folio can do about a switch right now. */
@@ -44,11 +46,11 @@ internal fun secureGrantCommand(packageName: String) = "adb shell pm grant $pack
 internal object DisplayAids {
     fun isOn(context: Context, aid: DisplayAid): Boolean = runCatching {
         if (aid.global) Settings.Global.getInt(context.contentResolver, aid.key, 0) else Settings.System.getInt(context.contentResolver, aid.key, 0)
-    }.getOrDefault(0) == 1
+    }.getOrDefault(0) != 0
 
     /** False when Android refused: the grant was taken back, or this phone does not let apps write the setting. */
     fun set(context: Context, aid: DisplayAid, on: Boolean): Boolean = runCatching {
-        val value = if (on) 1 else 0
+        val value = if (on) aid.onValue else 0
         if (aid.global) Settings.Global.putInt(context.contentResolver, aid.key, value) else Settings.System.putInt(context.contentResolver, aid.key, value)
     }.getOrDefault(false)
 
@@ -60,7 +62,7 @@ private object DisplayAidsText {
     const val GROUP = "Display aids" // english-only
     const val ALLOW = "Allow Modify system settings" // english-only
     const val OPEN_ANDROID = "Open Android Developer options" // english-only
-    const val OTHERS = "Layout bounds, Force RTL, Force activities to be resizable and Smallest width stay in Android's own page: an app cannot change them." // english-only
+    const val OTHERS = "Layout bounds, Force RTL and Smallest width stay in Android's own page: an app cannot change them." // english-only
     fun grant(command: String) = "Needs one grant, run once from a computer: $command" // english-only
 }
 

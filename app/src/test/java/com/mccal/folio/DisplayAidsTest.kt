@@ -20,8 +20,8 @@ class DisplayAidsTest {
     private val context: Context get() = ApplicationProvider.getApplicationContext()
 
     @Test fun `the switches use Android's own setting names`() {
-        assertEquals(listOf("show_touches", "pointer_location", "always_finish_activities"), DisplayAid.entries.map { it.key })
-        assertEquals(listOf(false, false, true), DisplayAid.entries.map { it.global })
+        assertEquals(listOf("show_touches", "pointer_location", "always_finish_activities", "stay_on_while_plugged_in", "force_resizable_activities"), DisplayAid.entries.map { it.key })
+        assertEquals(listOf(false, false, true, true, true), DisplayAid.entries.map { it.global })
     }
 
     @Test fun `system switches need Modify system settings, the global one needs the secure grant`() {
@@ -36,6 +36,17 @@ class DisplayAidsTest {
 
     @Test fun `the grant command names the package it was asked for`() {
         assertEquals("adb shell pm grant com.mccal.folio.dev android.permission.WRITE_SECURE_SETTINGS", secureGrantCommand("com.mccal.folio.dev"))
+    }
+
+    @Test fun `stay awake writes the AC, USB and wireless bits and reads any bit as on`() {
+        assertEquals(7, DisplayAid.STAY_AWAKE.onValue)
+        assertEquals(listOf(1, 1, 1, 7, 1), DisplayAid.entries.map { it.onValue })
+        android.provider.Settings.Global.putInt(context.contentResolver, DisplayAid.STAY_AWAKE.key, 2)
+        assertTrue(DisplayAids.isOn(context, DisplayAid.STAY_AWAKE))
+        assertTrue(DisplayAids.set(context, DisplayAid.STAY_AWAKE, true))
+        assertEquals(7, android.provider.Settings.Global.getInt(context.contentResolver, DisplayAid.STAY_AWAKE.key, 0))
+        assertTrue(DisplayAids.set(context, DisplayAid.STAY_AWAKE, false))
+        assertFalse(DisplayAids.isOn(context, DisplayAid.STAY_AWAKE))
     }
 
     @Test fun `a switch reads back what was written, on both tables`() {
