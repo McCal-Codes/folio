@@ -1529,7 +1529,7 @@ fun LauncherScreen(
                     }
                 }
             } }
-            if (sheet.isNotEmpty() && sheet != "widgets") OwnMethod {
+            if (sheet.isNotEmpty() && sheet != "widgets" && sheet != "widgetActions") OwnMethod {
                 val activeCustomizationPage = if (sheet == "settings:wallpaper") CustomizationPage.WALLPAPER else customizationPage
                 ModalBottomSheet(onDismissRequest = {
                     sheet = ""; picker.packageName = null; picker.exactTarget = false
@@ -1596,54 +1596,58 @@ fun LauncherScreen(
                               settingsSheet("settings")
                           }
                         }
-                        "widgetActions" -> model.placement(picker.slot)?.let { placement ->
-                            val topPitch = (geometry.widgetHeight + 18f) / 2f
-                            val gridSizing = WidgetGridSizing(GRID_COLUMNS, pageRows(placement.page).coerceAtLeast(visibleRows), geometry.cellWidth,
-                                minOf(topPitch, geometry.rowHeight), maxOf(topPitch, geometry.rowHeight), 10f, 18f,
-                                topRowHeightDp = topPitch, appRowHeightDp = geometry.rowHeight)
-                            val constraints = widgets.manager.getAppWidgetInfo(placement.id)?.let { widgets.sizing(it, gridSizing) } ?: builtinWidgetConstraints(placement.id)
-                            WidgetActions(placement, constraints, rows = pageRows(placement.page),
-                                stackCards = model.stackCards(placement.slot), stackLabel = { widgetLabel(launcherActivity, it, widgets, swappedApps) },
-                                stackRotate = state.stackRotate, onStackRotate = model::setStackRotate,
-                                onAddToStack = {
-                                    picker.stackSlot = placement.slot; picker.slot = placement.slot
-                                    picker.anyApp(); sheet = "widgets"
-                                },
-                                onRemoveFromStack = { model.removeFromStack(placement.slot, it) },
-                                onShowFirstInStack = { model.showFirstInStack(placement.slot, it) },
-                                canConfigure = widgets.canReconfigure(placement.id),
-                                onConfigure = { widgets.reconfigure(placement.id); sheet = "" },
-                                isValid = { x, y -> (x == placement.spanX && y == placement.spanY) || resizeWidgetMakingRoom(state.layout, picker.slot, x, y, homeAppRows) != state.layout },
-                                onResize = { x, y -> model.resizeWidget(picker.slot, x, y) },
-                                onStartResize = { x, y ->
-                                    resize.start(picker.slot, x, y, constraints)
-                                    sheet = ""
-                                },
-                                onMoveToPage = { page ->
-                                    (0 until HOME_CELLS).firstOrNull { local ->
-                                        widgetCandidate(state.layout, placement.slot, page * HOME_CELLS + local,
-                                            placement.spanX, placement.spanY, visibleRows) != null
-                                    }?.let { model.moveWidgetTo(placement.slot, page * HOME_CELLS + it) } == true
-                                }, homePages = homePages,
-                                onReplace = {
-                                    picker.packageName = null
-                                    picker.profileSerial = widgets.manager.getAppWidgetInfo(placement.id)?.profile?.let {
-                                        launcherActivity.getSystemService(UserManager::class.java).getSerialNumberForUser(it)
-                                    }?.takeIf { it >= 0 }
-                                    picker.exactTarget = false; sheet = "widgets"
-                                },
-                                onRemove = { widgets.remove(picker.slot); sheet = "" },
-                                onClose = { sheet = "" },
-                                onCustomize = if (placement.id == BIG_CLOCK_WIDGET && clockCustomize) {{ clockEditSlot = placement.slot; sheet = "" }}
-                                    else if (placement.id == PHOTO_WIDGET) {{ PhotoWidgetBus.requestOptions(); sheet = "" }} else null,
-                                onRemovePhoto = if (placement.id == PHOTO_WIDGET && PhotoWidgetStore.load(launcherActivity).uris.isNotEmpty()) {{ PhotoWidgetBus.removeCurrent(launcherActivity); sheet = "" }} else null,
-                                onPlace = if (placement.id == BIG_CLOCK_WIDGET && clockCustomize && !geometry.splitColumns && !(hinge?.let { it.active && !it.vertical } ?: false)) {{ placeSlot = placement.slot; sheet = "" }} else null,
-                                onExpand = if (placement.id in BACKUP_BUILTIN_WIDGETS || placement.id < 0) {{ sheet = "expandedWidget" }} else null)
-                        }
                         "expandedWidget" -> model.placement(picker.slot)?.let { placement ->
                             ExpandedWidgetPreview(placement, deviceStatus, onClose = { sheet = "" })
                         }
                     }
+                }
+            }
+            // The widget's hold menu: a popover beside the widget, not a sheet (WidgetContextMenu).
+            if (sheet == "widgetActions") OwnMethod {
+                model.placement(picker.slot)?.let { placement ->
+                    val topPitch = (geometry.widgetHeight + 18f) / 2f
+                    val gridSizing = WidgetGridSizing(GRID_COLUMNS, pageRows(placement.page).coerceAtLeast(visibleRows), geometry.cellWidth,
+                        minOf(topPitch, geometry.rowHeight), maxOf(topPitch, geometry.rowHeight), 10f, 18f,
+                        topRowHeightDp = topPitch, appRowHeightDp = geometry.rowHeight)
+                    val constraints = widgets.manager.getAppWidgetInfo(placement.id)?.let { widgets.sizing(it, gridSizing) } ?: builtinWidgetConstraints(placement.id)
+                    WidgetContextMenu(placement, constraints, rows = pageRows(placement.page),
+                        stackCards = model.stackCards(placement.slot), stackLabel = { widgetLabel(launcherActivity, it, widgets, swappedApps) },
+                        stackRotate = state.stackRotate, onStackRotate = model::setStackRotate,
+                        onAddToStack = {
+                            picker.stackSlot = placement.slot; picker.slot = placement.slot
+                            picker.anyApp(); sheet = "widgets"
+                        },
+                        onRemoveFromStack = { model.removeFromStack(placement.slot, it) },
+                        onShowFirstInStack = { model.showFirstInStack(placement.slot, it) },
+                        canConfigure = widgets.canReconfigure(placement.id),
+                        onConfigure = { widgets.reconfigure(placement.id); sheet = "" },
+                        isValid = { x, y -> (x == placement.spanX && y == placement.spanY) || resizeWidgetMakingRoom(state.layout, picker.slot, x, y, homeAppRows) != state.layout },
+                        onResize = { x, y -> model.resizeWidget(picker.slot, x, y) },
+                        onStartResize = { x, y ->
+                            resize.start(picker.slot, x, y, constraints)
+                            sheet = ""
+                        },
+                        onMoveToPage = { page ->
+                            (0 until HOME_CELLS).firstOrNull { local ->
+                                widgetCandidate(state.layout, placement.slot, page * HOME_CELLS + local,
+                                    placement.spanX, placement.spanY, visibleRows) != null
+                            }?.let { model.moveWidgetTo(placement.slot, page * HOME_CELLS + it) } == true
+                        }, homePages = homePages,
+                        onReplace = {
+                            picker.packageName = null
+                            picker.profileSerial = widgets.manager.getAppWidgetInfo(placement.id)?.profile?.let {
+                                launcherActivity.getSystemService(UserManager::class.java).getSerialNumberForUser(it)
+                            }?.takeIf { it >= 0 }
+                            picker.exactTarget = false; sheet = "widgets"
+                        },
+                        onRemove = { widgets.remove(picker.slot); sheet = "" },
+                        onClose = { sheet = "" },
+                        onEditHome = { sheet = ""; haptic.perform(FolioHaptic.PickedUp); homeEdit.start() },
+                        onCustomize = if (placement.id == BIG_CLOCK_WIDGET && clockCustomize) {{ clockEditSlot = placement.slot; sheet = "" }}
+                            else if (placement.id == PHOTO_WIDGET) {{ PhotoWidgetBus.requestOptions(); sheet = "" }} else null,
+                        onRemovePhoto = if (placement.id == PHOTO_WIDGET && PhotoWidgetStore.load(launcherActivity).uris.isNotEmpty()) {{ PhotoWidgetBus.removeCurrent(launcherActivity); sheet = "" }} else null,
+                        onPlace = if (placement.id == BIG_CLOCK_WIDGET && clockCustomize && !geometry.splitColumns && !(hinge?.let { it.active && !it.vertical } ?: false)) {{ placeSlot = placement.slot; sheet = "" }} else null,
+                        onExpand = if (placement.id in BACKUP_BUILTIN_WIDGETS || placement.id < 0) {{ sheet = "expandedWidget" }} else null)
                 }
             }
             // One-time hints (FirstUseHints): the first Home after setup, and the first unfolded one. Doing the thing counts as having seen it.

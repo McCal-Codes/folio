@@ -1307,6 +1307,10 @@
     <string name="make_a_stack">Make a Stack</string>
     <string name="remove_stack">Remove Stack</string>
     <string name="remove_widget_2">Remove Widget</string>
+    <string name="widget_size_dimensions">%1$d × %2$d</string>
+    <string name="move_to_page">Move to Page</string>
+    <string name="edit_stack">Edit Stack</string>
+    <string name="widget_page_full">No room for this widget on that page</string>
     <string name="wallpaper_appearance_2">Wallpaper &amp; Appearance</string>
     <string name="add_page">Add Page</string>
     <string name="remove_this_empty_page">Remove This Empty Page</string>
