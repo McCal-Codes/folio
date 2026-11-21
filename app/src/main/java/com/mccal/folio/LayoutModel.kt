@@ -145,6 +145,20 @@ const val HOME_PREVIEW_RESERVE_DP = 126f
 fun homeControlsSpace(isDefaultHome: Boolean, measuredDp: Float): Float =
     if (isDefaultHome) maxOf(HOME_STRIP_RESERVE_DP, measuredDp) else maxOf(HOME_PREVIEW_RESERVE_DP, measuredDp + 12f)
 
+/** What Today View keeps clear under its last widget at least: the room that has always been enough above the page dots. */
+const val TODAY_BOTTOM_PADDING_DP = 96f
+/** The breathing room kept between Today View's last widget and the page controls when the controls need more than that. */
+const val TODAY_CONTROLS_GAP_DP = 16f
+
+/**
+ * How far above the window's bottom edge Today View's last widget stops when scrolled to the end. Today View scrolls under the page
+ * controls (its bottom edge fades), but its end must rest above them: a fixed 96 dp cleared the strip, not the Preview bar (126 dp,
+ * more at large text) that sits above it until Folio is the Home app, so at a short window and a large font the last widget ran
+ * under "Use as Home". Never less than 96 dp, so Home that is already the default looks exactly as before.
+ */
+fun todayBottomPadding(isDefaultHome: Boolean, measuredDp: Float): Float =
+    maxOf(TODAY_BOTTOM_PADDING_DP, homeControlsSpace(isDefaultHome, measuredDp) + TODAY_CONTROLS_GAP_DP)
+
 /**
  * How far the edit bar's + and Edit pills reach from the window's edge at the default text size, in dp (measured on the fold
  * AVD's inner display: the Edit pill ends 122 dp in). Grows with the text size, because the pills hold text.

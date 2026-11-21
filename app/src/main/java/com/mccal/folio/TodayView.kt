@@ -43,7 +43,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 internal fun TodayView(state: LauncherState, widgets: WidgetController, modifier: Modifier = Modifier,
     onSearch: () -> Unit, onLaunch: (AppEntry) -> Unit, onAddWidget: () -> Unit,
-    onRemove: (Int) -> Unit, onMove: (Int, Int) -> Unit) {
+    onRemove: (Int) -> Unit, onMove: (Int, Int) -> Unit, bottomPadding: Dp = TODAY_BOTTOM_PADDING_DP.dp) {
     val context = LocalContext.current
     val edit = remember { HomeEditMode() }
     androidx.activity.compose.BackHandler(edit.active) { edit.stop() }
@@ -67,7 +67,7 @@ internal fun TodayView(state: LauncherState, widgets: WidgetController, modifier
             val cell = (columnsWidth - gap) / 2
             val todayScroll = rememberScrollState()
             // Widgets scroll under Home's page controls, so the bottom edge fades toward them rather than running through the icons.
-            Column(Modifier.fillMaxSize().edgeFade(todayScroll).verticalScroll(todayScroll).padding(horizontal = FolioSpace.LARGE.dp).padding(top = FolioSpace.MEDIUM.dp, bottom = 96.dp), // clear of Home's page dots
+            Column(Modifier.fillMaxSize().edgeFade(todayScroll).verticalScroll(todayScroll).padding(horizontal = FolioSpace.LARGE.dp).padding(top = FolioSpace.MEDIUM.dp, bottom = bottomPadding), // clear of Home's page controls, and of the Preview bar before Folio is Home
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(gap)) {
                 Column(Modifier.width(columnsWidth), verticalArrangement = Arrangement.spacedBy(gap)) {
                     // Search capsule
