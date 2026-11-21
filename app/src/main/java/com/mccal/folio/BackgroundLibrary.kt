@@ -208,7 +208,8 @@ internal object BackgroundLibrary {
      * Two woodblock prints, both by an artist who died in 1858, both from a library that publishes its scans with no
      * restriction, and six abstract photographs from Unsplash under the Unsplash License (free to use, credit
      * appreciated, and the reason the set is kept small: the license does not allow compiling Unsplash images into
-     * a competing service). They are stored under `assets/wallpapers` rather than `res/`, so no density qualifier applies to
+     * a competing service), and four minimal pieces drawn for Folio itself, so they carry the project's own license
+     * and the set can grow without leaning on a third party. They are stored under `assets/wallpapers` rather than `res/`, so no density qualifier applies to
      * them and the file is the same one on every phone, and they are cropped off their paper mounts and sized to
      * 2448 px wide, which is the widest window Folio runs in. That width is the point: a center crop never has to
      * scale them up.
@@ -295,6 +296,42 @@ internal object BackgroundLibrary {
             license = "Unsplash License", // english-only
             detail = "2025. Unsplash.", // english-only
             source = "https://unsplash.com/photos/MNsXlmQ3r1g",
+            builtIn = true,
+        ),
+        Artwork(
+            id = "sage-dunes",
+            title = "Sage Dunes", // english-only
+            artist = "Folio", // english-only
+            license = "MIT License", // english-only
+            detail = "2026. Made for Folio.", // english-only
+            source = "https://github.com/McCal-Codes/folio",
+            builtIn = true,
+        ),
+        Artwork(
+            id = "ember-dusk",
+            title = "Ember Dusk", // english-only
+            artist = "Folio", // english-only
+            license = "MIT License", // english-only
+            detail = "2026. Made for Folio.", // english-only
+            source = "https://github.com/McCal-Codes/folio",
+            builtIn = true,
+        ),
+        Artwork(
+            id = "sand-grain",
+            title = "Sand Grain", // english-only
+            artist = "Folio", // english-only
+            license = "MIT License", // english-only
+            detail = "2026. Made for Folio.", // english-only
+            source = "https://github.com/McCal-Codes/folio",
+            builtIn = true,
+        ),
+        Artwork(
+            id = "teal-horizon",
+            title = "Teal Horizon", // english-only
+            artist = "Folio", // english-only
+            license = "MIT License", // english-only
+            detail = "2026. Made for Folio.", // english-only
+            source = "https://github.com/McCal-Codes/folio",
             builtIn = true,
         ),
     )
