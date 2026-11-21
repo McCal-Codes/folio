@@ -108,6 +108,8 @@ internal fun previewSampleSize(sourceWidth: Int, sourceHeight: Int, targetWidth:
 
 /** Decodes [id] for the full-screen preview at the screen's size, from the same asset or file Home reads. Call off the main thread. */
 internal fun backgroundPreviewBitmap(context: android.content.Context, id: String, screenWidth: Int, screenHeight: Int): Bitmap? = runCatching {
+    // Folio's own piece with colors changed is drawn from its recipe at the size that covers the screen.
+    tweakedArtBitmap(context, id, maxOf(screenWidth, screenHeight))?.let { return@runCatching it }
     fun options(bounds: android.graphics.BitmapFactory.Options) = android.graphics.BitmapFactory.Options().apply {
         inSampleSize = previewSampleSize(bounds.outWidth, bounds.outHeight, screenWidth, screenHeight)
     }
@@ -123,8 +125,14 @@ internal fun backgroundPreviewBitmap(context: android.content.Context, id: Strin
 }.getOrNull()
 
 @Composable
-internal fun WallpaperPreviewDialog(artId: String, thumbnail: Bitmap?, sharp: Bitmap?, state: LauncherState, onCancel: () -> Unit, onSet: () -> Unit) {
+internal fun WallpaperPreviewDialog(
+    artId: String, thumbnail: Bitmap?, sharp: Bitmap?, state: LauncherState, onCancel: () -> Unit, onSet: () -> Unit,
+    tweaks: WallpaperTweaks = WallpaperTweaks.NONE, onTweaks: ((WallpaperTweaks) -> Unit)? = null,
+) {
     val context = LocalContext.current
+    // Folio's own pieces can have their colors changed here; the panel opens under the name and Home's page shrinks to fit above it.
+    val customizable = onTweaks != null && WallpaperRecipes.isCustomizable(artId)
+    var customizing by remember { mutableStateOf(false) }
     val reduceMotion = LocalReduceMotion.current
     val art = produceState<Artwork?>(null, artId) { value = withContext(Dispatchers.IO) { BackgroundLibrary.find(context, artId) } }.value
     val appear = remember { Animatable(0f) }
@@ -153,17 +161,26 @@ internal fun WallpaperPreviewDialog(artId: String, thumbnail: Bitmap?, sharp: Bi
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = .25f), Color.Transparent, Color.Black.copy(alpha = .6f)))))
 
             // Edge to edge like Apple's: Home fills the screen and the name and buttons float over its bottom edge.
-            RealHome(state, thumbnail ?: sharp, WALLPAPER_CONTROLS_DP.dp)
+            RealHome(state, thumbnail ?: sharp, (WALLPAPER_CONTROLS_DP + (if (customizable) 44 else 0) + (if (customizable && customizing) WALLPAPER_TWEAK_PANEL_DP else 0)).dp)
             Column(
                 Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars).padding(horizontal = FolioSpace.XXL.dp, vertical = FolioSpace.LARGE.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Spacer(Modifier.weight(1f))
+                if (customizable && customizing && onTweaks != null) WallpaperTweakPanel(tweaks, onTweaks)
                 if (art != null) {
                     Text(art.title, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
                         maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = FolioSpace.MEDIUM.dp))
                     Text(wallpaperCredit(art.artist, art.license), color = Color.White.copy(alpha = .8f), fontSize = FolioType.FOOTNOTE.sp, textAlign = TextAlign.Center,
                         maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
+                if (customizable) {
+                    Text(
+                        stringResource(if (customizing) R.string.done else R.string.customize), color = Color.White, fontSize = FolioType.FOOTNOTE.sp,
+                        fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
+                        modifier = Modifier.defaultMinSize(minHeight = 44.dp).clickable(role = Role.Button) { customizing = !customizing }
+                            .padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.SMALL.dp).testTag("wallpaper-preview-customize"),
+                    )
                 }
                 Row(Modifier.fillMaxWidth().padding(top = FolioSpace.LARGE.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
                     PreviewButton(stringResource(R.string.cancel), Color.White.copy(alpha = .22f), Color.White, "wallpaper-preview-cancel", onCancel, Modifier.weight(1f))
@@ -303,11 +320,13 @@ private fun RealHome(state: LauncherState, picture: Bitmap?, reserve: androidx.c
     val dim = if (state.dimWallpaperDark && LocalDuoPalette.current.dark) .3f else 0f
     val scrim = HomeScrim.of(state.homeScrim, ink.dark, dim)
     CompositionLocalProvider(LocalWallpaperTone provides tone) {
-        Box(Modifier.fillMaxSize()) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            // Open or closed is the screen's shape, not the room left above the controls: with a panel open that room is wider than
+            // tall even on a phone, and a phone's Home must stay one page.
+            val open = maxWidth > maxHeight
             if (dim > 0f) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = dim)))
             if (scrim.draws) Box(Modifier.fillMaxSize().homeScrim(scrim))
             BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars).padding(bottom = reserve), contentAlignment = Alignment.TopCenter) {
-                val open = maxWidth > maxHeight
                 val pages = if (open) 2 else 1
                 // Home is drawn on a cover-sized page; fit as many of them as the room allows without cropping or stretching one.
                 val height = minOf(maxHeight, maxWidth / (HOME_PAGE_ASPECT * pages))
