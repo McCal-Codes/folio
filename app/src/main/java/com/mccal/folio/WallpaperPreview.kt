@@ -11,6 +11,7 @@ import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -63,11 +64,10 @@ import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
-import java.time.format.DateTimeFormatter
 
 /*
  * The full-screen wallpaper preview (FeatureGate.WALLPAPER_PREVIEW; Lab: wallpaper-apple). Tapping art stages it, and while the
- * gate is open the staged picture is shown here on a drawn Home with Cancel and Set at the bottom, where a thumb is. Only Set
+ * gate is open the staged picture is shown here under your real Home with Cancel and Set at the bottom, where a thumb is. Only Set
  * writes, and both buttons go through the controller's own cancelPendingArt and setPendingArt, so this holds no state of its own.
  *
  * A Dialog, not an inline Box: on the Fold8 an inline full-screen Box is clipped by the window's insets.
@@ -80,14 +80,8 @@ private const val PREVIEW_MS = 240
 /** The scale the preview grows from. */
 private const val PREVIEW_FROM = .96f
 
-/** The drawn clock, a share of what Home's own clock is on a phone; a picture of the clock, not a size off the type scale. */
-private const val DRAWN_CLOCK_SP = 72
-
-/** A drawn icon: Home's icon size on a phone, as a stand-in rather than a setting. */
-private const val DRAWN_ICON_DP = 56
-
-private const val ICON_ROWS = 3
-private const val ICON_COLUMNS = 4
+/** The shape of one Home page as the Settings preview draws it (420 by 720), so a page can be fitted into a screen. */
+private const val HOME_PAGE_ASPECT = 420f / 720f
 
 /** The line under a work's name: who made it and under what license, with whatever is blank left out. */
 internal fun wallpaperCredit(artist: String, license: String): String =
@@ -121,7 +115,7 @@ internal fun backgroundPreviewBitmap(context: android.content.Context, id: Strin
 }.getOrNull()
 
 @Composable
-internal fun WallpaperPreviewDialog(artId: String, thumbnail: Bitmap?, sharp: Bitmap?, onCancel: () -> Unit, onSet: () -> Unit) {
+internal fun WallpaperPreviewDialog(artId: String, thumbnail: Bitmap?, sharp: Bitmap?, state: LauncherState, onCancel: () -> Unit, onSet: () -> Unit) {
     val context = LocalContext.current
     val reduceMotion = LocalReduceMotion.current
     val art = produceState<Artwork?>(null, artId) { value = withContext(Dispatchers.IO) { BackgroundLibrary.find(context, artId) } }.value
@@ -154,7 +148,7 @@ internal fun WallpaperPreviewDialog(artId: String, thumbnail: Bitmap?, sharp: Bi
                 Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars).padding(horizontal = FolioSpace.XXL.dp, vertical = FolioSpace.LARGE.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                DrawnHome(Modifier.weight(1f))
+                RealHome(state, Modifier.weight(1f))
                 if (art != null) {
                     Text(art.title, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
                         maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = FolioSpace.MEDIUM.dp))
@@ -205,7 +199,7 @@ internal fun photoCrop(containerWidth: Float, containerHeight: Float, bitmapWidt
  * it, then Set keeps what you framed. Cancel leaves the wallpaper as it was.
  */
 @Composable
-internal fun PhotoFrameDialog(photo: Bitmap, onCancel: () -> Unit, onSet: (PhotoCrop, Boolean) -> Unit) {
+internal fun PhotoFrameDialog(photo: Bitmap, state: LauncherState, onCancel: () -> Unit, onSet: (PhotoCrop, Boolean) -> Unit) {
     val reduceMotion = LocalReduceMotion.current
     val appear = remember { Animatable(0f) }
     LaunchedEffect(Unit) { appear.animateTo(1f, tween(if (reduceMotion) FolioMotion.FADE_MS else PREVIEW_MS)) }
@@ -251,7 +245,7 @@ internal fun PhotoFrameDialog(photo: Bitmap, onCancel: () -> Unit, onSet: (Photo
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = .25f), Color.Transparent, Color.Black.copy(alpha = .6f)))))
             Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars).padding(horizontal = FolioSpace.XXL.dp, vertical = FolioSpace.LARGE.dp),
                 horizontalAlignment = Alignment.CenterHorizontally) {
-                DrawnHome(Modifier.weight(1f))
+                RealHome(state, Modifier.weight(1f))
                 BlurSwitch(blur) { blur = it }
                 Text(stringResource(R.string.wallpaper_frame_hint), color = Color.White.copy(alpha = .85f), fontSize = FolioType.FOOTNOTE.sp, textAlign = TextAlign.Center,
                     modifier = Modifier.padding(top = FolioSpace.MEDIUM.dp))
@@ -278,28 +272,26 @@ private fun BlurSwitch(on: Boolean, onChange: (Boolean) -> Unit) {
     }
 }
 
-/** Home as a picture: the clock, rows of icon stand-ins and the dock, so the art is judged under what will sit on it. */
+/**
+ * Home as it will be: your own icons, widgets, folders, status and dock, drawn by the same code as the Settings preview,
+ * over the picture this screen already draws, so the art is judged under what will really sit on it. A phone-shaped
+ * screen shows one page; a wide one (the unfolded Fold) shows two pages and one Side Bar, as the open Fold does.
+ */
 @Composable
-private fun DrawnHome(modifier: Modifier) {
-    val pattern = if (android.text.format.DateFormat.is24HourFormat(LocalContext.current)) "HH:mm" else "h:mm"
-    val stand = Color.White.copy(alpha = .55f)
-    Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(currentTime().format(DateTimeFormatter.ofPattern(pattern)), color = Color.White, fontSize = DRAWN_CLOCK_SP.sp, fontWeight = FontWeight.Light,
-            modifier = Modifier.padding(top = FolioSpace.HUGE.dp))
-        Column(Modifier.padding(top = FolioSpace.HUGE.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.XXL.dp)) {
-            repeat(ICON_ROWS) { IconRow(stand) }
+private fun RealHome(state: LauncherState, modifier: Modifier) {
+    BoxWithConstraints(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        val open = maxWidth > maxHeight
+        val pages = if (open) 2 else 1
+        // Home is drawn on a cover-sized page; fit as many of them as the room allows without cropping or stretching one.
+        val height = minOf(maxHeight, maxWidth / (HOME_PAGE_ASPECT * pages))
+        Row {
+            if (open) {
+                MiniHomePreview(null, state, height, framed = false, sideBar = state.leftHanded, preset = state.expanded, background = false)
+                MiniHomePreview(null, state, height, framed = false, sideBar = !state.leftHanded, preset = state.expanded, background = false)
+            } else {
+                MiniHomePreview(null, state, height, framed = false, background = false)
+            }
         }
-        Spacer(Modifier.weight(1f))
-        Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.RAIL.dp)).background(Color.White.copy(alpha = .25f)).padding(FolioSpace.MEDIUM.dp)) {
-            IconRow(stand)
-        }
-    }
-}
-
-@Composable
-private fun IconRow(color: Color) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-        repeat(ICON_COLUMNS) { Box(Modifier.size(DRAWN_ICON_DP.dp).clip(RoundedCornerShape(FolioRadius.GROUP.dp)).background(color)) }
     }
 }
 
