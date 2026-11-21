@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -83,6 +84,12 @@ private const val PREVIEW_FROM = .96f
 /** The shape of one Home page as the Settings preview draws it (420 by 720), so a page can be fitted into a screen. */
 private const val HOME_PAGE_ASPECT = 420f / 720f
 
+/** Room kept under Home for the name, credit and buttons, so a wide screen's Home does not run under them. */
+private const val WALLPAPER_CONTROLS_DP = 176
+
+/** The same for the photo framing screen, which also has the Blur switch and a hint. */
+private const val FRAME_CONTROLS_DP = 252
+
 /** The line under a work's name: who made it and under what license, with whatever is blank left out. */
 internal fun wallpaperCredit(artist: String, license: String): String =
     listOf(artist, license).map { it.trim() }.filter { it.isNotEmpty() }.joinToString(", ")
@@ -144,11 +151,13 @@ internal fun WallpaperPreviewDialog(artId: String, thumbnail: Bitmap?, sharp: Bi
             // Home has a scrim behind its text and so does this, so the bottom text and buttons read over a pale picture.
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = .25f), Color.Transparent, Color.Black.copy(alpha = .6f)))))
 
+            // Edge to edge like Apple's: Home fills the screen and the name and buttons float over its bottom edge.
+            RealHome(state, Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars).padding(bottom = WALLPAPER_CONTROLS_DP.dp))
             Column(
                 Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars).padding(horizontal = FolioSpace.XXL.dp, vertical = FolioSpace.LARGE.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                RealHome(state, Modifier.weight(1f))
+                Spacer(Modifier.weight(1f))
                 if (art != null) {
                     Text(art.title, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center,
                         maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = FolioSpace.MEDIUM.dp))
@@ -243,9 +252,10 @@ internal fun PhotoFrameDialog(photo: Bitmap, state: LauncherState, onCancel: () 
                 if (softAlpha > 0f) soft?.let { drawImage(it.asImageBitmap(), dstOffset = place, dstSize = placed, alpha = softAlpha, filterQuality = FilterQuality.Medium) }
             }
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = .25f), Color.Transparent, Color.Black.copy(alpha = .6f)))))
+            RealHome(state, Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars).padding(bottom = FRAME_CONTROLS_DP.dp))
             Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars).padding(horizontal = FolioSpace.XXL.dp, vertical = FolioSpace.LARGE.dp),
                 horizontalAlignment = Alignment.CenterHorizontally) {
-                RealHome(state, Modifier.weight(1f))
+                Spacer(Modifier.weight(1f))
                 BlurSwitch(blur) { blur = it }
                 Text(stringResource(R.string.wallpaper_frame_hint), color = Color.White.copy(alpha = .85f), fontSize = FolioType.FOOTNOTE.sp, textAlign = TextAlign.Center,
                     modifier = Modifier.padding(top = FolioSpace.MEDIUM.dp))
@@ -279,7 +289,7 @@ private fun BlurSwitch(on: Boolean, onChange: (Boolean) -> Unit) {
  */
 @Composable
 private fun RealHome(state: LauncherState, modifier: Modifier) {
-    BoxWithConstraints(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+    BoxWithConstraints(modifier, contentAlignment = Alignment.TopCenter) {
         val open = maxWidth > maxHeight
         val pages = if (open) 2 else 1
         // Home is drawn on a cover-sized page; fit as many of them as the room allows without cropping or stretching one.
