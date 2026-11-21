@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -152,7 +153,7 @@ internal fun WallpaperPreviewDialog(artId: String, thumbnail: Bitmap?, sharp: Bi
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = .25f), Color.Transparent, Color.Black.copy(alpha = .6f)))))
 
             // Edge to edge like Apple's: Home fills the screen and the name and buttons float over its bottom edge.
-            RealHome(state, Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars).padding(bottom = WALLPAPER_CONTROLS_DP.dp))
+            RealHome(state, thumbnail ?: sharp, WALLPAPER_CONTROLS_DP.dp)
             Column(
                 Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars).padding(horizontal = FolioSpace.XXL.dp, vertical = FolioSpace.LARGE.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -252,7 +253,7 @@ internal fun PhotoFrameDialog(photo: Bitmap, state: LauncherState, onCancel: () 
                 if (softAlpha > 0f) soft?.let { drawImage(it.asImageBitmap(), dstOffset = place, dstSize = placed, alpha = softAlpha, filterQuality = FilterQuality.Medium) }
             }
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = .25f), Color.Transparent, Color.Black.copy(alpha = .6f)))))
-            RealHome(state, Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars).padding(bottom = FRAME_CONTROLS_DP.dp))
+            RealHome(state, photo, FRAME_CONTROLS_DP.dp)
             Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars).padding(horizontal = FolioSpace.XXL.dp, vertical = FolioSpace.LARGE.dp),
                 horizontalAlignment = Alignment.CenterHorizontally) {
                 Spacer(Modifier.weight(1f))
@@ -288,18 +289,36 @@ private fun BlurSwitch(on: Boolean, onChange: (Boolean) -> Unit) {
  * screen shows one page; a wide one (the unfolded Fold) shows two pages and one Side Bar, as the open Fold does.
  */
 @Composable
-private fun RealHome(state: LauncherState, modifier: Modifier) {
-    BoxWithConstraints(modifier, contentAlignment = Alignment.TopCenter) {
-        val open = maxWidth > maxHeight
-        val pages = if (open) 2 else 1
-        // Home is drawn on a cover-sized page; fit as many of them as the room allows without cropping or stretching one.
-        val height = minOf(maxHeight, maxWidth / (HOME_PAGE_ASPECT * pages))
-        Row {
-            if (open) {
-                MiniHomePreview(null, state, height, framed = false, sideBar = state.leftHanded, preset = state.expanded, background = false)
-                MiniHomePreview(null, state, height, framed = false, sideBar = !state.leftHanded, preset = state.expanded, background = false)
-            } else {
-                MiniHomePreview(null, state, height, framed = false, background = false)
+private fun RealHome(state: LauncherState, picture: Bitmap?, reserve: androidx.compose.ui.unit.Dp) {
+    // Automatic ink follows the picture, as it does on Home once the picture is set (the same WallpaperColors read), so
+    // dark text shows over a pale picture here too instead of the current wallpaper's white.
+    val current = LocalWallpaperTone.current
+    val tone by produceState(current, picture) {
+        val source = picture?.takeUnless { it.isRecycled } ?: return@produceState
+        value = withContext(Dispatchers.Default) { runCatching { android.app.WallpaperColors.fromBitmap(source).tone() }.getOrDefault(current) }
+    }
+    // Home's own darkening and "Darken behind text" shade, from the same code, over the whole screen: white labels on a pale
+    // picture are only readable on Home because of it.
+    val ink = homeInkFor(state.homeInk, tone.prefersDarkText)
+    val dim = if (state.dimWallpaperDark && LocalDuoPalette.current.dark) .3f else 0f
+    val scrim = HomeScrim.of(state.homeScrim, ink.dark, dim)
+    CompositionLocalProvider(LocalWallpaperTone provides tone) {
+        Box(Modifier.fillMaxSize()) {
+            if (dim > 0f) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = dim)))
+            if (scrim.draws) Box(Modifier.fillMaxSize().homeScrim(scrim))
+            BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars).padding(bottom = reserve), contentAlignment = Alignment.TopCenter) {
+                val open = maxWidth > maxHeight
+                val pages = if (open) 2 else 1
+                // Home is drawn on a cover-sized page; fit as many of them as the room allows without cropping or stretching one.
+                val height = minOf(maxHeight, maxWidth / (HOME_PAGE_ASPECT * pages))
+                Row {
+                    if (open) {
+                        MiniHomePreview(null, state, height, framed = false, sideBar = state.leftHanded, preset = state.expanded, background = false)
+                        MiniHomePreview(null, state, height, framed = false, sideBar = !state.leftHanded, preset = state.expanded, background = false)
+                    } else {
+                        MiniHomePreview(null, state, height, framed = false, background = false)
+                    }
+                }
             }
         }
     }
