@@ -208,7 +208,7 @@ internal object BackgroundLibrary {
      * Two woodblock prints, both by an artist who died in 1858, both from a library that publishes its scans with no
      * restriction, and six abstract photographs from Unsplash under the Unsplash License (free to use, credit
      * appreciated, and the reason the set is kept small: the license does not allow compiling Unsplash images into
-     * a competing service), and five minimal pieces drawn for Folio itself (one of them the fresh-install default, [DEFAULT_ID]), so they carry the project's own license
+     * a competing service), and six minimal pieces drawn for Folio itself (one of them the fresh-install default, [DEFAULT_ID]), so they carry the project's own license
      * and the set can grow without leaning on a third party. They are stored under `assets/wallpapers` rather than `res/`, so no density qualifier applies to
      * them and the file is the same one on every phone, and they are cropped off their paper mounts and sized to
      * 2448 px wide, which is the widest window Folio runs in. That width is the point: a center crop never has to
@@ -226,15 +226,24 @@ internal object BackgroundLibrary {
     fun builtIn(): List<Artwork> = BUILT_IN
 
     /** The wallpaper a fresh install starts with: Folio's own, in its teal, so a first Home is Folio's and not a bare grey surface. */
-    const val DEFAULT_ID = "folio"
+    const val DEFAULT_ID = "moon-hills"
 
     private val BUILT_IN = listOf(
         Artwork(
             id = DEFAULT_ID,
-            title = "Folio", // english-only
+            title = "Moon Hills", // english-only
             artist = "Folio", // english-only
             license = "MIT License", // english-only
             detail = "2026. Made for Folio, in Folio Teal.", // english-only
+            source = "https://github.com/McCal-Codes/folio",
+            builtIn = true,
+        ),
+        Artwork(
+            id = "ember-hills",
+            title = "Ember Hills", // english-only
+            artist = "Folio", // english-only
+            license = "MIT License", // english-only
+            detail = "2026. Made for Folio.", // english-only
             source = "https://github.com/McCal-Codes/folio",
             builtIn = true,
         ),
