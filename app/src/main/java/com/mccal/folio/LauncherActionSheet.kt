@@ -71,7 +71,7 @@ internal fun ModalDialogBackHandler(enabled: Boolean = true, onBack: () -> Unit)
  */
 @Composable
 internal fun HomeEditMenu(anchor: androidx.compose.ui.unit.IntRect?, onDismiss: () -> Unit, onWidgets: () -> Unit, onWallpaper: () -> Unit, onPhoto: () -> Unit,
-    onLook: () -> Unit, onCustomize: () -> Unit, onAddPage: (() -> Unit)?, onRemovePage: (() -> Unit)?) {
+    onLook: () -> Unit, onCustomize: () -> Unit, onPageOverview: () -> Unit, onAddPage: (() -> Unit)?, onRemovePage: (() -> Unit)?) {
     val density = LocalDensity.current
     val margin = with(density) { 12.dp.roundToPx() }
     val reduceMotion = LocalReduceMotion.current
@@ -116,6 +116,8 @@ internal fun HomeEditMenu(anchor: androidx.compose.ui.unit.IntRect?, onDismiss: 
             Box(Modifier.testTag("empty-space-wallpaper")) { MenuRow(stringResource(R.string.wallpaper_appearance_2), Icons.Rounded.Wallpaper, onClick = act(onWallpaper)) }
             // A thicker gap between groups, like iOS menus.
             Box(Modifier.fillMaxWidth().height(8.dp).background(Color.Black.copy(alpha = .25f)))
+            Box(Modifier.testTag("empty-space-page-overview")) { MenuRow(stringResource(R.string.page_overview), Icons.Rounded.ViewModule, onClick = act(onPageOverview)) }
+            MenuDivider()
             onAddPage?.let { Box(Modifier.testTag("empty-space-add-page")) { MenuRow(stringResource(R.string.add_page), Icons.Rounded.AddToPhotos, onClick = act(it)) }; MenuDivider() }
             onRemovePage?.let { Box(Modifier.testTag("empty-space-remove-page")) { MenuRow(stringResource(R.string.remove_this_empty_page), Icons.Rounded.DeleteOutline, destructive = true, onClick = act(it)) }; MenuDivider() }
             Box(Modifier.testTag("empty-space-customize")) { MenuRow(stringResource(R.string.folio_settings), Icons.Rounded.Tune, onClick = act(onCustomize)) }

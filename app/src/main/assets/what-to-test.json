@@ -313,6 +313,14 @@
       "steps": [
         "Get several messages in one chat. The badge should show how many, and a dot where an app gives no count."
       ]
+    },
+    {
+      "id": "page-overview",
+      "title": "Page overview",
+      "where": "Home > page dots, or the Edit menu",
+      "steps": [
+        "Long-press the page dots while icons wiggle. Hide a page, show it again, drag one to a new place, then tap Undo."
+      ]
     }
   ]
 }
