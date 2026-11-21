@@ -369,7 +369,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     val staging = backgrounds.pendingArt != null || backgrounds.previewPending
                     // Gated for 0.7.0: staged art opens full screen with Cancel and Set at the bottom.
                     backgrounds.pendingArt?.takeIf { FeatureGate.WALLPAPER_PREVIEW.isOpen(wallpaperContext) }?.let { art ->
-                        WallpaperPreviewDialog(art.id, backgrounds.pendingArtBitmap, backgrounds.pendingArtPreviewBitmap, backgrounds::cancelPendingArt, backgrounds::setPendingArt)
+                        WallpaperPreviewDialog(art.id, backgrounds.pendingArtBitmap, backgrounds.pendingArtPreviewBitmap, state, backgrounds::cancelPendingArt, backgrounds::setPendingArt)
                     }
                     // A photo opens full screen too, to frame and blur. That screen belongs to Home (LauncherScreen), so it also opens
                     // without this page: from the Edit menu and from a shared photo.
@@ -2374,7 +2374,9 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
     /** The cover's layout by default; the inner screen's for an unfolded preview. */
     preset: LayoutPreset = state.compact,
     /** Which Home page to draw: the one Home is on (LocalPreviewPage) unless a caller pins one. */
-    page: Int = LocalPreviewPage.current) {
+    page: Int = LocalPreviewPage.current,
+    /** Off when the caller draws the picture itself (the full-screen wallpaper preview), so only Home's own parts are drawn. */
+    background: Boolean = true) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val backgroundRevision = LauncherBackgroundCache.revision.intValue
     val committedBitmap = remember(backgroundRevision) { cachedLauncherBackground(context) }
@@ -2411,6 +2413,7 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
             .clip(RoundedCornerShape(if (framed) corner else 0.dp))
             .testTag("customization-home-preview").clearedDescription(R.string.preview_of_home), contentAlignment = Alignment.Center) {
             Box(Modifier.requiredSize(refW.dp, refH.dp).graphicsLayer { scaleX = scale; scaleY = scale }) {
+                if (background) {
                 if (state.systemWallpaper) Box(Modifier.matchParentSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(
                     androidx.compose.ui.graphics.Color(tone.primary ?: 0xFF5A6B78.toInt()), androidx.compose.ui.graphics.Color(tone.secondary ?: tone.primary ?: 0xFF2E3A42.toInt())))))
                 else {
@@ -2422,6 +2425,7 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
                 // Drawn over the background rather than inside it, because the preview lays the chosen photo over the
                 // background; on Home the same scrim is baked into the background's cached layer.
                 HomeScrim.of(state.homeScrim, ink.dark, previewDim).let { if (it.draws) Box(Modifier.matchParentSize().homeScrim(it)) }
+                }
                 CompositionLocalProvider(LocalHomeInk provides ink, LocalDuoPalette provides basePalette.copy(glass = glass), LocalHomeIconSize provides geometry.iconSize) {
                     Box(Modifier.offset(x = (if (left) refW - 16f - geometry.gridWidth else 16f).dp, y = geometry.contentTop.dp).width(geometry.gridWidth.dp).height((cells.height(shownRows)).dp)) {
                         placements.forEach { w ->
