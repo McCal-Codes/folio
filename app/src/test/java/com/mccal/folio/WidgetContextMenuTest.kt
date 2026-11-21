@@ -61,11 +61,23 @@ class WidgetContextMenuTest {
     }
 
     @Test fun `the one-cell, row and column shapes show only where the limits allow them`() {
-        val none = widgetSizeChoices(2, 2, constraintsKnown = true) { w, h -> w >= 2 && h >= 2 }
+        val none = widgetSizeChoices(2, 2, constraintsKnown = true) { w, h -> w >= 2 && h in 2..4 }
         assertEquals(listOf(WidgetShape.SMALL, WidgetShape.MEDIUM, WidgetShape.LARGE), none.map { it.shape })
         val all = widgetSizeChoices(2, 2, constraintsKnown = true, fits = everything)
-        assertEquals(listOf(WidgetShape.TINY, WidgetShape.ROW, WidgetShape.COLUMN), all.drop(3).map { it.shape })
+        assertEquals(listOf(WidgetShape.EXTRA_LARGE, WidgetShape.TINY, WidgetShape.ROW, WidgetShape.COLUMN), all.drop(3).map { it.shape })
         assertEquals(listOf(GRID_COLUMNS to 1), all.filter { it.shape == WidgetShape.ROW }.map { it.width to it.height })
+    }
+
+    @Test fun `Extra Large is 4 by 6, offered only where the widget and the page allow it`() {
+        val tall = widgetSizeChoices(4, 4, constraintsKnown = true, fits = everything)
+        assertEquals(listOf(4 to 6), tall.filter { it.shape == WidgetShape.EXTRA_LARGE }.map { it.width to it.height })
+        val capped = widgetSizeChoices(4, 4, constraintsKnown = true) { _, h -> h <= 4 }
+        assertFalse(capped.any { it.shape == WidgetShape.EXTRA_LARGE })
+    }
+
+    @Test fun `an Extra Large widget gets the checkmark even when it no longer fits`() {
+        val choices = widgetSizeChoices(4, 6, constraintsKnown = true) { _, _ -> false }
+        assertEquals(listOf(WidgetShape.EXTRA_LARGE), choices.filter { it.selected }.map { it.shape })
     }
 
     @Test fun `with no known limits the extra shapes stay hidden`() {

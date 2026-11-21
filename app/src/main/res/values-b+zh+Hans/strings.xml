@@ -1251,6 +1251,7 @@
     <string name="remove_stack">移除叠放</string>
     <string name="remove_widget_2">移除小组件</string>
     <string name="widget_size_dimensions">%1$d × %2$d</string>
+    <string name="widget_size_extra_large">超大</string>
     <string name="move_to_page">移到页面</string>
     <string name="edit_stack">编辑叠放</string>
     <string name="widget_page_full">该页面没有放置此小组件的空间</string>

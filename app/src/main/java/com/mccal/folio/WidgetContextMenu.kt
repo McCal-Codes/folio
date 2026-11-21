@@ -83,21 +83,21 @@ internal fun widgetMoreEntries(homePages: Int, canPlace: Boolean, canExpand: Boo
     if (stacked) add(WidgetMoreEntry.EDIT_STACK)
 }
 
-internal enum class WidgetShape { SMALL, MEDIUM, LARGE, TINY, ROW, COLUMN, CURRENT }
+internal enum class WidgetShape { SMALL, MEDIUM, LARGE, EXTRA_LARGE, TINY, ROW, COLUMN, CURRENT }
 
 /** One row of the Size submenu: [selected] is the checkmark, [enabled] is false for a size this widget cannot be. */
 internal data class WidgetSizeChoice(val shape: WidgetShape, val width: Int, val height: Int, val enabled: Boolean, val selected: Boolean)
 
 /**
- * The Size submenu's rows: Small, Medium and Large always (dimmed when the widget cannot take that size), the one-cell, row
- * and column shapes only where its limits allow them, and the checkmark on the size it has now. A size set by hand that
+ * The Size submenu's rows: Small, Medium and Large always (dimmed when the widget cannot take that size), then Extra Large
+ * (4 × 6, iOS 27's largest) and the one-cell, row and column shapes only where its limits and the page allow them, and the checkmark on the size it has now. A size set by hand that
  * matches none of them gets a checked row of its own, so the mark never goes missing.
  */
 internal fun widgetSizeChoices(spanX: Int, spanY: Int, constraintsKnown: Boolean, fits: (Int, Int) -> Boolean): List<WidgetSizeChoice> {
     fun current(w: Int, h: Int) = spanX == w && spanY == h
     val named = listOf(Triple(WidgetShape.SMALL, 2, 2), Triple(WidgetShape.MEDIUM, 4, 2), Triple(WidgetShape.LARGE, 4, 4))
         .map { (shape, w, h) -> WidgetSizeChoice(shape, w, h, enabled = fits(w, h) || current(w, h), selected = current(w, h)) }
-    val extras = listOf(Triple(WidgetShape.TINY, 1, 1), Triple(WidgetShape.ROW, GRID_COLUMNS, 1), Triple(WidgetShape.COLUMN, 1, 4))
+    val extras = listOf(Triple(WidgetShape.EXTRA_LARGE, 4, 6), Triple(WidgetShape.TINY, 1, 1), Triple(WidgetShape.ROW, GRID_COLUMNS, 1), Triple(WidgetShape.COLUMN, 1, 4))
         .filter { (_, w, h) -> constraintsKnown && fits(w, h) || current(w, h) }
         .map { (shape, w, h) -> WidgetSizeChoice(shape, w, h, enabled = true, selected = current(w, h)) }
     val all = named + extras
@@ -289,6 +289,7 @@ internal fun WidgetContextMenu(
                                             WidgetShape.SMALL -> stringResource(R.string.small)
                                             WidgetShape.MEDIUM -> stringResource(R.string.medium)
                                             WidgetShape.LARGE -> stringResource(R.string.large)
+                                            WidgetShape.EXTRA_LARGE -> stringResource(R.string.widget_size_extra_large)
                                             WidgetShape.TINY -> stringResource(R.string.widget_shape_tiny)
                                             WidgetShape.ROW -> stringResource(R.string.widget_shape_row)
                                             WidgetShape.COLUMN -> stringResource(R.string.widget_shape_column)
