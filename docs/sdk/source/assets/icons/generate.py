@@ -60,6 +60,12 @@ ICONS = {
         <path d="M104 52 L152 40 Q162 38 162 48 L162 144 Q162 154 152 152 L104 140 Z" fill="#fff" opacity=".6"/>
         <rect x="94" y="40" width="10" height="112" rx="5" fill="#fff" opacity=".9"/>
     """),
+    "standby-2": ("#FF5F56", "#D7302A", """
+        <rect x="26" y="52" width="140" height="88" rx="18" fill="#fff"/>
+        <rect x="44" y="70" width="28" height="52" rx="10" fill="#D7302A"/>
+        <circle cx="96" cy="88" r="6" fill="#D7302A"/><circle cx="96" cy="106" r="6" fill="#D7302A"/>
+        <rect x="120" y="70" width="28" height="52" rx="10" fill="#D7302A" opacity=".55"/>
+    """),
     "theme-classic": ("#9BA0A8", "#5C626B", """
         <rect x="38" y="38" width="52" height="52" rx="14" fill="#fff"/>
         <rect x="102" y="38" width="52" height="52" rx="14" fill="#fff" opacity=".75"/>
@@ -120,7 +126,7 @@ HERO_W, HERO_H = 1024, 500
 HERO_DIR = HERE.parent / "heroes"
 # The tweaks get a picture on their page; themes and apps bring their own. Two looks: a screen showing the feature
 # (SCENES), and a bold two-tone picture with the icon's glyph running off the edge (everything else).
-HERO_FOR = ["cabinet", "colored-albums", "duet", "flipbook", "harborline", "palette", "roll-call"]
+HERO_FOR = ["cabinet", "colored-albums", "duet", "flipbook", "harborline", "palette", "roll-call", "standby-2"]
 
 
 def shade(color: str, keep: float) -> str:
@@ -185,6 +191,18 @@ SCENES = {
         <rect x="424" y="206" width="150" height="9" rx="4" fill="#fff" opacity=".9"/><rect x="424" y="226" width="110" height="8" rx="4" fill="#fff" opacity=".55"/>
         <rect x="424" y="294" width="180" height="9" rx="4" fill="#fff" opacity=".9"/><rect x="424" y="314" width="130" height="8" rx="4" fill="#fff" opacity=".55"/>
         <rect x="424" y="382" width="140" height="9" rx="4" fill="#fff" opacity=".9"/><rect x="424" y="402" width="100" height="8" rx="4" fill="#fff" opacity=".55"/>
+    """,
+    "standby-2": """
+        <rect x="350" y="112" width="64" height="136" rx="20" fill="#FF5F56"/>
+        <rect x="424" y="112" width="64" height="136" rx="20" fill="#FF5F56"/>
+        <circle cx="512" cy="152" r="9" fill="#FF5F56"/><circle cx="512" cy="208" r="9" fill="#FF5F56"/>
+        <rect x="536" y="112" width="64" height="136" rx="20" fill="#FF5F56" opacity=".8"/>
+        <rect x="610" y="112" width="64" height="136" rx="20" fill="#FF5F56" opacity=".55"/>
+        <rect x="350" y="288" width="324" height="64" rx="18" fill="#fff" opacity=".14"/>
+        <rect x="368" y="306" width="28" height="28" rx="8" fill="#FF5F56"/>
+        <rect x="410" y="310" width="150" height="8" rx="4" fill="#fff" opacity=".8"/>
+        <rect x="410" y="326" width="100" height="8" rx="4" fill="#fff" opacity=".45"/>
+        <circle cx="372" cy="396" r="8" fill="#FF5F56"/><circle cx="398" cy="396" r="8" fill="#5E5CE6"/><circle cx="424" cy="396" r="8" fill="#34C759"/>
     """,
     "colored-albums": """
         <rect x="350" y="96" width="324" height="250" rx="26" fill="#E01E4E" opacity=".75"/>

@@ -118,7 +118,7 @@ class RepoClientTest {
     @Test fun `Folio's own source refreshes, with a manifest copy for every package`() {
         val snapshot = (refresh() as RefreshResult.Updated).snapshot
         assertEquals("Folio", snapshot.index.name.english)
-        assertEquals(12, snapshot.index.packages.size)
+        assertEquals(13, snapshot.index.packages.size)
         assertEquals("Theme of the week", snapshot.index.featured.first().label?.english)
         val cabinet = snapshot.cabinet()
         assertEquals("Cabinet", cabinet.manifest?.name?.english)
@@ -218,7 +218,7 @@ class RepoClientTest {
         publishRevocations("""{"format":1,"timestamp":${now - 30},"packages":[{"id":"$CABINET","versions":["1.0.0"],"reason":"Test: pulled at the author's request"}]}""")
         val snapshot = (refresh() as RefreshResult.Updated).snapshot
         assertEquals("Test: pulled at the author's request", snapshot.revokedReason(snapshot.cabinet()))
-        assertEquals(11, snapshot.usablePackages.size)
+        assertEquals(12, snapshot.usablePackages.size)
         // "*" covers every version.
         publishRevocations("""{"format":1,"timestamp":${now - 20},"packages":[{"id":"$CABINET","versions":["*"],"reason":"Test: every version"}]}""")
         assertEquals("Test: every version", (refresh() as RefreshResult.Unchanged).snapshot.let { it.revokedReason(it.cabinet()) })
@@ -296,8 +296,8 @@ class RepoClientTest {
         assertEquals(RefreshResult.Reason.PARSE, failure(refresh()).reason)
         publish(hostedIndex().replace("\"kind\":[\"tweakBundle\"]", "\"kind\":[\"hologram\"]"))
         val snapshot = (refresh() as RefreshResult.Updated).snapshot
-        assertEquals(12, snapshot.index.packages.size)
-        assertEquals(7, snapshot.index.packages.count { it.needs == listOf("a newer Folio") })
+        assertEquals(13, snapshot.index.packages.size)
+        assertEquals(8, snapshot.index.packages.count { it.needs == listOf("a newer Folio") })
         assertEquals(4, snapshot.index.packages.count { it.manifest?.section == Section.THEMES })
         assertTrue(snapshot.notes.first().contains("needs a newer Folio"))
     }
