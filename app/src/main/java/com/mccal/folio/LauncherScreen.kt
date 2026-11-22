@@ -1357,7 +1357,20 @@ fun LauncherScreen(
                                     else if (dotWorm) Box(Modifier.size(4.dp).background(dotInk.faint, CircleShape))
                                     else Box(Modifier.size(if (index == pager.currentPage) 6.dp else 4.dp).background(if (index == pager.currentPage) LocalHomeInk.current.primary else LocalHomeInk.current.faint, CircleShape))
                                 }
-                            } else Text("${minOf(pager.currentPage + 1, homePages)} / $homePages", color = dotInk.primary, fontSize = FolioType.GROUP_LABEL.sp)
+                            } else {
+                                // Seven pages or more show "3 / 8" instead of dots, with no slice to press: the counter opens the Page overview
+                                // on a tap (the way to find a page among many) and, like the dots, starts editing or opens it on a long press.
+                                val counterLabel = stringResource(R.string.page_overview)
+                                Box(Modifier.heightIn(min = FolioTouch.MIN.dp).padding(horizontal = FolioSpace.SMALL.dp)
+                                    .combinedClickable(role = Role.Button, onClickLabel = counterLabel, onClick = { haptic.perform(FolioHaptic.Step); openPageOverview() },
+                                        onLongClickLabel = counterLabel, onLongClick = {
+                                            haptic.perform(FolioHaptic.PickedUp)
+                                            if (homeEdit.active || focusLock != null) openPageOverview() else homeEdit.start()
+                                        })
+                                    .testTag("home-page-counter"), contentAlignment = Alignment.Center) {
+                                    Text("${minOf(pager.currentPage + 1, homePages)} / $homePages", color = dotInk.primary, fontSize = FolioType.GROUP_LABEL.sp)
+                                }
+                            }
                             }
                             // The taps live here, a slice per dot, the full height of the strip. Each slice keeps its
                             // own name, so TalkBack still reads and activates one page at a time.
@@ -2296,7 +2309,9 @@ fun LauncherScreen(
                 },
                 onUndo = {
                     val before = FocusPages.shown(model.state.value)
-                    if (model.undoEdit()) pagesChanged(before, null)
+                    // An undone move sends the pages back, so the page Home is on goes with it.
+                    val order = model.undoPageOrder()
+                    if (model.undoEdit()) pagesChanged(before, order)
                 },
                 onOpen = { page -> finish(page) },
                 onDone = { finish(null) })

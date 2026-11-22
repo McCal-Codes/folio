@@ -6,6 +6,17 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isAltPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -51,6 +62,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -175,10 +187,46 @@ private fun OverviewGrid(sketches: List<PageSketch>, rows: Int, currentPage: Int
     fun targetAt(point: Offset): Int? = bounds.entries.firstOrNull { it.value.contains(point) }?.key
         ?: bounds.entries.minByOrNull { (it.value.center - point).getDistanceSquared() }?.key
 
-    BoxWithConstraints(Modifier.fillMaxSize()) {
+    val scroll = rememberScrollState()
+    var viewport by remember { mutableStateOf(Rect.Zero) }
+    // With more pages than fit, a page carried near the top or bottom edge scrolls the grid (faster the nearer the edge) and stays under the finger.
+    // It moves while the finger is still, so it runs on its own clock; the drag only sets where the page is.
+    LaunchedEffect(dragging) {
+        val page = dragging ?: return@LaunchedEffect
+        val edge = with(density) { 72.dp.toPx() }
+        val fastest = with(density) { 16.dp.toPx() }
+        while (true) {
+            withFrameNanos { }
+            val center = (bounds[page]?.center ?: break) + dragOffset
+            val next = targetAt(center)
+            if (next != target) { target = next; haptic.perform(FolioHaptic.Step) }
+            val toTop = center.y - viewport.top
+            val toBottom = viewport.bottom - center.y
+            val delta = when {
+                toTop < edge -> -fastest * ((edge - toTop) / edge).coerceIn(0f, 1f)
+                toBottom < edge -> fastest * ((edge - toBottom) / edge).coerceIn(0f, 1f)
+                else -> 0f
+            }
+            if (delta != 0f) {
+                val used = scroll.scrollBy(delta)
+                // The page's place in the grid moved by what was scrolled; its picture follows so it stays under the finger.
+                if (used != 0f) dragOffset += Offset(0f, used)
+            }
+        }
+    }
+    // After a keyboard move the focus goes with the page to its new place, so the next key press moves the same page again.
+    val focusers = remember(count) { List(count) { FocusRequester() } }
+    var refocus by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(refocus, sketches) {
+        val to = refocus ?: return@LaunchedEffect
+        runCatching { focusers.getOrNull(to)?.requestFocus() }
+        refocus = null
+    }
+
+    BoxWithConstraints(Modifier.fillMaxSize().onGloballyPositioned { viewport = it.boundsInRoot() }) {
         val columns = (maxWidth / 104.dp).toInt().coerceIn(2, 5)
         val gap = FolioSpace.LARGE.dp
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = FolioSpace.HUGE.dp), verticalArrangement = Arrangement.spacedBy(gap)) {
+        Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(bottom = FolioSpace.HUGE.dp), verticalArrangement = Arrangement.spacedBy(gap)) {
             // A polite live region: what was just done is read aloud and shown (A11Y-7), never a toast.
             // Its line is always there, so the grid never jumps down when the first message arrives.
             Text(status, color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp,
@@ -195,7 +243,9 @@ private fun OverviewGrid(sketches: List<PageSketch>, rows: Int, currentPage: Int
                             val isDragging = dragging == page
                             val aspect = GRID_COLUMNS / (rows * 1.15f)
                             Box(Modifier.fillMaxWidth().aspectRatio(aspect)
-                                .onGloballyPositioned { bounds[page] = it.boundsInRoot() }
+                                // Not boundsInRoot(): that is cut off by the scrolling area, so a page partly or wholly scrolled out of sight would
+                                // report a smaller (or empty) box and the drag would aim at the wrong page.
+                                .onGloballyPositioned { bounds[page] = Rect(it.positionInRoot(), Size(it.size.width.toFloat(), it.size.height.toFloat())) }
                                 .graphicsLayer {
                                     if (isDragging) { translationX = dragOffset.x; translationY = dragOffset.y; scaleX = 1.06f; scaleY = 1.06f; shadowElevation = 12.dp.toPx() }
                                 }
@@ -226,6 +276,21 @@ private fun OverviewGrid(sketches: List<PageSketch>, rows: Int, currentPage: Int
                                         onDragCancel = { dragging = null; target = null; dragOffset = Offset.Zero },
                                     )
                                 }
+                                // Alt with an arrow key moves the focused page one place (the same keys as moving an icon on Home).
+                                .onPreviewKeyEvent { event ->
+                                    if (event.type != KeyEventType.KeyDown || !event.isAltPressed) return@onPreviewKeyEvent false
+                                    val to = when (event.key) {
+                                        Key.DirectionLeft, Key.DirectionUp -> HomePages.stepTarget(page, count, toEnd = false)
+                                        Key.DirectionRight, Key.DirectionDown -> HomePages.stepTarget(page, count, toEnd = true)
+                                        else -> return@onPreviewKeyEvent false
+                                    }
+                                    if (to != null) {
+                                        currentOnMove(page, to); refocus = to; haptic.perform(FolioHaptic.Commit)
+                                        setStatus(context.getString(R.string.page_moved_to_position, to + 1, count))
+                                    }
+                                    true
+                                }
+                                .focusRequester(focusers[page])
                                 .clickable(enabled = !sketch.hidden, role = Role.Button, onClickLabel = label) { onOpen(page) }
                                 .semantics {
                                     contentDescription = label

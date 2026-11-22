@@ -535,6 +535,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
      * layout that edit left). Undo puts it back only while it is still the edit being undone, so the one Undo covers all of it.
      */
     private var pageSideUndo: Triple<PageSide, PageSide, HomeLayout>? = null
+    private var lastMoveOrder: List<Int>? = null
     /**
      * Smart Stacks a restored backup took off Home because an old overflow widget in it kept their slot number, with the
      * layout that restore made. They count only while that restore is still the one Undo would take back.
@@ -1086,6 +1087,8 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         val names = old.appNames + preview.appNames
         mutable.value = old.copy(appNames = names, appIconStyles = old.appIconStyles + preview.appIconStyles, iconActions = old.iconActions + preview.iconActions, apps = old.apps.withAppNames(names),
             homeSlots = restored.slots, leadingSlots = restored.leadingSlots, dock = trimmedDock(restored.dock),
+            // The hidden pages were numbers in the old layout; in a restored one they would hide other pages, so every page shows.
+            hiddenPages = emptySet(),
             widgetPlacements = restored.widgetPlacements, folders = restored.folders,
             widgetRestores = restored.widgetRestores, compact = preview.compact, expanded = preview.expanded, portrait = preview.portrait,
             // Kept for Undo, except on a number a restored widget still uses (only an old overflow widget keeps its number).
@@ -1456,8 +1459,11 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         if (HomePages.isIdentity(order)) return null
         val side = PageSide(HomePages.remapPageMap(old.pageStyles, order), HomePages.remapPages(old.hiddenPages, order),
             old.focusModes.map { HomePages.remapFocus(it, order) })
-        return order.takeIf { commitPages(HomePages.reorder(old.layout, order), side) }
+        return order.takeIf { commitPages(HomePages.reorder(old.layout, order), side) }?.also { lastMoveOrder = it }
     }
+
+    /** The page order that [undoEdit] is about to apply when the last step was a page move, so the screen can follow the page it was on. */
+    fun undoPageOrder(): List<Int>? = lastMoveOrder?.takeIf { pageSideUndo?.third == mutable.value.layout }?.let(HomePages::inverse)
 
     /** Hides or shows Home page [page]. Its apps stay where they are. The last page showing cannot be hidden. */
     fun setPageHidden(page: Int, hide: Boolean): Boolean {
@@ -1477,6 +1483,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         redoPair = null
         undoImportSettings = null
         pageSideUndo = Triple(before, side, layout)
+        lastMoveOrder = null
         mutable.value = old.copy(homeSlots = layout.slots, widgetPlacements = layout.widgetPlacements,
             minPages = layout.minPages, pageStyles = side.pageStyles, hiddenPages = side.hiddenPages, focusModes = side.focusModes,
             editRevision = old.editRevision + 1, canUndoEdit = true)

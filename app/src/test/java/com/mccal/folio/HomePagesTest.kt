@@ -68,6 +68,16 @@ class HomePagesTest {
         assertEquals("only", moved.slots[homeCellIndex(0, 8)])
     }
 
+    @Test fun `the inverse of a move puts every page back where it was`() {
+        for (from in 0 until 5) for (to in 0 until 5) {
+            val order = HomePages.moveOrder(5, from, to)
+            val undo = HomePages.inverse(order)
+            // The page that moved from `from` to `to` goes back, and every other page returns to its own number.
+            for (page in 0 until 5) assertEquals(page, HomePages.remapPage(HomePages.remapPage(page, order), undo))
+            assertEquals(from, HomePages.remapPage(to, undo))
+        }
+    }
+
     @Test fun `a wrong sized or broken order leaves the layout as it was`() {
         assertEquals(layout(), HomePages.reorder(layout(), listOf(1, 0)))
         assertEquals(layout(), HomePages.reorder(layout(), listOf(0, 0, 1)))

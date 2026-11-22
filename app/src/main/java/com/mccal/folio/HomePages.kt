@@ -21,6 +21,9 @@ internal object HomePages {
         return order
     }
 
+    /** The order that puts back what [order] did (`inverse[new] = old` for the undone move). */
+    fun inverse(order: List<Int>): List<Int> = List(order.size) { order.indexOf(it) }
+
     /** True when [order] changes nothing. */
     fun isIdentity(order: List<Int>) = order.withIndex().all { (index, old) -> index == old }
 
