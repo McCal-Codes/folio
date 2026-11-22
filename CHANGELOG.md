@@ -100,6 +100,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Icon Actions:** choose what a swipe or a double tap on an icon runs, in Edit Icon and in Settings › Gestures & Actions. An icon's long-press menu lists its actions so you can run one without the gesture. <!-- beta 2 -->
 - **Market checks apps before install:** Folio compares the app's package, version and signer with its listing first, and says why it can't install one when the source lists no developer. <!-- beta 2 -->
 - **Page effects with more curves:** a page effect package can set curves for more channels (the 0.7.0 format), listed as tweaks.pageEffects.channels. <!-- beta 2 -->
+- **Keyd is listed for everyone:** once the Market is open to everyone, Keyd's source is already in Sources, added once with its key built into Folio, so the keyboard can be tried without a supporter code. Forgetting it is final, and a code coming off no longer takes it away. <!-- beta 6 -->
 
 ### Changed
 - **A package's page opens on its color:** the icon and name sit on a band in the color its author chose (a section's color when they did not), and under it Version, Source and Works on read as three cells in a row, so you can tell at a glance where it comes from and whether it fits the cover screen. <!-- beta 5 -->

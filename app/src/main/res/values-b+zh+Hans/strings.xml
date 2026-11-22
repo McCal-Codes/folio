@@ -1190,6 +1190,7 @@
     <string name="get_it_on_1_s">获取途径：%1$s</string>
     <string name="on_this_phone_1_s">在这部手机上：%1$s</string>
     <string name="added_with_your_supporter_code">通过你的支持者代码添加</string>
+    <string name="added_by_folio_for_keyd">由 Folio 为 Keyd 添加</string>
     <string name="that_listing_has_no_app_to_download">那个条目没有可下载的 App。</string>
     <string name="folio_couldn_t_download_that_app">Folio 无法下载那个 App。</string>
     <string name="that_app_didn_t_match_what_its_source">那个 App 与其源所承诺的不符，因此没有安装任何内容。</string>

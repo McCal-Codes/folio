@@ -1199,6 +1199,7 @@
     <string name="get_it_on_1_s">Get it on: %1$s</string>
     <string name="on_this_phone_1_s">On this phone: %1$s</string>
     <string name="added_with_your_supporter_code">Added with your supporter code</string>
+    <string name="added_by_folio_for_keyd">Added by Folio, for Keyd</string>
     <string name="that_listing_has_no_app_to_download">That listing has no app to download.</string>
     <string name="folio_couldn_t_download_that_app">Folio couldn\'t download that app.</string>
     <string name="that_app_didn_t_match_what_its_source">That app didn\'t match what its source promised, so nothing was installed.</string>
