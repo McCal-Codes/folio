@@ -1251,6 +1251,11 @@
     <string name="make_a_stack">创建叠放</string>
     <string name="remove_stack">移除叠放</string>
     <string name="remove_widget_2">移除小组件</string>
+    <string name="widget_size_dimensions">%1$d × %2$d</string>
+    <string name="widget_size_extra_large">超大</string>
+    <string name="move_to_page">移到页面</string>
+    <string name="edit_stack">编辑叠放</string>
+    <string name="widget_page_full">该页面没有放置此小组件的空间</string>
     <string name="wallpaper_appearance_2">墙纸与外观</string>
     <string name="add_page">添加页面</string>
     <string name="remove_this_empty_page">移除此空白页面</string>
