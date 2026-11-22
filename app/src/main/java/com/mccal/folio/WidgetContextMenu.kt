@@ -22,6 +22,7 @@ import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -240,7 +241,8 @@ internal fun WidgetContextMenu(
             // Positioned from the measured height: the level changes it, and a window shorter than the screen would put the menu on the widget.
             var menuH by remember { mutableIntStateOf(0) }
 
-            Column(Modifier.offset {
+            // Absolute left, not start: menuLeft is measured from the screen's left edge, so right-to-left must not mirror it.
+            Column(Modifier.align(AbsoluteAlignment.TopLeft).absoluteOffset {
                     IntOffset(menuLeft.roundToInt(), when {
                         placeBelow -> (wBottom + gap).roundToInt()
                         placeAbove -> (wTop - gap - menuH).roundToInt()

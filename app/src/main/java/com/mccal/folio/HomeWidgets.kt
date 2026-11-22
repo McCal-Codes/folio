@@ -63,6 +63,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.layout.positionOnScreen
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.semantics.onLongClick
@@ -258,7 +260,11 @@ internal fun MovableWidget(id: Int, slot: Int, controller: WidgetController, dra
     )
     Box(modifier.dropRegion(drag, cell, page = page, widgetId = id)
         // Where the widget is, so holding it opens its menu beside it (WidgetContextMenu); measured outside the drop-target scale.
-        .onGloballyPositioned { WidgetBounds.update(slot, it.boundsInWindow().toAndroidBounds()) }
+        // On screen, not in the window: the menu's dialog measures itself on screen, and the two differ in split screen.
+        .onGloballyPositioned {
+            val toScreen = it.positionOnScreen() - it.positionInWindow()
+            WidgetBounds.update(slot, it.boundsInWindow().translate(toScreen).toAndroidBounds())
+        }
         .graphicsLayer { scaleX = targetScale; scaleY = targetScale }) {
         val chrome = Modifier.fillMaxSize().then(if (id < 0) Modifier.jiggle("widget-$slot", .35f) else Modifier)
             .alpha(if (drag.source?.target == cell) .3f else 1f)
