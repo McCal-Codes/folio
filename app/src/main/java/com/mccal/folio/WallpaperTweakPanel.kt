@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,6 +42,9 @@ internal const val TWEAK_SETTLE_MS = 180L
 /** Room the panel takes under Home in the preview, so Home's page shrinks to fit above it instead of running behind it. */
 internal const val WALLPAPER_TWEAK_PANEL_DP = 268
 
+/** On a wide screen the panel stays a comfortable width instead of stretching its sliders across the whole display. */
+internal const val WALLPAPER_TWEAK_PANEL_MAX_WIDTH_DP = 520
+
 /**
  * Hue, saturation and lightness for a piece Folio drew, for everything at once or for the sky, the hills or the glow.
  *
@@ -53,7 +57,7 @@ internal fun WallpaperTweakPanel(tweaks: WallpaperTweaks, onTweaks: (WallpaperTw
     var part by remember { mutableStateOf(TweakPart.ALL) }
     val tweak = tweaks[part]
     Column(
-        modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.ROW.dp)).background(Color.Black.copy(alpha = .42f))
+        modifier.widthIn(max = WALLPAPER_TWEAK_PANEL_MAX_WIDTH_DP.dp).fillMaxWidth().clip(RoundedCornerShape(FolioRadius.ROW.dp)).background(Color.Black.copy(alpha = .42f))
             .padding(horizontal = FolioSpace.MEDIUM.dp, vertical = FolioSpace.SMALL.dp).testTag("wallpaper-tweak-panel"),
         verticalArrangement = Arrangement.spacedBy(FolioSpace.HAIR.dp),
     ) {
@@ -63,12 +67,14 @@ internal fun WallpaperTweakPanel(tweaks: WallpaperTweaks, onTweaks: (WallpaperTw
                 TweakPart.HILLS to R.string.wallpaper_tweak_hills, TweakPart.GLOW to R.string.wallpaper_tweak_glow,
             ).forEach { (p, label) ->
                 val selected = p == part
+                val text = stringResource(label)
+                // A longer name gets a wider pill, so "Everything" is not cut off on the narrow cover screen.
                 Box(
-                    Modifier.weight(1f).defaultMinSize(minHeight = 36.dp).clip(RoundedCornerShape(50))
+                    Modifier.weight(text.length.coerceIn(4, 12).toFloat()).defaultMinSize(minHeight = 36.dp).clip(RoundedCornerShape(50))
                         .background(if (selected) LocalAccent.current.fill else Color.White.copy(alpha = .16f))
                         .selectable(selected, role = Role.Tab) { part = p }.testTag("wallpaper-tweak-part-${p.name.lowercase()}"),
                     contentAlignment = Alignment.Center,
-                ) { Text(stringResource(label), color = Color.White, fontSize = FolioType.FOOTNOTE.sp, maxLines = 1) }
+                ) { Text(text, color = Color.White, fontSize = FolioType.FOOTNOTE.sp, maxLines = 1) }
             }
         }
         TweakSlider(stringResource(R.string.wallpaper_tweak_hue), tweak.hue, -180f..180f, "°", "hue") { onTweaks(tweaks.with(part, tweak.copy(hue = it))) }
