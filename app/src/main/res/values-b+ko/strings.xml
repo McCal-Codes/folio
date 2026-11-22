@@ -1287,6 +1287,11 @@
     <string name="make_a_stack">스택 만들기</string>
     <string name="remove_stack">스택 제거</string>
     <string name="remove_widget_2">위젯 제거</string>
+    <string name="widget_size_dimensions">%1$d × %2$d</string>
+    <string name="widget_size_extra_large">특대</string>
+    <string name="move_to_page">페이지로 이동</string>
+    <string name="edit_stack">스택 편집</string>
+    <string name="widget_page_full">그 페이지에는 이 위젯을 놓을 공간이 없습니다</string>
     <string name="wallpaper_appearance_2">배경화면 및 외관</string>
     <string name="add_page">페이지 추가</string>
     <string name="remove_this_empty_page">이 빈 페이지 제거</string>

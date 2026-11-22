@@ -40,6 +40,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
@@ -276,12 +278,26 @@ internal fun AppContextMenu(
 
 @Composable
 internal fun MenuRow(label: String, icon: ImageVector? = null, bitmap: Bitmap? = null, destructive: Boolean = false,
-    tag: String? = null, onClick: () -> Unit) {
-    val tint = if (destructive) FolioColors.RedOnDark else Color.White
-    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(onClick = onClick)
-        .then(if (tag != null) Modifier.testTag(tag) else Modifier).padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.MEDIUM.dp),
+    tag: String? = null,
+    /** False dims the row and stops taps (a size this widget can't be). */
+    enabled: Boolean = true,
+    /** Non-null adds iOS's leading checkmark column to a choice: true shows the mark, false keeps the labels lined up. */
+    checked: Boolean? = null,
+    /** A menu that must survive the largest text lets a label wrap (A11Y-12); the app icon's menu keeps one line. */
+    maxLines: Int = 1,
+    onClick: () -> Unit) {
+    val tint = (if (destructive) FolioColors.RedOnDark else Color.White).let { if (enabled) it else it.copy(alpha = .35f) }
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(enabled = enabled, onClick = onClick)
+        .then(if (tag != null) Modifier.testTag(tag) else Modifier)
+        .then(if (checked != null) Modifier.semantics { selected = checked } else Modifier)
+        .padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.MEDIUM.dp),
         verticalAlignment = Alignment.CenterVertically) {
-        Text(label, color = tint, fontSize = FolioType.CALLOUT.sp, fontWeight = FontWeight.Normal, maxLines = 1, overflow = TextOverflow.Ellipsis,
+        if (checked != null) {
+            Box(Modifier.size(24.dp), contentAlignment = Alignment.CenterStart) {
+                if (checked) Icon(Icons.Rounded.Check, null, tint = tint, modifier = Modifier.size(18.dp))
+            }
+        }
+        Text(label, color = tint, fontSize = FolioType.CALLOUT.sp, fontWeight = FontWeight.Normal, maxLines = maxLines, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f))
         Spacer(Modifier.width(10.dp))
         when {
