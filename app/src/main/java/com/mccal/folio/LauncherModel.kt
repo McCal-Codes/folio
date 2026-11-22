@@ -1478,7 +1478,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         undoImportSettings = null
         pageSideUndo = Triple(before, side, layout)
         mutable.value = old.copy(homeSlots = layout.slots, widgetPlacements = layout.widgetPlacements,
-            pageStyles = side.pageStyles, hiddenPages = side.hiddenPages, focusModes = side.focusModes,
+            minPages = layout.minPages, pageStyles = side.pageStyles, hiddenPages = side.hiddenPages, focusModes = side.focusModes,
             editRevision = old.editRevision + 1, canUndoEdit = true)
         persist()
         return true

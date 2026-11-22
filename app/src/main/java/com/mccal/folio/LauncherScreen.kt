@@ -458,9 +458,9 @@ fun LauncherScreen(
         val active = state.focusModes.firstOrNull { it.id == state.activeFocus }
         val focusPage = focusLock?.let { FocusPages.openPage(active, it.realPages, it.shown) } ?: FocusModes.homePage(active, homePages)
         // Something open on Home (a sheet, a menu, a folder, edit mode) is closed by this press and nothing more.
-        val somethingOpen = sheet.isNotEmpty() || homeEdit.active || widgetSession != null || resize.active || picker.packageName != null || overlays.anyOpen
+        val somethingOpen = sheet.isNotEmpty() || homeEdit.active || widgetSession != null || resize.active || picker.packageName != null || overlays.anyOpen || pageOverview
         val page = homePressPage(homeFromFront, somethingOpen, focusPage, pager.currentPage, homePages, lastHomePage)
-        drag.clear(); widgetSession = null; resize.stop(); sheet = ""; picker.packageName = null
+        drag.clear(); widgetSession = null; resize.stop(); sheet = ""; picker.packageName = null; pageOverview = false
         picker.exactTarget = false; widgetPlacementMessage = null; overlays.closeAll(); homeEdit.stop()
         focus.clearFocus(); keyboard?.hide()
         pager.animateScrollToPage(page)

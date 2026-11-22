@@ -58,6 +58,16 @@ class HomePagesTest {
         assertEquals(homeCellIndex(2, 8) + 1, moved.slots.size)
     }
 
+    @Test fun `moving an empty page to the end keeps the page count`() {
+        // Two pages counted only by their cells: page 0 empty, page 1 has an app, minPages is still 1.
+        val slots = MutableList<String?>(2 * HOME_CELLS) { null }.also { it[homeCellIndex(1, 8)] = "only" }
+        val base = HomeLayout(slots, emptyList(), emptyList(), minPages = 1)
+        assertEquals(2, base.pageCount)
+        val moved = HomePages.reorder(base, HomePages.moveOrder(2, 0, 1))
+        assertEquals(2, moved.pageCount)
+        assertEquals("only", moved.slots[homeCellIndex(0, 8)])
+    }
+
     @Test fun `a wrong sized or broken order leaves the layout as it was`() {
         assertEquals(layout(), HomePages.reorder(layout(), listOf(1, 0)))
         assertEquals(layout(), HomePages.reorder(layout(), listOf(0, 0, 1)))

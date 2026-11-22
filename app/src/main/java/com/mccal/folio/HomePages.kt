@@ -44,7 +44,10 @@ internal object HomePages {
         if (order.size != layout.pageCount || isIdentity(order) || order.sorted() != order.indices.toList()) return layout
         val slots = order.flatMap { old -> List(HOME_CELLS) { local -> layout.slots.getOrNull(homeCellIndex(old, local)) } }
         val placements = layout.widgetPlacements.map { if (it.page >= 0) it.copy(page = remapPage(it.page, order)) else it }
-        return layout.copy(slots = slots.dropLastWhile { it == null }, widgetPlacements = placements)
+        val moved = layout.copy(slots = slots.dropLastWhile { it == null }, widgetPlacements = placements)
+        // Trimming the empty trailing cells can drop a page that was only counted by its cells (an empty page moved to the end):
+        // keep the number of pages the person had.
+        return if (moved.pageCount < layout.pageCount) moved.copy(minPages = layout.pageCount) else moved
     }
 
     /** The real pages Home draws, in order: not the ones the person hid, and only the ones a Focus lists. Never empty. */
