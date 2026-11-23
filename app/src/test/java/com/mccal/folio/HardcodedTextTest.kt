@@ -27,7 +27,7 @@ class HardcodedTextTest {
     private val notText = Regex("""Log\.|TAG|const val|Regex|require\(|error\(|check\(|throw |Exception\(|\.put(Extra|String|Boolean|Int)|getString\(|optString|prefs|key =|Intent\(|action|@Preview|println|\.startsWith|\.equals|when \(|".*" ->|[Tt]race|section\(|json|JSON""")
 
     /** Files whose text is read by McCal, not shown to people: it goes into crash logs and bug reports. */
-    private val englishOnly = setOf("Diagnostics.kt", "CrashLog.kt")
+    private val englishOnly = setOf("Diagnostics.kt", "CrashLog.kt", "HomeStateReport.kt")
 
     private fun found(): List<String> = java.io.File(root, "app/src/main/java").walkTopDown().filter { it.extension == "kt" && it.name !in englishOnly }.flatMap { file ->
         file.readLines().withIndex().flatMap { (i, line) ->

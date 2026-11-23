@@ -22,7 +22,9 @@ lock: the real state is `gh pr list` and `git worktree list`. Keep it honest rat
 
 | Branch | What it changes | Files it holds |
 |---|---|---|
+| cc-two-pane-editor | Control Center editor in two panes on wide windows (PR 664) | CHANGELOG.md, TopPanels.kt (ControlCenter's root and the gallery call only), CcControlGallery.kt, FeatureGate.kt, CcTwoPane.kt |
 | beta4-cc-customize | Control Center and Home editing, Tips page, panel fold padding, crash reports (PR 656) | CHANGELOG.md, strings.xml (and values-b+ko, values-b+zh+Hans), app/build.gradle.kts, CustomizationSheet.kt, ControlCenterSettings.kt, FoldAvoidance.kt |
+| better-bug-reports | Bug report form arrives with Screen picked and a short summary; Home state and Market packages in the full report; optional screenshots (PR not opened yet) | CHANGELOG.md, strings.xml (and values-b+ko, values-b+zh+Hans), what-to-test.json, BugReport.kt, Diagnostics.kt, HomeStateReport.kt, ReportAttach.kt, CustomizationSheet.kt (Help report dialog and Crash Reports card only), WhatToTestPage.kt, LauncherScreen.kt (one status hook), bug_report.yml |
 | page-overview | Page overview: hide, show and reorder Home pages (PR 656) | CHANGELOG.md, strings.xml (and values-b+ko, values-b+zh+Hans), what-to-test.json, LauncherModel.kt, LauncherScreen.kt (dots, Edit menu, one overlay), LauncherActionSheet.kt, Focus.kt, new HomePages.kt and PageOverview.kt |
 
 Dependabot's open bumps are left out: they touch only `gradle/libs` or `build.gradle.kts`, and
