@@ -67,12 +67,27 @@ internal object BugReport {
     /** How many recent events the summary carries. */
     private const val EVENTS = 15
 
-    /** The start of a saved crash report: what it was and when, then the first lines of the stack, which are what name the failure. */
+    /** How much of a saved report is read: a freeze's trace comes after the trail, so the first lines are not enough. */
+    private const val REPORT_READ = 60_000
+
+    /**
+     * The start of a saved report: what it was and when, then the first lines of what names the failure. The three kinds
+     * are laid out differently: a crash has Time, Thread and a stack after the first blank line; a freeze or native exit
+     * has When, Reason and Android's trace after the saved trail; a restart has only its two timestamps.
+     */
     internal fun crashTop(report: String, stackLines: Int = 12): String {
         val lines = report.lines()
+        fun first(vararg prefixes: String) = lines.firstOrNull { line -> prefixes.any { line.startsWith(it) } }
+        val head = listOfNotNull(lines.firstOrNull(), first("Time:", "When:", "Folio last seen:"), first("Thread:", "Reason:"))
+        val traceAt = lines.indexOfFirst { it == "Android's trace:" }
         val blank = lines.indexOfFirst { it.isBlank() }
-        val head = listOfNotNull(lines.firstOrNull(), lines.firstOrNull { it.startsWith("Time:") }, lines.firstOrNull { it.startsWith("Thread:") })
-        val stack = if (blank >= 0) lines.drop(blank + 1).filter { it.isNotBlank() }.take(stackLines) else emptyList()
+        val stackFrom = when {
+            traceAt >= 0 -> traceAt + 1
+            first("Time:") != null && blank >= 0 -> blank + 1 // a crash's stack, not the trail that follows it
+            else -> -1
+        }
+        val stack = if (stackFrom < 0) emptyList()
+        else lines.drop(stackFrom).takeWhile { it != "Before it:" }.filter { it.isNotBlank() }.take(stackLines)
         return (head + stack).joinToString("\n") { it.take(160) }
     }
 
@@ -85,7 +100,7 @@ internal object BugReport {
         val events = Diagnostics.trailText().lines().filter { it.isNotBlank() }.takeLast(EVENTS)
         val crash = runCatching {
             CrashLog.reports(context).firstOrNull(Diagnostics::worthAsking)?.let { file ->
-                "Latest crash or freeze:\n" + crashTop(file.useLines { it.take(40).joinToString("\n") })
+                "Latest crash or freeze:\n" + crashTop(file.readText().take(REPORT_READ))
             }
         }.getOrNull()
         return listOfNotNull(environment, state, if (events.isEmpty()) null else "Recent events:\n" + events.joinToString("\n") { it.take(160) }, crash)

@@ -69,4 +69,21 @@ class BugReportTest {
         assertEquals(listOf("Folio crash report", "Time: 2026-11-23T09:00:00", "Thread: main", "java.lang.IllegalStateException: boom"), top.take(4))
         assertEquals(8, top.size)
     }
+
+    @Test fun `a freeze report keeps its time, reason and Android's trace, not the saved trail before it`() {
+        val report = "Folio not responding\nWhen: 2026-11-23T09:00:00\nFolio: 0.7.0 (code 70050, release)\nDevice: samsung SM-F966U\n" +
+            "Reason: user request after error (status 0, importance 100)\nMemory: 300 MB PSS, 400 MB RSS\n\nBefore it:\n" +
+            (1..20).joinToString("\n") { "12:00:%02d  event $it".format(it) } + "\n\nAndroid's trace:\n" +
+            (1..30).joinToString("\n") { "\tat com.mccal.folio.Thing.wait($it)" }
+        val top = BugReport.crashTop(report, stackLines = 4).lines()
+        assertEquals(listOf("Folio not responding", "When: 2026-11-23T09:00:00", "Reason: user request after error (status 0, importance 100)"), top.take(3))
+        assertEquals(listOf("\tat com.mccal.folio.Thing.wait(1)", "\tat com.mccal.folio.Thing.wait(2)", "\tat com.mccal.folio.Thing.wait(3)", "\tat com.mccal.folio.Thing.wait(4)"), top.drop(3))
+    }
+
+    @Test fun `a restart report carries its two timestamps and no stack`() {
+        val report = "Phone restarted while Folio was on screen\nFolio last seen: 2026-11-23T08:00:00; phone started again: 2026-11-23T08:02:00\n" +
+            "Folio: 0.7.0\n\nAndroid doesn't tell apps why a phone restarted.\nBefore it:\n12:00  Folio started"
+        assertEquals(listOf("Phone restarted while Folio was on screen",
+            "Folio last seen: 2026-11-23T08:00:00; phone started again: 2026-11-23T08:02:00"), BugReport.crashTop(report).lines())
+    }
 }
