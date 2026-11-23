@@ -369,7 +369,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     val staging = backgrounds.pendingArt != null || backgrounds.previewPending
                     // Gated for 0.7.0: staged art opens full screen with Cancel and Set at the bottom.
                     backgrounds.pendingArt?.takeIf { FeatureGate.WALLPAPER_PREVIEW.isOpen(wallpaperContext) }?.let { art ->
-                        WallpaperPreviewDialog(art.id, backgrounds.pendingArtBitmap, backgrounds.pendingArtPreviewBitmap, state, backgrounds::cancelPendingArt, backgrounds::setPendingArt)
+                        WallpaperPreviewDialog(art.id, backgrounds.pendingArtBitmap, backgrounds.pendingArtPreviewBitmap, state, backgrounds::cancelPendingArt, backgrounds::setPendingArt, backgrounds.pendingTweaks, backgrounds::tweakPending)
                     }
                     // A photo opens full screen too, to frame and blur. That screen belongs to Home (LauncherScreen), so it also opens
                     // without this page: from the Edit menu and from a shared photo.
