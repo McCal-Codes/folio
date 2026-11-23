@@ -1250,6 +1250,11 @@
     <string name="make_a_stack">创建叠放</string>
     <string name="remove_stack">移除叠放</string>
     <string name="remove_widget_2">移除小组件</string>
+    <string name="widget_size_dimensions">%1$d × %2$d</string>
+    <string name="widget_size_extra_large">超大</string>
+    <string name="move_to_page">移到页面</string>
+    <string name="edit_stack">编辑叠放</string>
+    <string name="widget_page_full">该页面没有放置此小组件的空间</string>
     <string name="wallpaper_appearance_2">墙纸与外观</string>
     <string name="add_page">添加页面</string>
     <string name="remove_this_empty_page">移除此空白页面</string>
@@ -2674,4 +2679,18 @@
     <string name="market_stat_works_on">适用于</string>
     <string name="market_cover_and_inner">外屏和内屏</string>
     <string name="market_stat_get_on">获取渠道</string>
+    <string name="page_overview">页面概览</string>
+    <string name="page_overview_hint">勾选页面即可在主屏幕上显示。按住并拖动页面可调整顺序。</string>
+    <string name="page_overview_shown">已显示</string>
+    <string name="page_overview_hidden">已隐藏</string>
+    <string name="page_overview_keep_one">至少保留一个显示的页面。</string>
+    <string name="page_overview_empty">空白页面</string>
+    <string name="move_page_earlier">将页面前移</string>
+    <string name="move_page_later">将页面后移</string>
+    <string name="page_moved_to_position">页面已移到第 %1$d 位，共 %2$d 页</string>
+    <string name="page_shown_on_home">第 %1$d 页已在主屏幕显示</string>
+    <string name="page_hidden_from_home">第 %1$d 页已从主屏幕隐藏</string>
+    <string name="show_hidden_pages_to_edit_home_screen">显示已隐藏的页面以编辑主屏幕</string>
+    <string name="show_hidden_pages_to_add_to_home_screen">显示已隐藏的页面以添加到主屏幕。</string>
+    <string name="home_editing_is_off_while_pages_are_hidden">页面隐藏时无法编辑主屏幕</string>
 </resources>

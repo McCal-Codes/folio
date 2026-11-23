@@ -104,7 +104,10 @@ class PinWidgetActivity : ComponentActivity() {
     /** Binds and places the widget; returns a message when it can't. */
     private fun add(request: LauncherApps.PinItemRequest, provider: android.appwidget.AppWidgetProviderInfo): String? {
         val model = FolioSettingsBridge.liveModel?.get() ?: return this@PinWidgetActivity.getString(R.string.open_folio_once_then_try_again)
-        FocusPages.lockingFocus(model.state.value)?.let { return this@PinWidgetActivity.getString(R.string.turn_off_to_add_to_home_screen, it.name) }
+        FocusPages.lock(model.state.value)?.let { lock ->
+            return lock.mode?.let { this@PinWidgetActivity.getString(R.string.turn_off_to_add_to_home_screen, it.name) }
+                ?: this@PinWidgetActivity.getString(R.string.show_hidden_pages_to_add_to_home_screen)
+        }
         val layout = model.state.value.layout
         val appRows = model.state.value.homeAppRows
         val density = resources.displayMetrics.density
