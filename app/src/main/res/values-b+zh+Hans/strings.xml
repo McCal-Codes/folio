@@ -1190,6 +1190,7 @@
     <string name="get_it_on_1_s">获取途径：%1$s</string>
     <string name="on_this_phone_1_s">在这部手机上：%1$s</string>
     <string name="added_with_your_supporter_code">通过你的支持者代码添加</string>
+    <string name="added_by_folio_for_keyd">由 Folio 为 Keyd 添加</string>
     <string name="that_listing_has_no_app_to_download">那个条目没有可下载的 App。</string>
     <string name="folio_couldn_t_download_that_app">Folio 无法下载那个 App。</string>
     <string name="that_app_didn_t_match_what_its_source">那个 App 与其源所承诺的不符，因此没有安装任何内容。</string>
@@ -2710,4 +2711,9 @@
     <string name="show_hidden_pages_to_edit_home_screen">显示已隐藏的页面以编辑主屏幕</string>
     <string name="show_hidden_pages_to_add_to_home_screen">显示已隐藏的页面以添加到主屏幕。</string>
     <string name="home_editing_is_off_while_pages_are_hidden">页面隐藏时无法编辑主屏幕</string>
+    <string name="help_tell_us">告诉我们</string>
+    <string name="help_look_around">随便看看</string>
+    <string name="help_translate">帮助翻译</string>
+    <string name="known_issues">已知问题</string>
+    <string name="release_notes">发布说明</string>
 </resources>

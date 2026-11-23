@@ -84,6 +84,27 @@ private val SPOTLIGHT_TIGHT_ABOVE_KEYBOARD = 320.dp
 /** Below this the field plus one compact result row no longer fits, so the top hit moves into the field. */
 private val SPOTLIGHT_INLINE_HIT_ABOVE_KEYBOARD = 170.dp
 
+/**
+ * Below this the field plus one row of suggestion icons no longer fits above the keyboard (the 48 dp field, the gaps around it
+ * and a 48 dp row), so the empty Spotlight shows the field alone rather than a card the keyboard cuts in half.
+ */
+internal const val SPOTLIGHT_STRIP_ABOVE_KEYBOARD_DP = 128f
+
+/** How the suggestions are drawn while nothing is typed. */
+internal enum class SuggestionsShape { FULL, STRIP, NONE }
+
+/**
+ * The suggestions card needs [SPOTLIGHT_TIGHT_ABOVE_KEYBOARD] of room to show whole (its heading, a card of app cells with labels).
+ * A flip's cover screen or a phone on its side leaves far less above a keyboard, where that card was drawn half under the keys
+ * (seen at 748x720: the field, the heading and the top of a card). With room for one row it becomes a single row of icons; with
+ * less than that, nothing, and the field stands alone.
+ */
+internal fun suggestionsShape(aboveKeyboardDp: Float): SuggestionsShape = when {
+    aboveKeyboardDp >= SPOTLIGHT_TIGHT_ABOVE_KEYBOARD.value -> SuggestionsShape.FULL
+    aboveKeyboardDp >= SPOTLIGHT_STRIP_ABOVE_KEYBOARD_DP -> SuggestionsShape.STRIP
+    else -> SuggestionsShape.NONE
+}
+
 /** Remembers the last apps launched from Folio, for Spotlight suggestions. Stays on the device. */
 internal object RecentApps {
     private const val KEY = "recent_apps"
@@ -332,8 +353,12 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
             if (!inlineHit) LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false).edgeFade(resultsState), state = resultsState, verticalArrangement = Arrangement.spacedBy(FolioSpace.COMFY.dp),
                 contentPadding = PaddingValues(bottom = 24.dp)) {
                 if (q.isEmpty()) {
-                    if (shows(SpotlightSection.SUGGESTIONS) && recent.isNotEmpty()) item("suggestions") {
-                        Section(stringResource(R.string.suggestions)) { AppGrid(recent, launch, fullRows = true) }
+                    if (shows(SpotlightSection.SUGGESTIONS) && recent.isNotEmpty()) when (suggestionsShape(aboveKeyboard.value)) {
+                        SuggestionsShape.FULL -> item("suggestions") {
+                            Section(stringResource(R.string.suggestions)) { AppGrid(recent, launch, fullRows = true) }
+                        }
+                        SuggestionsShape.STRIP -> item("suggestions-strip") { SuggestionStrip(recent, launch) }
+                        SuggestionsShape.NONE -> Unit
                     }
                 } else {
                     math?.takeIf { shows(SpotlightSection.CALCULATOR) }?.let { result -> item("math") {
@@ -424,6 +449,22 @@ internal fun WebSearchChips(targets: List<WebSearchTarget>, onPick: (WebSearchTa
                     tint = Color.White, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(target.label, color = Color.White, fontSize = FolioType.COMPACT.sp)
+            }
+        }
+    }
+}
+
+/** One row of suggested apps, icons only, for the room a short window leaves above the keyboard. Each icon says its name to TalkBack. */
+@Composable
+private fun SuggestionStrip(apps: List<AppEntry>, onLaunch: (AppEntry) -> Unit) {
+    BoxWithConstraints(Modifier.fillMaxWidth().testTag("spotlight-suggestion-strip")) {
+        val fit = (maxWidth / (FolioTouch.MIN.dp + FolioSpace.SMALL.dp)).toInt().coerceAtLeast(1)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            apps.take(fit).forEach { app ->
+                Box(Modifier.size(FolioTouch.MIN.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp)).clickable(onClickLabel = app.label) { onLaunch(app) },
+                    contentAlignment = Alignment.Center) {
+                    AppIcon(app, app.label, Modifier.size(40.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)))
+                }
             }
         }
     }
