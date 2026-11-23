@@ -455,12 +455,40 @@ internal object MarketAccess {
         return true
     }
 
-    /** Removing the code removes the source with it. What it listed and installed stays; only the list goes. */
+    /**
+     * Offers Keyd's source to someone with the Market open and no code, once, so the keyboard is listed for the public
+     * as well as for supporters. The key is the one that ships in the app, so nothing needs confirming and a host
+     * answering with another key fails the signature as it would for a supporter.
+     *
+     * It is a one-time offer: [MarketPrefs.keydSourceOffered] is set whether or not the source was added here, so a
+     * person who forgets it from Sources does not see it come back. A source already in the list, a supporter's
+     * included, is left exactly as it is.
+     *
+     * Returns true when it added the source. Needs the network only to read the list afterwards, and the source is in
+     * the list either way.
+     */
+    suspend fun offerKeydSource(sources: MarketSources, prefs: MarketPrefs): Boolean {
+        if (prefs.keydSourceOffered) return false
+        val key = SourceKey.parse(SUPPORTER_SOURCE_KEY) ?: return false
+        val added = !sources.has(SUPPORTER_SOURCE)
+        if (added) sources.trust(SUPPORTER_SOURCE, key, Source.Kind.RECOMMENDED)
+        prefs.keydSourceOffered = true
+        return added
+    }
+
+    /**
+     * Removing the code removes the source with it, when the code is what added it. What it listed and installed
+     * stays; only the list goes. Once the Market is open to everyone the source is Keyd's for all of them, and a
+     * supporter who steps back keeps it like anyone else; the one that went in by [offerKeydSource] never goes.
+     */
     fun forgetSupporterSource(context: Context) {
-        if (SUPPORTER_SOURCE_KEY.isEmpty()) return
+        if (SUPPORTER_SOURCE_KEY.isEmpty() || MarketFeature.RELEASED) return
         val app = context.applicationContext
         MarketWork.background {
-            MarketSession(app, ReadOnlyMarketLauncher).sources.forget(SUPPORTER_SOURCE)
+            val sources = MarketSession(app, ReadOnlyMarketLauncher).sources
+            if (sources.cached().none { it.source.url == normalizeSourceUrl(SUPPORTER_SOURCE) && it.source.kind == Source.Kind.RECOMMENDED }) {
+                sources.forget(SUPPORTER_SOURCE)
+            }
         }
     }
 }

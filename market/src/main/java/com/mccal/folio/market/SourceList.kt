@@ -29,6 +29,13 @@ data class Source(
         SUPPORTER("supporter"),
 
         /**
+         * A source Folio adds for everyone once the Market is open, once: Keyd's, so the keyboard is listed for people
+         * who never redeemed a code. Same trust as [SUPPORTER] (its key ships in the app), but it belongs to no code,
+         * so removing a code never removes it, and a person who forgets it does not get it back.
+         */
+        RECOMMENDED("recommended"),
+
+        /**
          * A source served from the phone itself while someone builds a package (`folio-pkg serve` plus
          * `adb reverse`). Unsigned, http, and only in Folio Dev.
          */

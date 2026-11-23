@@ -1193,6 +1193,7 @@
     <string name="get_it_on_1_s">받을 곳: %1$s</string>
     <string name="on_this_phone_1_s">이 휴대전화에 설치됨: %1$s</string>
     <string name="added_with_your_supporter_code">후원자 코드로 추가됨</string>
+    <string name="added_by_folio_for_keyd">Keyd를 위해 Folio가 추가함</string>
     <string name="that_listing_has_no_app_to_download">이 항목에는 다운로드할 앱이 없습니다.</string>
     <string name="folio_couldn_t_download_that_app">앱을 다운로드하지 못했습니다.</string>
     <string name="that_app_didn_t_match_what_its_source">앱이 소스에서 명시한 정보와 일치하지 않아 설치하지 않았습니다.</string>

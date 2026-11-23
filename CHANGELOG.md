@@ -110,6 +110,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Icon Actions:** choose what a swipe or a double tap on an icon runs, in Edit Icon and in Settings › Gestures & Actions. An icon's long-press menu lists its actions so you can run one without the gesture. <!-- beta 2 -->
 - **Market checks apps before install:** Folio compares the app's package, version and signer with its listing first, and says why it can't install one when the source lists no developer. <!-- beta 2 -->
 - **Page effects with more curves:** a page effect package can set curves for more channels (the 0.7.0 format), listed as tweaks.pageEffects.channels. <!-- beta 2 -->
+- **Keyd is listed for everyone:** once the Market is open to everyone, Keyd's source is already in Sources, added once with its key built into Folio, so the keyboard can be tried without a supporter code. Forgetting it is final, and a code coming off no longer takes it away. <!-- beta 6 -->
 
 ### Changed
 - **A package's page opens on its color:** the icon and name sit on a band in the color its author chose (a section's color when they did not), and under it Version, Source and Works on read as three cells in a row, so you can tell at a glance where it comes from and whether it fits the cover screen. <!-- beta 5 -->
@@ -129,6 +130,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Control Center connectivity, as on the iPhone Duo:** holding the Wi-Fi block now opens two columns of glass tiles (Airplane Mode and Cellular Data over Wi-Fi and Bluetooth), each with its icon above its name and state, instead of a four-row list. Where there is room the top row is two slim pills, as on the Duo. It is about 60 dp shorter, so on a flip's cover screen the last row's state is no longer cut off. <!-- beta 5 -->
 
 ### Fixed
+- **Spotlight fits a short window:** on a flip's cover screen or a phone on its side, opening Spotlight no longer draws a Suggestions card half under the keyboard. With room for one row you get a row of app icons, and with less than that the search field stands alone. A regular phone keeps the whole card. <!-- beta 6 -->
 - **Home stops flickering when the fold sensor misreads:** on a Fold whose hinge sensor kept reporting "folded" while the phone was open, Home kept blurring and dimming on its own and the screen kept waking. The first false reading still plays, and repeats are ignored for a while, longer each time; a real fold is never ignored. <!-- beta 5 -->
 - **Remove button off a widget's text:** while editing Home, the minus on a widget now hangs a little off its corner instead of covering the first letters of the widget's name. <!-- beta 5 -->
 - **Market tabs fit a short window:** on a flip's cover screen or a phone on its side, the Market's side rail no longer runs the Settings tab off its end or draws the selected highlight past it. All five tabs and their names fit. <!-- beta 5 -->
