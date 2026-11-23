@@ -22,6 +22,7 @@ lock: the real state is `gh pr list` and `git worktree list`. Keep it honest rat
 
 | Branch | What it changes | Files it holds |
 |---|---|---|
+| claude/cc-two-pane-editor-b9f0ab | Control Center editor in two panes on wide windows | CHANGELOG.md, TopPanels.kt (ControlCenter's root and the gallery call only), CcControlGallery.kt, FeatureGate.kt, CcTwoPane.kt |
 | beta4-cc-customize | Control Center and Home editing, Tips page, panel fold padding, crash reports (not pushed yet) | CHANGELOG.md, strings.xml (and values-b+ko, values-b+zh+Hans), app/build.gradle.kts, CustomizationSheet.kt, ControlCenterSettings.kt, FoldAvoidance.kt |
 
 Dependabot's open bumps are left out: they touch only `gradle/libs` or `build.gradle.kts`, and

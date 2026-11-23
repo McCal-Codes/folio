@@ -185,7 +185,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     // Half folded, Control Center moves off the hinge like iPhone Duo's controls; Notification Center is a
     // scrolling list, which adapts by scrolling instead.
     val hinge = LocalHinge.current?.takeIf { it.active && current == ShadePanel.QUICK_SETTINGS }
-    CompositionLocalProvider(LocalHinge provides hinge, LocalCcLook provides ccLook, LocalCcTone provides tone, LocalPanelPull provides pull) {
+    CompositionLocalProvider(LocalWindowHinge provides LocalHinge.current, LocalHinge provides hinge, LocalCcLook provides ccLook, LocalCcTone provides tone, LocalPanelPull provides pull) {
     FoldAvoidingBox(Modifier.windowInsetsPadding(WindowInsets.folioSafeTop).navigationBarsPadding().padding(start = FolioSpace.LARGE.dp, end = FolioSpace.LARGE.dp, top = FolioSpace.XXL.dp, bottom = FolioSpace.MEDIUM.dp),
         contentAlignment = when {
             shape == ShadeShape.BOTH -> Alignment.TopCenter
@@ -1032,11 +1032,19 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
     // The gallery card, when it has to stand low, asks the panel to shrink out of its way; it glides there and comes back (a snap with reduced motion).
     var galleryFit by remember { mutableFloatStateOf(1f) }
     val fitNow by androidx.compose.animation.core.animateFloatAsState(galleryFit, if (LocalReduceMotion.current) androidx.compose.animation.core.snap() else FolioMotion.spring<Float>(FolioMotion.Glide), label = "gallery fit") // english-only
-    BoxWithConstraints(modifier.testTag("control-center").graphicsLayer { scaleX = fitNow; scaleY = fitNow; transformOrigin = androidx.compose.ui.graphics.TransformOrigin(.5f, 0f) }.onGloballyPositioned { panelBounds = it.boundsInWindow() }) {
+    // The editor on a wide window (FeatureGate.CC_TWO_PANE): the panel on the left and "Add a Control" as a list beside it (CcTwoPane.kt) instead of the floating card.
+    val twoPaneGate = remember { FeatureGate.CC_TWO_PANE.isOpen(context) }
+    val addFeed = remember { CcAddPaneFeed() }
+    CcTwoPaneHost(modifier, edit.active && twoPaneGate, addFeed) { twoPane, panelSize ->
+    BoxWithConstraints(panelSize.testTag("control-center").semantics { isTraversalGroup = true; traversalIndex = 0f }
+        .graphicsLayer { scaleX = fitNow; scaleY = fitNow; transformOrigin = androidx.compose.ui.graphics.TransformOrigin(.5f, 0f) }.onGloballyPositioned { panelBounds = it.boundsInWindow() }) {
         val sizeCell = size.cell + if (wide) 8.dp else 0.dp
         val tall = if (maxHeight == Dp.Infinity) null else maxHeight.value
         // Fills the window: 4, 6 or 8 columns by the width, cells near the size chosen; the page strip at the edge on a wide panel, under the grid on a narrow one.
-        val grid = controlCenterGrid(maxWidth.value, tall, chosen.size, focusModes.isNotEmpty(), sizeCell.value, FolioTouch.MIN.toFloat(), (FolioSpace.LARGE * 2).toFloat(), options.rail)
+        val gridFor = { minColumns: Int -> controlCenterGrid(maxWidth.value, tall, chosen.size, focusModes.isNotEmpty(), sizeCell.value, FolioTouch.MIN.toFloat(), (FolioSpace.LARGE * 2).toFloat(), options.rail, minColumns) }
+        // In the editor's two panes the panel keeps the columns it has outside the editor, so the layout being edited is the one that is saved, as long as the tiles stay at the touch size.
+        val keptColumns = twoPane?.let { controlCenterGrid(it.containerDp, tall, chosen.size, focusModes.isNotEmpty(), sizeCell.value, FolioTouch.MIN.toFloat(), (FolioSpace.LARGE * 2).toFloat(), options.rail).columns }
+        val grid = keptColumns?.let(gridFor)?.takeIf { it.cellDp >= FolioTouch.MIN } ?: gridFor(4)
         val gap = grid.gapDp.dp
         val cols = grid.columns
         val cell = grid.cellDp.dp
@@ -1158,10 +1166,13 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                 CC_BRIGHTNESS -> Icons.Rounded.LightMode; CC_VOLUME -> Icons.AutoMirrored.Rounded.VolumeUp; else -> Icons.Rounded.DarkMode }, true) } +
                 CcControl.entries.filter { it !in chosen && available(it) }.map { c -> CcGalleryItem(c.name, stringResource(c.label), c.icon(), false) }
         }
-        if (galleryOpen && edit.active) CcControlGallery(galleryItems, panel = panelBounds, fit = fitNow, minFit = FolioTouch.MIN / cell.value, onFit = { galleryFit = it }, onDismiss = { galleryOpen = false }, onAdd = { item ->
+        val addFromGallery: (CcGalleryItem) -> Unit = { item ->
             if (item.module) changeLayout(ccAdd(slots, item.id, cols, slotRows + slotPerPage) ?: slots, cols, focusOn) else changeControls(controlNames + item.id)
             if (galleryItems.size <= 1) galleryOpen = false
-        })
+        }
+        // With two panes the list beside the panel is the gallery: it is handed what to show and what a plus does, and the card stays shut.
+        if (twoPane != null) SideEffect { addFeed.items = galleryItems; addFeed.onAdd = addFromGallery }
+        if (galleryOpen && edit.active && twoPane == null) CcControlGallery(galleryItems, panel = panelBounds, fit = fitNow, minFit = FolioTouch.MIN / cell.value, onFit = { galleryFit = it }, onDismiss = { galleryOpen = false }, onAdd = addFromGallery)
         // The editor's gallery is a sheet, not rows under the grid, so the places page counts only its own rows (with the gallery's two counted too, a
         // control in the sixth row made the page "too tall", it became a scroll container and cut off the resize handles in the last column).
         fun controlsRows(index: Int) = if (slotMode) slotEnd(index.coerceIn(0, slotStarts.lastIndex)) - slotStarts[index.coerceIn(0, slotStarts.lastIndex)]
@@ -1431,7 +1442,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                         }
                         }
                         // Edit mode: "Add a Control" under the grid opens the gallery (the + in the header does the same).
-                        if (edit.active && spec.index == (if (slotMode) slotStarts.lastIndex else plan.perPage.lastIndex)) {
+                        if (edit.active && twoPane == null && spec.index == (if (slotMode) slotStarts.lastIndex else plan.perPage.lastIndex)) {
                             Row(Modifier.width(gridWidth).clip(RoundedCornerShape(FolioRadius.CARD.dp)).then(if (galleryItems.isEmpty()) Modifier else Modifier.clickable(role = androidx.compose.ui.semantics.Role.Button) { galleryOpen = true })
                                 .heightIn(min = FolioTouch.MIN.dp).padding(FolioSpace.SMALL.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                                 if (galleryItems.isNotEmpty()) Icon(Icons.Rounded.AddCircle, null, tint = Color.White, modifier = Modifier.padding(end = FolioSpace.SNUG.dp).size((FolioSpace.XL.dp.value * ccIconScale(LocalDensity.current.fontScale)).dp))
@@ -1544,7 +1555,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         if (edit.active) {
                             PanelPill(stringResource(R.string.done)) { edit.stop() }
-                            if (galleryItems.isNotEmpty()) { Spacer(Modifier.width(gap)); GlassIconButton(Icons.Rounded.Add, stringResource(R.string.add_a_control)) { galleryOpen = true } }
+                            if (galleryItems.isNotEmpty() && twoPane == null) { Spacer(Modifier.width(gap)); GlassIconButton(Icons.Rounded.Add, stringResource(R.string.add_a_control)) { galleryOpen = true } }
                             if (history.canUndo) { Spacer(Modifier.width(gap)); GlassIconButton(Icons.AutoMirrored.Rounded.Undo, stringResource(R.string.undo)) { undoEdit() } }
                         }
                         else if (pages.getOrNull(current)?.page == CcPage.CONTROLS) GlassIconButton(Icons.Rounded.Add, stringResource(R.string.edit_controls)) { edit.start() }
@@ -1592,6 +1603,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
             }
         }
         }
+    }
     }
 }
 

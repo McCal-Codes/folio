@@ -231,7 +231,7 @@ internal data class CcGrid(val columns: Int, val cellDp: Float, val gapDp: Float
  * A null [heightDp] means no height limit.
  */
 internal fun controlCenterGrid(panelWidthDp: Float, heightDp: Float?, controls: Int, focus: Boolean, sizeCellDp: Float,
-    touchDp: Float = 48f, sidePaddingDp: Float = 32f, rail: Boolean = true): CcGrid {
+    touchDp: Float = 48f, sidePaddingDp: Float = 32f, rail: Boolean = true, minColumns: Int = 4): CcGrid {
     val gap = sizeCellDp * CC_GAP_RATIO
     val strip = touchDp + gap
     // [rail] off (the default in Settings, as on an iPhone): no strip beside the grid, the page dots lie under it or in the header.
@@ -251,7 +251,9 @@ internal fun controlCenterGrid(panelWidthDp: Float, heightDp: Float?, controls: 
         return heightDp?.let { (it - (touchDp + gap) - (if (edge || inHeader) 0f else strip) - gap * (rows - 1)) / rows } ?: Float.MAX_VALUE
     }
     fun cell(c: Int) = minOf(widthCell(c), heightCell(c), maxCell)
-    var columns = 4
+    // [minColumns] holds a count the window had when it was wider (the editor's two panes keep the columns Control Center has outside it, so the
+    // layout being edited is the layout that is saved); it counts in pairs like every other, and never past what the controls can use.
+    var columns = (minColumns + minColumns % 2).coerceIn(4, maxOf(4, maxColumns))
     while (columns < maxColumns && widthCell(columns) > maxCell) columns += 2
     while (columns < maxColumns && cell(columns) < sizeCellDp && cell(columns + 2) >= cell(columns) + gap) columns += 2
     return CcGrid(columns, maxOf(CC_MIN_CELL_DP, cell(columns)), gap, edge, strip, inHeader)
