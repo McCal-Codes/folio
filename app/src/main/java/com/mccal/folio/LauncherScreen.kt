@@ -542,11 +542,16 @@ fun LauncherScreen(
         else { focus.clearFocus(); scope.launch { pager.animateScrollToPage(0) } } }
     val openDiscover = { if (firstHome > 0) scope.launch { pager.animateScrollToPage(-1) } else if (discoverMode) onDiscover(); Unit }
     val openLibrary = { scope.launch { pager.animateScrollToPage(homePages) }; Unit }
+    // The page controls under Home (and the Preview bar before Folio is the Home app), measured: the old guess
+    // of 44dp, 88dp with the Preview bar, left the App Library's panel under the Preview bar sideways.
+    // Declared here, above the pages, so Today View can stop its last widget above them too.
+    var bottomControlsHeight by remember { mutableStateOf(0.dp) }
     val todayContent: @Composable (Modifier) -> Unit = { pageModifier ->
         TodayView(state, widgets, pageModifier,
             onSearch = { launcherActivity.openSpotlight() }, onLaunch = onLaunch,
             onAddWidget = { picker.toToday = true; picker.anyApp(); sheet = "widgets" },
-            onRemove = model::removeTodayWidget, onMove = model::moveTodayWidget)
+            onRemove = model::removeTodayWidget, onMove = model::moveTodayWidget,
+            bottomPadding = todayBottomPadding(isDefaultHome, bottomControlsHeight.value).dp)
     }
     val leftPageContent: @Composable (Modifier) -> Unit = { pageModifier ->
         when {
@@ -904,9 +909,6 @@ fun LauncherScreen(
                 "generous" -> 8.dp
                 else -> 0.dp
             }
-            // The page controls under Home (and the Preview bar before Folio is the Home app), measured: the old guess
-            // of 44dp, 88dp with the Preview bar, left the App Library's panel under the Preview bar sideways.
-            var bottomControlsHeight by remember { mutableStateOf(0.dp) }
             val windowHeightDp = maxHeight.value
             val geometry = homeGeometry(maxWidth.value, maxHeight.value, preset, state.labels, dockSlots = shownDock.size, statusRail = state.verticalStatus,
                 statusHeight = if (state.verticalStatus) statusHeight + 22f else 0f,
