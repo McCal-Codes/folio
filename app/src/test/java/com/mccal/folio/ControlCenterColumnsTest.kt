@@ -84,4 +84,24 @@ class ControlCenterColumnsTest {
         assertEquals(3, controlCenterRows(8, 0, false))
         assertEquals(5, controlCenterRows(4, 0, false))
     }
+    @Test fun `a narrower pane can keep the columns a wider window had, and the cells follow the width`() {
+        val wide = grid(672f, 848f)
+        val kept = controlCenterGrid(422f, 848f, 8, false, size, minColumns = wide.columns)
+        assertEquals(wide.columns, kept.columns)
+        assertTrue("narrower cells, not overflow", kept.cellDp < wide.cellDp)
+        assertEquals(4, controlCenterGrid(422f, 848f, 8, false, size).columns) // without it the narrower width takes fewer
+    }
+
+    @Test fun `a kept column count never goes past what the controls can use or below four`() {
+        assertEquals(4, controlCenterGrid(1248f, 760f, 4, false, size, minColumns = 8).columns)
+        assertEquals(4, controlCenterGrid(379f, 700f, 8, false, size, minColumns = 1).columns)
+        assertEquals(6, controlCenterGrid(700f, 800f, 12, false, size, minColumns = 5).columns)
+    }
+
+    @Test fun theLeastPanelForSixColumnsKeepsEveryCellAtTheTouchSize() {
+        val width = controlCenterMinPanelDp(6, 90f)
+        val grid = controlCenterGrid(width, null, 12, false, 90f, 48f, 32f, true, minColumns = 6)
+        assertEquals(6, grid.columns)
+        assertTrue("cells are ${grid.cellDp} dp", grid.cellDp >= 48f - .01f)
+    }
 }

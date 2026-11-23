@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Runs the two fast checks that have failed a pull request after the push: the release rules (REL-5, REL-7, REL-13)
+# and the translation check. Seconds, not the full Gradle run; it does not replace lint or the tests.
+#
+#   FOLIO_SKIP_PREPUSH=1 git push          skip it once
+#   PR_LABELS=no-changelog git push        the same waiver the pull request label gives (see check-release-rules.sh)
+#   FOLIO_PREPUSH_LINT=1 git push          also run :app:lintDebug (a few minutes)
+#
+# Install it with tools/install-hooks.sh. Git calls it with "<local ref> <local sha> <remote ref> <remote sha>" on stdin.
+[ -n "${FOLIO_SKIP_PREPUSH:-}" ] && exit 0
+top=$(git rev-parse --show-toplevel) || exit 0
+cd "$top" || exit 0
+
+# Nothing to check when the push only deletes a branch or tags.
+check=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+    case "$local_ref" in refs/heads/*) [ "$local_sha" != "0000000000000000000000000000000000000000" ] && check=1 ;; esac
+done
+[ "$check" = 1 ] || exit 0
+git rev-parse --verify -q origin/main >/dev/null || { echo "pre-push: no origin/main to compare against; skipping"; exit 0; }
+
+bad=0
+echo "pre-push: release rules"
+bash tools/check-release-rules.sh origin/main || bad=1
+echo "pre-push: translations"
+python tools/check-translations.py origin/main 2>/dev/null || python3 tools/check-translations.py origin/main || bad=1
+if [ -n "${FOLIO_PREPUSH_LINT:-}" ]; then
+    echo "pre-push: lint"
+    # shellcheck disable=SC1091
+    . tools/dev-env.sh
+    ./gradlew --console=plain :app:lintDebug :market:lintDebug || bad=1
+fi
+if [ "$bad" != 0 ]; then
+    echo
+    echo "pre-push: not pushed. Fix the above, or FOLIO_SKIP_PREPUSH=1 git push to push anyway (the pull request checks will still run)."
+    exit 1
+fi

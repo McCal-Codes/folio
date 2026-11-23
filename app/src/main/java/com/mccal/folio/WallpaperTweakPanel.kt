@@ -110,12 +110,18 @@ private fun TweakSlider(label: String, value: Float, range: ClosedFloatingPointR
 }
 
 /** A starting point: a change to everything, with the color it tends toward as the dot. Teal is no change at all. */
-private class TweakPreset(val tag: String, val name: Int, val dot: Color, val tweak: ColorTweak)
+private class TweakPreset(val tag: String, val name: Int, val tweak: ColorTweak) {
+    /** The pieces' own mid-sky teal moved by this change, so the dot is the color the change really gives, not a second guess at it. */
+    val dot: Color = tweakedRgb(PRESET_BASE_RGB, tweak).let { Color(it[0], it[1], it[2]) }
+}
+
+/** Mid-sky teal of Moon Hills, the color each preset dot starts from. Six digits, so it is a shade and not a stored ARGB. */
+private const val PRESET_BASE_RGB = 0x2A6A70
 
 private val PRESETS = listOf(
-    TweakPreset("teal", R.string.wallpaper_tweak_preset_teal, Color(0xFF2A6A70), ColorTweak()),
-    TweakPreset("violet", R.string.wallpaper_tweak_preset_violet, Color(0xFF6A4AA0), ColorTweak(hue = 95f)),
-    TweakPreset("rose", R.string.wallpaper_tweak_preset_rose, Color(0xFFA04A6A), ColorTweak(hue = 150f, saturation = 10f)),
-    TweakPreset("amber", R.string.wallpaper_tweak_preset_amber, Color(0xFFA07A3A), ColorTweak(hue = -140f, lightness = 5f)),
-    TweakPreset("slate", R.string.wallpaper_tweak_preset_slate, Color(0xFF4A5A62), ColorTweak(saturation = -80f)),
+    TweakPreset("teal", R.string.wallpaper_tweak_preset_teal, ColorTweak()),
+    TweakPreset("violet", R.string.wallpaper_tweak_preset_violet, ColorTweak(hue = 95f)),
+    TweakPreset("rose", R.string.wallpaper_tweak_preset_rose, ColorTweak(hue = 150f, saturation = 10f)),
+    TweakPreset("amber", R.string.wallpaper_tweak_preset_amber, ColorTweak(hue = -140f, lightness = 5f)),
+    TweakPreset("slate", R.string.wallpaper_tweak_preset_slate, ColorTweak(saturation = -80f)),
 )
