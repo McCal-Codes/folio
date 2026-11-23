@@ -352,6 +352,8 @@ internal class FoldTimeline(private val context: Context, private val suLauncher
     private var closedAt = -1L
     private var reopenedAt = -1L
     private var predictedCloseMs = prefs.getFloat("fold_close_ms", 650f)
+    /** Mutes folds after a closed reading that never switched the display, so a misreading sensor can't keep dimming Home. */
+    private val falseFolds = FalseFoldGuard()
 
     // Cover display after folding, and while starting to open from the cover.
     private var coverLitAt = -1L
@@ -469,6 +471,7 @@ internal class FoldTimeline(private val context: Context, private val suLauncher
     fun onDisplaySwitched(now: Long) {
         traceEvent("display switched, now expanded=$expanded")
         switchedAt = now; waitingForPanel = true; opening = expanded
+        falseFolds.realFold()
         wake.trySend(Unit)
         litAt = -1L; flatAt = -1L; closeStartAt = -1L; closedAt = -1L; reopenedAt = -1L; coverLitAt = -1L; coverOpeningAt = -1L
     }
@@ -512,7 +515,7 @@ internal class FoldTimeline(private val context: Context, private val suLauncher
                     learnOpen((now - litAt).toFloat())
                 }
                 // Started folding from flat: keep One UI from sleeping, and start the fold-away.
-                wasFlat && !tracker.flat -> startClosing(now, value)
+                wasFlat && !tracker.flat && !falseFolds.muted(now) -> startClosing(now, value)
                 // Nearly closed: learn how long the fold takes, and make sure the bridge is up.
                 tracker.closed && closeStartAt >= 0 && closedAt < 0 -> {
                     closedAt = now
@@ -521,12 +524,14 @@ internal class FoldTimeline(private val context: Context, private val suLauncher
                 }
                 // Folding that didn't start from flat (e.g. from half-open): only a real drop counts,
                 // so sensor jitter or adjusting a propped phone never starts the bridge.
-                !tracker.flat && closeStartAt < 0 && peak - value >= MIN_FOLD_DROP_DEG -> {
+                !tracker.flat && closeStartAt < 0 && peak - value >= MIN_FOLD_DROP_DEG && !falseFolds.muted(now) -> {
                     startClosing(now, value)
                     if (tracker.closed) closedAt = now
                 }
                 // Opened back up before closing.
                 closeStartAt >= 0 && value - trough >= REOPEN_DEG -> {
+                    // It read closed yet the display never switched to the cover: the sensor was wrong, not the hand.
+                    if (closedAt >= 0 || wasClosed) falseFolds.falseAlarm(now)
                     followMs = FOLLOW_MS
                     closeStartAt = -1L; closedAt = -1L; reopenedAt = now; peak = value; opening = true
                     FoldBridgeActivity.cancel()
@@ -582,8 +587,13 @@ internal class FoldTimeline(private val context: Context, private val suLauncher
             val since = (now - closeStartAt).toFloat()
             val stalled = closedAt < 0 && (if (continuous) now - movedAt > STALL_MS else now - angleAt > predictedCloseMs + STALL_MS)
             when {
-                stalled -> { closeStartAt = -1L; peak = tracker.raw ?: 0f; if (continuous) followMs = RELEASE_FOLLOW_MS; 0f } // deliberately half-open (flex mode): clear, gently on a continuous angle
-                closedAt >= 0 && now - closedAt > CLOSED_STALL_MS -> { closeStartAt = -1L; closedAt = -1L; 0f } // never stuck dimmed
+                stalled -> {
+                    // Still reading closed with the inner screen up: the sensor was wrong. Half-open (flex mode) is not a strike.
+                    if (tracker.closed) { falseFolds.falseAlarm(now); FoldBridgeActivity.cancel() }
+                    closeStartAt = -1L; peak = tracker.raw ?: 0f; if (continuous) followMs = RELEASE_FOLLOW_MS; 0f // deliberately half-open (flex mode): clear, gently on a continuous angle
+                }
+                // Never stuck dimmed. Closed for this long and still on the inner screen means the closed reading was false.
+                closedAt >= 0 && now - closedAt > CLOSED_STALL_MS -> { falseFolds.falseAlarm(now); FoldBridgeActivity.cancel(); closeStartAt = -1L; closedAt = -1L; 0f }
                 closedAt >= 0 -> 1f
                 continuous -> foldStrengthAtAngle()
                 else -> easeInOutSine((since / predictedCloseMs).coerceIn(0f, 1f)) * HOLD_M_BEFORE_CLOSED
