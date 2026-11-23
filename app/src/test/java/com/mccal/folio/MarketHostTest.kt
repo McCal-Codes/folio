@@ -89,6 +89,24 @@ class MarketHostTest {
         assertTrue("appPanels" !in launcher.state.installedTweaks)
     }
 
+    @Test fun `StandBy 2's package turns it on, and keeps the options a person had set`() {
+        val standBy2 = PackageChange.Tweaks(bundle(com.mccal.folio.market.TweakSetting(TweakId.STANDBY_2, true)))
+        // A phone that never had it: the package installs it, and removing the package takes it out again.
+        val fresh = FakeLauncher()
+        val first = MarketHost(fresh).apply(standBy2)
+        assertTrue("standby2" in fresh.state.installedTweaks)
+        MarketHost(fresh).restore(standBy2, first)
+        assertTrue("standby2" !in fresh.state.installedTweaks)
+        // A phone that had it on with its own look: the package leaves the look alone, and so does removing it.
+        val options = mapOf("standby2" to mapOf("clock" to "neon", "nightMode" to "room"))
+        val had = FakeLauncher(LauncherState(installedTweaks = setOf("standby2"), tweakOptions = options))
+        val before = MarketHost(had).apply(standBy2)
+        assertEquals(options, had.state.tweakOptions)
+        MarketHost(had).restore(standBy2, before)
+        assertTrue("standby2" in had.state.installedTweaks)
+        assertEquals(options, had.state.tweakOptions)
+    }
+
     @Test fun `removing a package leaves a tweak the user already had exactly as it was`() {
         // The user had Cabinet on, with the cover screen turned off by hand.
         val start = LauncherState(
@@ -174,12 +192,12 @@ class MarketHostTest {
             setOf(
                 Capability.THEME, Capability.WALLPAPER, Capability.APP_PANELS, Capability.DOCK_MAGNIFY,
                 Capability.NOTIFICATION_APP_ROW, Capability.TINT_NOTIFICATIONS, Capability.TINT_MEDIA,
-                Capability.PAGE_EFFECTS, Capability.PAGE_EFFECT_CHANNELS, Capability.FOLD_TRANSITION,
+                Capability.PAGE_EFFECTS, Capability.PAGE_EFFECT_CHANNELS, Capability.FOLD_TRANSITION, Capability.STANDBY_2,
             ),
             host.capabilities,
         )
-        // Every built-in tweak that has shipped in the Market schema has a capability, and every tweak capability has a built-in tweak.
-        assertEquals(TweakFeatures.filter { it.gate != FeatureGate.STANDBY_2 }.map { it.id }.toSet(), TweakId.entries.map { it.id }.toSet())
+        // Every built-in tweak has a capability, and every tweak capability has a built-in tweak.
+        assertEquals(TweakFeatures.map { it.id }.toSet(), TweakId.entries.map { it.id }.toSet())
         assertTrue(TweakId.entries.all { it.capability in host.capabilities })
     }
 

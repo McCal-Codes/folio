@@ -80,7 +80,8 @@ enum class TweakId(val id: String, val capability: Capability) {
     TINT_NOTIFICATIONS("tintNotifications", Capability.TINT_NOTIFICATIONS),
     TINT_MEDIA("tintMedia", Capability.TINT_MEDIA),
     PAGE_EFFECTS("pageEffects", Capability.PAGE_EFFECTS),
-    DUET("duet", Capability.FOLD_TRANSITION);
+    DUET("duet", Capability.FOLD_TRANSITION),
+    STANDBY_2("standby2", Capability.STANDBY_2);
 
     companion object {
         fun from(id: String) = entries.firstOrNull { it.id == id }
