@@ -1193,6 +1193,7 @@
     <string name="get_it_on_1_s">받을 곳: %1$s</string>
     <string name="on_this_phone_1_s">이 휴대전화에 설치됨: %1$s</string>
     <string name="added_with_your_supporter_code">후원자 코드로 추가됨</string>
+    <string name="added_by_folio_for_keyd">Keyd를 위해 Folio가 추가함</string>
     <string name="that_listing_has_no_app_to_download">이 항목에는 다운로드할 앱이 없습니다.</string>
     <string name="folio_couldn_t_download_that_app">앱을 다운로드하지 못했습니다.</string>
     <string name="that_app_didn_t_match_what_its_source">앱이 소스에서 명시한 정보와 일치하지 않아 설치하지 않았습니다.</string>
@@ -2732,4 +2733,9 @@
     <string name="show_hidden_pages_to_edit_home_screen">홈 화면을 편집하려면 숨긴 페이지를 표시하세요</string>
     <string name="show_hidden_pages_to_add_to_home_screen">홈 화면에 추가하려면 숨긴 페이지를 표시하세요.</string>
     <string name="home_editing_is_off_while_pages_are_hidden">페이지를 숨기는 동안에는 홈 화면을 편집할 수 없습니다</string>
+    <string name="help_tell_us">알려 주세요</string>
+    <string name="help_look_around">둘러보기</string>
+    <string name="help_translate">번역 돕기</string>
+    <string name="known_issues">알려진 문제</string>
+    <string name="release_notes">릴리스 노트</string>
 </resources>

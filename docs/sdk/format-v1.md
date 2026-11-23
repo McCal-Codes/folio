@@ -552,6 +552,7 @@ A package never adds behavior Folio doesn't already have. When you remove a pack
 | `tweaks.pageEffects` | Flipbook: Home pages turn in 3D as you swipe (supporters in 0.6.7, everyone in 0.6.8) | 0.6.7 |
 | `tweaks.pageEffects.channels` | Page effect channels: curves, drops, turns in the page's plane and outer-edge hinges in `effect.json` | 0.7.0 |
 | `tweaks.foldTransition` | Duet, the fold animation, and its `options` in `tweaks.json` | 0.6.8 |
+| `tweaks.standby2` | StandBy 2: clock looks, Now Playing, Up Next, notification glow and dots, and night mode on top of StandBy | 0.7.0 |
 | `island.messages` | Messages in the Dynamic Island | 0.7.x |
 | `focus.modes` | Switching Home Modes / Focus | 0.7.x |
 | `settings.pages` | Settings pages drawn from `settings.json` | 0.7.x |

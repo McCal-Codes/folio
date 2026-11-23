@@ -1,0 +1,32 @@
+{
+  "$schema": "https://folio.mccal.dev/schema/v1/manifest.schema.json",
+  "format": 1,
+  "id": "com.mccal.folio.standby-2",
+  "name": "StandBy 2",
+  "version": "1.0.0",
+  "author": {
+    "name": "Folio",
+    "url": "https://github.com/McCal-Codes/folio"
+  },
+  "minFolio": "0.7.0",
+  "section": "tweaks",
+  "kind": [
+    "tweakBundle"
+  ],
+  "permissions": [
+    "tweaks"
+  ],
+  "screens": [
+    "cover",
+    "inner"
+  ],
+  "icon": "assets/icons/standby-2.png",
+  "depiction": "depiction.json",
+  "license": "MIT",
+  "description": "Twelve clock looks, Now Playing, Up Next, notification colors and a night mode for StandBy.",
+  "requires": {
+    "features": [
+      "tweaks.standby2"
+    ]
+  }
+}

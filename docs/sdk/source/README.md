@@ -25,6 +25,7 @@ packages/<name>/
 | Afterglow | tweaks | `tweaks.tintMedia` |
 | Flipbook | tweaks | `tweaks.pageEffects` |
 | Duet | tweaks | `tweaks.foldTransition` |
+| StandBy 2 | tweaks | `tweaks.standby2` |
 | Performatively | apps | `externalApp`, from Google Play |
 | Classic, Dark, Tinted and Clear themes | themes | `theme` |
 

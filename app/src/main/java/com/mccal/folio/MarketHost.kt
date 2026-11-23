@@ -153,6 +153,7 @@ internal class MarketHost(private val launcher: MarketLauncher) : PackageHost {
         Capability.PAGE_EFFECTS,
         Capability.PAGE_EFFECT_CHANNELS,
         Capability.FOLD_TRANSITION,
+        Capability.STANDBY_2,
     )
 
     // Added from the Market or from Settings' Tweak Library: either way it's in installedTweaks.

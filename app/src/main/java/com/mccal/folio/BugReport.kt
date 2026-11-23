@@ -17,6 +17,11 @@ import kotlinx.coroutines.withContext
 internal object BugReport {
     const val NEW_ISSUE = "https://github.com/McCal-Codes/folio/issues/new"
 
+    /** Help page links: the feature and translation forms, and the open bugs. */
+    const val SUGGEST_FEATURE_URL = "$NEW_ISSUE?template=feature_request.yml"
+    const val HELP_TRANSLATE_URL = "$NEW_ISSUE?template=translation.yml"
+    const val KNOWN_ISSUES_URL = "https://github.com/McCal-Codes/folio/issues?q=is%3Aissue+is%3Aopen+label%3Abug"
+
     /** GitHub refuses a link of about 8,000 characters or more; the summary is cut to stay well under. */
     const val LINK_LIMIT = 7_000
 
