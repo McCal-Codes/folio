@@ -60,6 +60,10 @@ ANDROID_SERIAL=emulator-5554 ./gradlew :app:connectedDebugAndroidTest
 
 A phone kept only for testing needs `-Pfolio.allowPhone=true` as well.
 
+Sessions share one clone and one or two real phones. Claim a phone before you install on it or ask someone to fold it
+(`bash tools/device-claim.sh claim <serial>`), and set up your shell with `source tools/dev-env.sh`. The scripts, the
+optional pre-push check and what the foldable emulators cannot do are in [docs/dev-tooling.md](docs/dev-tooling.md).
+
 Preserve one-page-per-swipe behavior, native widget scrolling and long-press pickup, placements, widget bindings and
 Home-page retention. Keep access optional and explain it where it's used. Layouts follow screen size, not device
 checks. Tests should reproduce failures or protect meaningful behavior.
