@@ -968,13 +968,16 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         // a scope that went with it cancelled the report before it had been written.
                         val reportScope = rememberCoroutineScope()
                         TweakRow(Icons.Rounded.BugReport, FolioColors.Value.Red, stringResource(R.string.report_a_bug), "customization-report-bug") { askDiagnostics = true }
+                        var attachments by remember { mutableStateOf<List<android.net.Uri>>(emptyList()) }
                         if (askDiagnostics) {
-                            fun openForm() { runCatching { helpContext.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(BugReport.url(helpContext)))) } }
+                            // The form opens with a short summary already in it (and the Screen picked), built off the main thread.
+                            suspend fun openForm() { runCatching { helpContext.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(BugReport.urlWithDigest(helpContext)))) } }
                             AlertDialog(onDismissRequest = { askDiagnostics = false },
                                 title = { Text(stringResource(R.string.how_should_this_report_go)) },
-                                text = { Text(stringResource(R.string.email_needs_no_account)) },
+                                text = { Column { Text(stringResource(R.string.email_needs_no_account)); ReportAttach(attachments) { attachments = it } } },
                                 confirmButton = { TextButton(onClick = { askDiagnostics = false
-                                    reportScope.launch { Diagnostics.send(helpContext, email = true) } },
+                                    val picked = attachments; attachments = emptyList()
+                                    reportScope.launch { Diagnostics.send(helpContext, email = true, attachments = picked) } },
                                     modifier = Modifier.testTag("report-email")) { Text(stringResource(R.string.email_a_report)) } },
                                 dismissButton = { TextButton(onClick = { askDiagnostics = false
                                     // Copied off the main thread first, so the form opens with the details ready to paste.
@@ -2293,8 +2296,11 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
             CardAction(stringResource(R.string.clear), Modifier.fillMaxWidth(), destructive = true, onClick = { CrashLog.clear(context); reports = emptyList() })
         }
         val shareScope = rememberCoroutineScope()
+        var attachments by remember { mutableStateOf<List<android.net.Uri>>(emptyList()) }
+        ReportAttach(attachments) { attachments = it }
         CardAction(stringResource(R.string.share_diagnostics), onClick = {
-            shareScope.launch { Diagnostics.send(context, email = false) }
+            val picked = attachments; attachments = emptyList()
+            shareScope.launch { Diagnostics.send(context, email = false, attachments = picked) }
         }, modifier = Modifier.testTag("share-diagnostics"))
         // Copy is the other half of Share (#239): the report on the clipboard, to paste into a form, with the same text a shared file has.
         CardAction(stringResource(R.string.copy_diagnostics), onClick = {

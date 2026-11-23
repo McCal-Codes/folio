@@ -1250,6 +1250,11 @@
     <string name="make_a_stack">创建叠放</string>
     <string name="remove_stack">移除叠放</string>
     <string name="remove_widget_2">移除小组件</string>
+    <string name="widget_size_dimensions">%1$d × %2$d</string>
+    <string name="widget_size_extra_large">超大</string>
+    <string name="move_to_page">移到页面</string>
+    <string name="edit_stack">编辑叠放</string>
+    <string name="widget_page_full">该页面没有放置此小组件的空间</string>
     <string name="wallpaper_appearance_2">墙纸与外观</string>
     <string name="add_page">添加页面</string>
     <string name="remove_this_empty_page">移除此空白页面</string>
@@ -1286,6 +1291,10 @@
     <string name="folio_bug_report_1">Folio %1$s 错误报告</string>
     <string name="report_email_body">发生了什么？你原本期望发生什么？\n\n\n附件包含你的手机和屏幕设置、Folio 最近的事件以及它自己的日志，所以无需描述这些。</string>
     <string name="email_a_report">通过邮件发送报告</string>
+    <string name="attach_screenshots">附加截图</string>
+    <string name="screenshots_attached">已附加截图：%1$d</string>
+    <string name="remove_attached_screenshots">移除截图</string>
+    <string name="attach_screenshots_note">可选，最多 3 张，只会随“通过邮件发送报告”一起发送。请先检查其中是否有通知和姓名。</string>
     <string name="use_github_instead">改用 GitHub</string>
     <string name="how_should_this_report_go">你想如何发送？</string>
     <string name="email_needs_no_account">邮件无需账户：你的邮件 App 会打开，并附上包含详细信息的文件，你可以先阅读，在你发送之前不会发送任何内容。GitHub 会为你复制同样的详细信息，供你粘贴到表单中。</string>
@@ -1324,7 +1333,7 @@
     <string name="android_s_three_buttons_are_on_so_you_ll">Android 的三键导航已开启，所以你会看到两组按钮。Folio 的按钮栏位于其上方；在 Android 的显示设置中切换为手势导航，即可只保留这些按钮。</string>
     <string name="report_a_bug">报告错误</string>
     <string name="show_welcome_again">再次显示欢迎页</string>
-    <string name="report_a_bug_opens_github_in_your_browse">“报告错误”会在浏览器中打开 GitHub，并填好你的 Folio 版本和手机型号。在你提交之前不会发送任何内容。</string>
+    <string name="report_a_bug_opens_github_in_your_browse">“报告错误”会在浏览器中打开 GitHub，并填好你的 Folio 版本、手机型号和屏幕，以及 Folio 当时在做什么的简短摘要。在你提交之前不会发送任何内容。</string>
     <string name="for_sharing_your_setup_folio_shows_9_41">用于分享你的布置：Folio 会显示 9:41、满电量和满信号，并隐藏通知、音乐、信息、设备名称、日历日程和闹钟。Android 自带的状态栏和 App 不受影响。30 分钟后自动关闭。</string>
     <string name="if_folio_closes_unexpectedly_twice_right">如果 Folio 在启动后立即意外关闭两次，它会以安全模式启动，可选功能暂停。你的设置永远不会被更改。</string>
     <string name="features_inspired_by_ios_jailbreak_tweak">灵感来自 iOS 越狱插件的功能，为 Folio 重新制作。从插件库获取你想要的插件，它们就会出现在这里。</string>
@@ -2674,4 +2683,18 @@
     <string name="market_stat_works_on">适用于</string>
     <string name="market_cover_and_inner">外屏和内屏</string>
     <string name="market_stat_get_on">获取渠道</string>
+    <string name="page_overview">页面概览</string>
+    <string name="page_overview_hint">勾选页面即可在主屏幕上显示。按住并拖动页面可调整顺序。</string>
+    <string name="page_overview_shown">已显示</string>
+    <string name="page_overview_hidden">已隐藏</string>
+    <string name="page_overview_keep_one">至少保留一个显示的页面。</string>
+    <string name="page_overview_empty">空白页面</string>
+    <string name="move_page_earlier">将页面前移</string>
+    <string name="move_page_later">将页面后移</string>
+    <string name="page_moved_to_position">页面已移到第 %1$d 位，共 %2$d 页</string>
+    <string name="page_shown_on_home">第 %1$d 页已在主屏幕显示</string>
+    <string name="page_hidden_from_home">第 %1$d 页已从主屏幕隐藏</string>
+    <string name="show_hidden_pages_to_edit_home_screen">显示已隐藏的页面以编辑主屏幕</string>
+    <string name="show_hidden_pages_to_add_to_home_screen">显示已隐藏的页面以添加到主屏幕。</string>
+    <string name="home_editing_is_off_while_pages_are_hidden">页面隐藏时无法编辑主屏幕</string>
 </resources>
