@@ -82,7 +82,7 @@ internal fun launcherBackgroundIdentity(context: Context): String? {
     if (!launcherBackgroundEnabled(context)) return null
     return when (val choice = backgroundChoice(context)) {
         BackgroundChoice.None -> null
-        is BackgroundChoice.Art -> choice.save()
+        is BackgroundChoice.Art -> choice.save() + artTweaksIdentity(context, choice.id)
         BackgroundChoice.Photo -> launcherBackgroundPreferences(context).getString(BACKGROUND_ID, null)
             ?: "legacy-${launcherPhotoFile(context).lastModified()}"
     }
@@ -127,6 +127,8 @@ internal fun loadLauncherBackground(context: Context): Bitmap? {
  */
 private fun decodeBackground(context: Context, file: File): Bitmap? {
     val choice = backgroundChoice(context)
+    // A piece Folio drew, with colors the person changed: drawn from its recipe with those colors, not read from the file.
+    if (choice is BackgroundChoice.Art) tweakedArtBitmap(context, choice.id, TWEAKED_HOME_PX)?.let { return it }
     if (choice is BackgroundChoice.Art && BackgroundLibrary.isBuiltIn(choice.id)) {
         return runCatching {
             context.assets.open(BackgroundLibrary.assetPath(choice.id)).use(BitmapFactory::decodeStream)
@@ -197,6 +199,35 @@ class LauncherBackgroundController(
     private fun dropPreviewBitmap() { pendingArtPreviewBitmap = null }
 
     /**
+     * The color changes being tried on the staged piece, when it is one Folio drew (see WallpaperRecipe.kt). It starts as what
+     * is already saved for that piece, moves with the sliders in the preview, and is only written by Set. Cancel drops it.
+     */
+    internal var pendingTweaks by mutableStateOf(WallpaperTweaks.NONE)
+        private set
+    private var tweakJob: kotlinx.coroutines.Job? = null
+
+    /**
+     * A slider moved. Draws a quick copy at once so the picture follows the finger, then, once the slider has rested a moment,
+     * the full-screen copy, which fades in over it. Anything newer replaces both.
+     */
+    internal fun tweakPending(next: WallpaperTweaks) {
+        val art = pendingArt ?: return
+        if (!WallpaperRecipes.isCustomizable(art.id)) return
+        pendingTweaks = next
+        tweakJob?.cancel()
+        val metrics = activity.resources.displayMetrics
+        tweakJob = activity.lifecycleScope.launch {
+            val quick = withContext(Dispatchers.Default) { renderTweaked(art.id, next, TWEAKED_LIVE_PX) }
+            if (pendingArt != art || pendingTweaks != next) return@launch
+            pendingArtBitmap = quick
+            dropPreviewBitmap()
+            kotlinx.coroutines.delay(TWEAK_SETTLE_MS)
+            val sharp = withContext(Dispatchers.Default) { renderTweaked(art.id, next, maxOf(metrics.widthPixels, metrics.heightPixels)) }
+            if (pendingArt == art && pendingTweaks == next) pendingArtPreviewBitmap = sharp
+        }
+    }
+
+    /**
      * True for the moment after a Set, and only then: the page offers "Also set as phone wallpaper" once, behind
      * Android's own preview, because that action cannot be undone and Folio's can. Cleared by the next stage, cancel,
      * reset or offer taken.
@@ -209,7 +240,9 @@ class LauncherBackgroundController(
         // A photo mid-preview and a piece of art cannot both be the candidate.
         if (previewPending) cancelPreview()
         justSet = false
+        tweakJob?.cancel()
         pendingArt = BackgroundChoice.Art(id)
+        pendingTweaks = artTweaks(activity, id)
         pendingArtBitmap = null
         val wanted = pendingArt
         activity.lifecycleScope.launch {
@@ -229,6 +262,8 @@ class LauncherBackgroundController(
 
     fun setPendingArt() {
         val art = pendingArt ?: return
+        tweakJob?.cancel()
+        setArtTweaks(activity, art.id, pendingTweaks)
         setBackgroundChoice(activity, art)
         Diagnostics.backgroundSet(art)
         // Drop the decoded picture rather than decoding the new one here: whatever draws next asks for it, on its
@@ -260,6 +295,8 @@ class LauncherBackgroundController(
     }
 
     fun cancelPendingArt() {
+        tweakJob?.cancel()
+        pendingTweaks = WallpaperTweaks.NONE
         pendingArt = null
         pendingArtBitmap = null
         dropPreviewBitmap()
