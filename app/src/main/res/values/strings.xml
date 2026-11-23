@@ -2763,4 +2763,9 @@
     <string name="show_hidden_pages_to_edit_home_screen">Show hidden pages to edit Home Screen</string>
     <string name="show_hidden_pages_to_add_to_home_screen">Show hidden pages to add to Home Screen.</string>
     <string name="home_editing_is_off_while_pages_are_hidden">Home editing is off while pages are hidden</string>
+    <string name="help_tell_us">Tell Us</string>
+    <string name="help_look_around">Look Around</string>
+    <string name="help_translate">Help Translate</string>
+    <string name="known_issues">Known Issues</string>
+    <string name="release_notes">Release Notes</string>
 </resources>
