@@ -322,6 +322,15 @@
         "Long-press the page dots while icons wiggle. Hide a page, show it again, drag one to a new place, then tap Undo. With many pages, hold one near the bottom edge and check the grid scrolls and the page lands under your finger.",
         "On a fold: open the overview, fold and unfold the phone. It should stay open, and Home should come back on the page it was on. Tell us if it does not."
       ]
+    },
+    {
+      "id": "bug-report-form",
+      "title": "Report a Bug",
+      "where": "Settings > Help > Report a Bug",
+      "steps": [
+        "Choose Use GitHub Instead. The form should open with Screen already picked and a short summary in Diagnostics. Close it without submitting unless you mean to report something.",
+        "Choose Email a Report, attach a screenshot, and check the email has the screenshot and the report file."
+      ]
     }
   ]
 }

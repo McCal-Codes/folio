@@ -434,6 +434,14 @@ fun LauncherScreen(
         if (before == homeScreen || drag.active || widgetSession != null || resize.active) return@LaunchedEffect
         pageAfterScreenChange(pager.settledPage, homePages, homeMemory.page(homeScreen))?.let { pager.scrollToPage(it) }
     }
+    // A bug report says where Home is (screen, page, hidden pages, what each screen rested on, Focus). Read only when a report is made.
+    val homeStatusNow = rememberUpdatedState<() -> HomeStateInfo?> {
+        val real = model.state.value
+        HomeStateInfo(homeScreen, pager.currentPage, FocusPages.shown(real).size, real.layout.pageCount, real.hiddenPages,
+            homeMemory.cover.takeIf { it >= 0 }, homeMemory.inner.takeIf { it >= 0 },
+            focusOn = real.activeFocus != null, focusLimitsPages = FocusPages.lockingFocus(real) != null, profile = real.profile().name.lowercase())
+    }
+    DisposableEffect(Unit) { Diagnostics.homeStatus = { homeStatusNow.value() }; onDispose { Diagnostics.homeStatus = null } }
     LaunchedEffect(homePages, state.editRevision) {
         if (homePages != previousHomePages && !drag.active) {
             // Pin edits in the library keep the library selected; a completed drop stays on home.
