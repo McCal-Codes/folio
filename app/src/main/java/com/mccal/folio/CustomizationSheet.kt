@@ -369,7 +369,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     val staging = backgrounds.pendingArt != null || backgrounds.previewPending
                     // Gated for 0.7.0: staged art opens full screen with Cancel and Set at the bottom.
                     backgrounds.pendingArt?.takeIf { FeatureGate.WALLPAPER_PREVIEW.isOpen(wallpaperContext) }?.let { art ->
-                        WallpaperPreviewDialog(art.id, backgrounds.pendingArtBitmap, backgrounds.pendingArtPreviewBitmap, state, backgrounds::cancelPendingArt, backgrounds::setPendingArt)
+                        WallpaperPreviewDialog(art.id, backgrounds.pendingArtBitmap, backgrounds.pendingArtPreviewBitmap, state, backgrounds::cancelPendingArt, backgrounds::setPendingArt, backgrounds.pendingTweaks, backgrounds::tweakPending)
                     }
                     // A photo opens full screen too, to frame and blur. That screen belongs to Home (LauncherScreen), so it also opens
                     // without this page: from the Edit menu and from a shared photo.
@@ -962,6 +962,8 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                 CustomizationPage.HELP -> {
                     // Getting help lives here rather than as more rows in the main list (fewer choices there).
                     val helpContext = androidx.compose.ui.platform.LocalContext.current
+                    fun openHelpLink(url: String) { runCatching { helpContext.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))) } }
+                    SheetGroupLabel(stringResource(R.string.help_tell_us))
                     SheetGroup {
                         var askDiagnostics by remember { mutableStateOf(false) }
                         // Outside the dialog on purpose: closing the dialog is the first thing either button does, and
@@ -985,12 +987,23 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                                     modifier = Modifier.testTag("report-copy-diagnostics")) { Text(stringResource(R.string.use_github_instead)) } })
                         }
                         MenuDivider()
-                        TweakRow(Icons.Rounded.WavingHand, FolioColors.Value.Orange, stringResource(R.string.show_welcome_again), "customization-onboarding") { onClose(); onShowWelcome() }
+                        TweakRow(Icons.Rounded.Lightbulb, FolioColors.Value.Yellow, stringResource(R.string.suggest_a_feature), "customization-suggest-feature") { openHelpLink(BugReport.SUGGEST_FEATURE_URL) }
+                        MenuDivider()
+                        TweakRow(Icons.Rounded.Translate, FolioColors.Value.Blue, stringResource(R.string.help_translate), "customization-help-translate") { openHelpLink(BugReport.HELP_TRANSLATE_URL) }
+                    }
+                    SheetGroupLabel(stringResource(R.string.help_look_around))
+                    SheetGroup {
                         // The testers' checklist: only on a beta build and Folio Dev.
                         if (WhatToTest.available(SoftwareUpdate.installedVersion(helpContext), helpContext.packageName)) {
-                            MenuDivider()
                             TweakRow(Icons.Rounded.Checklist, FolioColors.Value.Green, stringResource(R.string.what_to_test), "customization-what-to-test") { onPage(CustomizationPage.WHAT_TO_TEST) }
+                            MenuDivider()
                         }
+                        TweakRow(Icons.Rounded.ErrorOutline, FolioColors.Value.Red, stringResource(R.string.known_issues), "customization-known-issues") { openHelpLink(BugReport.KNOWN_ISSUES_URL) }
+                        MenuDivider()
+                        TweakRow(Icons.Rounded.Article, FolioColors.Value.Purple, stringResource(R.string.release_notes), "customization-release-notes") { onClose(); onShowWhatsNew() }
+                    }
+                    SheetGroup {
+                        TweakRow(Icons.Rounded.WavingHand, FolioColors.Value.Orange, stringResource(R.string.show_welcome_again), "customization-onboarding") { onClose(); onShowWelcome() }
                     }
                     CardNote(stringResource(R.string.report_a_bug_opens_github_in_your_browse), Modifier.padding(horizontal = FolioSpace.LARGE.dp))
                     LauncherHelp(
@@ -1690,6 +1703,9 @@ internal val SettingsRows: List<Pair<Int, CustomizationPage>> = listOf(
     R.string.save_current_layout to CustomizationPage.BACKUP,
     R.string.email_the_developer to CustomizationPage.HELP,
     R.string.show_welcome_again to CustomizationPage.HELP,
+    R.string.help_translate to CustomizationPage.HELP,
+    R.string.known_issues to CustomizationPage.HELP,
+    R.string.release_notes to CustomizationPage.HELP,
     R.string.allow_do_not_disturb_access to CustomizationPage.FOCUS,
     R.string.allow_notification_access to CustomizationPage.ISLAND,
     R.string.put_the_island_back_at_the_camera to CustomizationPage.ISLAND,

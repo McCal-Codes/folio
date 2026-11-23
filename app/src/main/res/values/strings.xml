@@ -1199,6 +1199,7 @@
     <string name="get_it_on_1_s">Get it on: %1$s</string>
     <string name="on_this_phone_1_s">On this phone: %1$s</string>
     <string name="added_with_your_supporter_code">Added with your supporter code</string>
+    <string name="added_by_folio_for_keyd">Added by Folio, for Keyd</string>
     <string name="that_listing_has_no_app_to_download">That listing has no app to download.</string>
     <string name="folio_couldn_t_download_that_app">Folio couldn\'t download that app.</string>
     <string name="that_app_didn_t_match_what_its_source">That app didn\'t match what its source promised, so nothing was installed.</string>
@@ -1818,6 +1819,19 @@
     <string name="from_folio">From Folio</string>
     <string name="wallpaper_by_artist">%1$s by %2$s</string>
     <string name="wallpaper_preview">Wallpaper preview</string>
+    <string name="wallpaper_tweak_everything">Everything</string>
+    <string name="wallpaper_tweak_sky">Sky</string>
+    <string name="wallpaper_tweak_hills">Hills</string>
+    <string name="wallpaper_tweak_glow">Glow</string>
+    <string name="wallpaper_tweak_hue">Hue</string>
+    <string name="wallpaper_tweak_saturation">Saturation</string>
+    <string name="wallpaper_tweak_lightness">Lightness</string>
+    <string name="wallpaper_tweak_reset">Reset colors</string>
+    <string name="wallpaper_tweak_preset_teal">Teal</string>
+    <string name="wallpaper_tweak_preset_violet">Violet</string>
+    <string name="wallpaper_tweak_preset_rose">Rose</string>
+    <string name="wallpaper_tweak_preset_amber">Amber</string>
+    <string name="wallpaper_tweak_preset_slate">Slate</string>
     <string name="wallpapers_you_install_from_the_market">Wallpapers you install from the Market appear here, with the artist and the license they came with. Folio only shows art it can name.</string>
     <string name="a_picture_you_choose_in_folio_only_behind">A picture you choose in Folio, only behind Folio.</string>
     <string name="no_background_behind_home">No background behind Home.</string>
@@ -2763,4 +2777,9 @@
     <string name="show_hidden_pages_to_edit_home_screen">Show hidden pages to edit Home Screen</string>
     <string name="show_hidden_pages_to_add_to_home_screen">Show hidden pages to add to Home Screen.</string>
     <string name="home_editing_is_off_while_pages_are_hidden">Home editing is off while pages are hidden</string>
+    <string name="help_tell_us">Tell Us</string>
+    <string name="help_look_around">Look Around</string>
+    <string name="help_translate">Help Translate</string>
+    <string name="known_issues">Known Issues</string>
+    <string name="release_notes">Release Notes</string>
 </resources>

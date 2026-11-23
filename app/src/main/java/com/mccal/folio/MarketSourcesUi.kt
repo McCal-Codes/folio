@@ -117,6 +117,8 @@ private fun sourceDetail(status: SourceStatus): String = when {
     // A source nobody typed in says where it came from, or it looks like something that appeared on its own.
     status.source.kind == Source.Kind.SUPPORTER && status.snapshot == null ->
         stringResource(R.string.added_with_your_supporter_code)
+    status.source.kind == Source.Kind.RECOMMENDED && status.snapshot == null ->
+        stringResource(R.string.added_by_folio_for_keyd)
     status.snapshot != null -> pluralStringResource(R.plurals.n_packages, status.packages.size, status.packages.size)
     else -> stringResource(R.string.not_read_yet)
 }

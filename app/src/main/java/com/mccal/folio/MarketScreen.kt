@@ -1670,7 +1670,14 @@ private fun MarketPackagePage(
         blocks.forEach { block ->
             when (block) {
                 is DepictionBlock.Hero -> {
-                    MarketImage(session, source, block.image, Modifier.fillMaxWidth().height(160.dp))
+                    // A real capture is shown whole, at its own shape, never cropped. How tall it may be follows the pane
+                    // it is in: about half the width, between a small and a large limit, so the cover, a phone, a
+                    // half-open screen and the inner screen each get a picture sized for them. A shape that does not
+                    // fill the pane sits centered with room either side.
+                    BoxWithConstraints(Modifier.fillMaxWidth()) {
+                        val tallest = (maxWidth * 0.5f).coerceIn(140.dp, 340.dp)
+                        MarketImage(session, source, block.image, Modifier.fillMaxWidth().heightIn(min = 100.dp, max = tallest), fit = true)
+                    }
                     if (newest != null) WhatsNewLine(newest.version.text, newest.notes.english)
                 }
                 is DepictionBlock.Screenshots -> Row(
@@ -1891,27 +1898,33 @@ internal fun sheetForAppIcon(linkedPage: CustomizationPage?, currentPage: Custom
  * package from a source names a path on that source's host, which [MarketImages] fetches through Folio's own client.
  */
 @Composable
-private fun MarketImage(session: MarketSession, source: Source, path: String, modifier: Modifier, framed: Boolean = true) {
+private fun MarketImage(session: MarketSession, source: Source, path: String, modifier: Modifier, framed: Boolean = true, fit: Boolean = false) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val url = remember(source.url, path) { MarketImages.urlFor(source, path) }
     val bundled = remember(path, url) {
         if (url != null) null else MarketImages.bundled(session.source::asset, path)
     }
     // Framed on a package's page (rounded, with room below); a banner is clipped and colored by the card it fills.
-    Box(if (framed) modifier.padding(bottom = FolioSpace.COMPACT.dp).clip(RoundedCornerShape(FolioRadius.ROW.dp)).background(Color.White.copy(alpha = .06f)) else modifier) {
+    // [fit] shows the whole picture at its own shape, centered, and never crops it; the default fills the frame.
+    val scale = if (fit) androidx.compose.ui.layout.ContentScale.Fit else androidx.compose.ui.layout.ContentScale.Crop
+    val imageModifier = if (fit) Modifier.fillMaxWidth() else Modifier.fillMaxSize()
+    Box(
+        if (framed) modifier.padding(bottom = FolioSpace.COMPACT.dp).clip(RoundedCornerShape(FolioRadius.ROW.dp)).background(Color.White.copy(alpha = .06f)) else modifier,
+        contentAlignment = androidx.compose.ui.Alignment.Center,
+    ) {
         when {
             bundled != null -> androidx.compose.foundation.Image(
                 bitmap = bundled,
                 contentDescription = null, // the page's text says what it is; the picture repeats it
-                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
+                contentScale = scale,
+                modifier = imageModifier,
             )
             url != null -> coil3.compose.AsyncImage(
                 model = url,
                 imageLoader = MarketImages.loader(context),
                 contentDescription = null,
-                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
+                contentScale = scale,
+                modifier = imageModifier,
             )
         }
     }
