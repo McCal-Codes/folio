@@ -95,7 +95,7 @@ internal fun startQuickAction(context: android.content.Context, app: AppEntry, a
 @Composable
 internal fun AppContextMenu(
     app: AppEntry, onHome: Boolean, hidden: Boolean,
-    /** The Focus locking Home editing, if any: editing rows are replaced by a note. */
+    /** Why Home editing is locked (a Focus limiting pages, or hidden pages), if it is: editing rows are replaced by this note. */
     lockedBy: String? = null,
     onDismiss: () -> Unit, onMove: () -> Unit, onAddOrRemove: () -> Unit, onCreateFolder: () -> Unit, hasFolders: Boolean = false,
     onWidgets: (() -> Unit)?, onToggleHidden: () -> Unit, onInfo: () -> Unit, onRename: () -> Unit,
@@ -229,7 +229,7 @@ internal fun AppContextMenu(
                     else MenuDivider()
                 }
                 if (lockedBy != null) {
-                    Text(stringResource(R.string.home_editing_is_off_while_1_is_on, lockedBy), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp,
+                    Text(lockedBy, color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp,
                         modifier = Modifier.padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.MEDIUM.dp))
                     MenuDivider()
                 } else {

@@ -64,6 +64,7 @@ internal object WhatsNew {
             "wallpaper" in t -> Icons.Rounded.Wallpaper to FolioColors.Value.Cyan
             "discover" in t -> Icons.Rounded.Explore to FolioColors.Value.Teal
             "folder" in t -> Icons.Rounded.Folder to FolioColors.Value.Red
+            "page overview" in t -> Icons.Rounded.ViewModule to FolioColors.Value.Cyan
             "control center" in t -> Icons.Rounded.ToggleOn to FolioColors.Value.Blue
             "notification" in t -> Icons.Rounded.Notifications to FolioColors.Value.Red
             "widget" in t -> Icons.Rounded.Widgets to FolioColors.Value.Blue

@@ -1329,6 +1329,10 @@
     <string name="folio_bug_report_1">Folio %1$s 버그 보고서</string>
     <string name="report_email_body">어떤 일이 발생했고, 어떤 동작을 기대하셨나요?\n\n\n첨부 파일에 휴대전화 및 화면 설정, 최근 Folio 이벤트와 자체 로그가 포함되어 있으므로 해당 정보는 따로 적지 않아도 됩니다.</string>
     <string name="email_a_report">이메일로 보고</string>
+    <string name="attach_screenshots">스크린샷 첨부</string>
+    <string name="screenshots_attached">첨부된 스크린샷: %1$d</string>
+    <string name="remove_attached_screenshots">스크린샷 삭제</string>
+    <string name="attach_screenshots_note">선택 사항이며 최대 3장까지 가능하고, 이메일 보고에만 함께 전송됩니다. 알림이나 이름이 보이지 않는지 먼저 확인하세요.</string>
     <string name="use_github_instead">대신 GitHub 사용</string>
     <string name="how_should_this_report_go">어떤 방법으로 보내시겠어요?</string>
     <string name="email_needs_no_account">이메일 보고에는 별도의 계정 가입이 필요 없습니다. 메일 앱이 열리면 세부 정보가 파일로 첨부되어 먼저 읽어 볼 수 있으며, 직접 보내기 전까지는 전송되지 않습니다. GitHub를 선택하면 같은 정보를 복사하여 양식에 붙여넣을 수 있습니다.</string>
@@ -1367,7 +1371,7 @@
     <string name="android_s_three_buttons_are_on_so_you_ll">Android의 버튼 3개 탐색이 켜져 있어 두 종류의 버튼이 함께 표시됩니다. Folio 막대는 시스템 버튼 위에 표시됩니다. Folio 버튼만 사용하려면 Android 디스플레이 설정에서 제스처 탐색으로 전환하세요.</string>
     <string name="report_a_bug">버그 신고</string>
     <string name="show_welcome_again">시작 안내 다시 보기</string>
-    <string name="report_a_bug_opens_github_in_your_browse">버그 신고를 선택하면 Folio 버전과 휴대전화 정보가 입력된 GitHub 양식이 브라우저에서 열립니다. 직접 제출하기 전까지는 전송되지 않습니다.</string>
+    <string name="report_a_bug_opens_github_in_your_browse">버그 신고를 선택하면 Folio 버전, 휴대전화, 화면 정보와 Folio의 최근 동작 요약이 입력된 GitHub 양식이 브라우저에서 열립니다. 직접 제출하기 전까지는 전송되지 않습니다.</string>
     <string name="for_sharing_your_setup_folio_shows_9_41">설정 화면을 공유할 때 사용합니다. Folio에 9:41, 가득 찬 배터리 및 신호를 표시하고, 알림, 음악, 메시지, 기기 이름, 캘린더 일정 및 알람을 숨깁니다. Android 자체 상태 막대와 다른 앱은 변경하지 않습니다. 30분 후 자동으로 꺼집니다.</string>
     <string name="if_folio_closes_unexpectedly_twice_right">시작 직후 두 번 예기치 않게 종료되면 선택적 기능을 일시 중지한 안전 모드로 시작합니다. 설정은 변경되지 않습니다.</string>
     <string name="features_inspired_by_ios_jailbreak_tweak">iOS 탈옥 트윅에서 영감을 받아 Folio용으로 새로 구현한 기능입니다. 트윅 보관함에서 원하는 기능을 받으면 여기에 표시됩니다.</string>
@@ -2701,4 +2705,18 @@
     <string name="market_stat_works_on">지원 화면</string>
     <string name="market_cover_and_inner">커버 및 내부</string>
     <string name="market_stat_get_on">받을 곳</string>
+    <string name="page_overview">페이지 개요</string>
+    <string name="page_overview_hint">페이지를 선택하면 홈에 표시됩니다. 길게 누르고 드래그하여 페이지를 옮길 수 있습니다.</string>
+    <string name="page_overview_shown">표시됨</string>
+    <string name="page_overview_hidden">숨김</string>
+    <string name="page_overview_keep_one">페이지를 하나 이상 표시해야 합니다.</string>
+    <string name="page_overview_empty">빈 페이지</string>
+    <string name="move_page_earlier">페이지를 앞으로 이동</string>
+    <string name="move_page_later">페이지를 뒤로 이동</string>
+    <string name="page_moved_to_position">페이지를 %2$d개 중 %1$d번째로 이동했습니다</string>
+    <string name="page_shown_on_home">%1$d페이지를 홈에 표시했습니다</string>
+    <string name="page_hidden_from_home">%1$d페이지를 홈에서 숨겼습니다</string>
+    <string name="show_hidden_pages_to_edit_home_screen">홈 화면을 편집하려면 숨긴 페이지를 표시하세요</string>
+    <string name="show_hidden_pages_to_add_to_home_screen">홈 화면에 추가하려면 숨긴 페이지를 표시하세요.</string>
+    <string name="home_editing_is_off_while_pages_are_hidden">페이지를 숨기는 동안에는 홈 화면을 편집할 수 없습니다</string>
 </resources>
