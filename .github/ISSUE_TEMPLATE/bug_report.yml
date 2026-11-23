@@ -68,8 +68,8 @@ body:
     attributes:
       label: Diagnostics
       description: |
-        In Folio, Settings › Help › Report a Bug › **Copy Diagnostics**, then paste here (or use Settings › Advanced › Share Diagnostics).
-        It has your phone and screen settings, recent Folio events and Folio's own log. Check it before posting.
+        Folio fills in a short summary here (phone, screen, where Home was, recent events and the top of the latest crash). Keep it.
+        For the full file with Folio's own log, use Settings › Help › Report a Bug › **Email a Report** (no account needed), or **Copy Diagnostics** and paste it below the summary. Check it before posting.
       render: text
     validations:
       required: false
