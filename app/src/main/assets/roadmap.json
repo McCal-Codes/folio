@@ -912,7 +912,8 @@
           "color": "#0A84FF",
           "title": "Widget menu like iOS",
           "detail": "Hold a widget for a small menu beside it, like the one on app icons, instead of a large sheet.",
-          "status": "planned"
+          "status": "building",
+          "beta": true
         }
       ]
     },

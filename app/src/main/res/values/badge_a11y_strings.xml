@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- TalkBack name of an app icon that shows a badge dot instead of a number. %1$s is the app's name. -->
+    <string name="app_has_notifications">%1$s, has notifications</string>
+</resources>
