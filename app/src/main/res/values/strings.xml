@@ -1349,6 +1349,10 @@
     <string name="folio_bug_report_1">Folio %1$s bug report</string>
     <string name="report_email_body">What happened, and what did you expect instead?\n\n\nThe attached file has your phone and screen settings, Folio\'s recent events and its own log, so there\'s no need to describe those.</string>
     <string name="email_a_report">Email a Report</string>
+    <string name="attach_screenshots">Attach Screenshots</string>
+    <string name="screenshots_attached">Screenshots attached: %1$d</string>
+    <string name="remove_attached_screenshots">Remove Screenshots</string>
+    <string name="attach_screenshots_note">Optional, up to 3, and they go with Email a Report only. Check them for notifications and names first.</string>
     <string name="use_github_instead">Use GitHub Instead</string>
     <string name="how_should_this_report_go">How would you like to send it?</string>
     <string name="email_needs_no_account">Email needs no account: your mail app opens with the details attached as a file, so you can read it first, and nothing is sent until you send it. GitHub copies the same details for you to paste into the form.</string>
@@ -1388,7 +1392,7 @@
     <string name="android_s_three_buttons_are_on_so_you_ll">Android\'s three buttons are on, so you\'ll see both sets. Folio\'s bar sits above them; switch to gesture navigation in Android\'s Display settings to have only these.</string>
     <string name="report_a_bug">Report a Bug</string>
     <string name="show_welcome_again">Show Welcome Again</string>
-    <string name="report_a_bug_opens_github_in_your_browse">Report a Bug opens GitHub in your browser with your Folio version and phone filled in. Nothing is sent until you submit it.</string>
+    <string name="report_a_bug_opens_github_in_your_browse">Report a Bug opens GitHub in your browser with your Folio version, phone and screen filled in, and a short summary of what Folio was doing. Nothing is sent until you submit it.</string>
     <string name="for_sharing_your_setup_folio_shows_9_41">For sharing your setup: Folio shows 9:41 with full battery and signal, and hides notifications, music, messages, device names, calendar events and alarms. Android\'s own status bar and apps aren\'t changed. Turns off by itself after 30 minutes.</string>
     <string name="if_folio_closes_unexpectedly_twice_right">If Folio closes unexpectedly twice right after starting, it starts in Safe Mode with optional features paused. Your settings are never changed.</string>
     <string name="features_inspired_by_ios_jailbreak_tweak">Features inspired by iOS jailbreak tweaks, re-created for Folio. Get the ones you want from the Tweak Library; they show up here.</string>
