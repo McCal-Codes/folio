@@ -123,4 +123,18 @@ class CcTwoPaneTest {
         val placed = ccGallerySections(all).flatMap { it.items }
         assertEquals(all.map { it.id }.sorted(), placed.map { it.id }.sorted())
     }
+
+    @Test fun aPanelThatMustKeepMoreColumnsTakesMoreOfTheWindowOrThereIsNoSplit() {
+        // 672 dp has room for a 376 dp panel, but six columns at the touch size need more than that.
+        assertNotNull(ccTwoPaneSplit(672f))
+        assertNull(ccTwoPaneSplit(672f, panelMinDp = controlCenterMinPanelDp(6, 90f)))
+        assertNotNull(ccTwoPaneSplit(900f, panelMinDp = controlCenterMinPanelDp(6, 90f)))
+        // A hinge splits the same way: a panel before the crease that is too narrow for its columns is no split.
+        assertNull(ccTwoPaneSplit(900f, listOf(380f..380f), panelMinDp = controlCenterMinPanelDp(6, 90f)))
+    }
+
+    @Test fun theLeastPanelNeverGoesBelowTheFixedMinimum() {
+        assertEquals(ccTwoPaneSplit(900f)?.panelWidthDp, ccTwoPaneSplit(900f, panelMinDp = 10f)?.panelWidthDp)
+        assertNull(ccTwoPaneSplit(900f, listOf(300f..300f), panelMinDp = 10f))
+    }
 }

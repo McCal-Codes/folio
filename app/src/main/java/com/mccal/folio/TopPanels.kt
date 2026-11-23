@@ -1035,7 +1035,13 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
     // The editor on a wide window (FeatureGate.CC_TWO_PANE): the panel on the left and "Add a Control" as a list beside it (CcTwoPane.kt) instead of the floating card.
     val twoPaneGate = remember { FeatureGate.CC_TWO_PANE.isOpen(context) }
     val addFeed = remember { CcAddPaneFeed() }
-    CcTwoPaneHost(modifier, edit.active && twoPaneGate, addFeed) { twoPane, panelSize ->
+    // The panel keeps the columns it has outside the editor, so the pane must be wide enough for them at the touch size; if not, the editor stays one pane.
+    val keepColumnsMin = { containerDp: Float, heightDp: Float? ->
+        val cell = (size.cell + if (wide) 8.dp else 0.dp).value
+        val columns = controlCenterGrid(containerDp, heightDp, chosen.size, focusModes.isNotEmpty(), cell, FolioTouch.MIN.toFloat(), (FolioSpace.LARGE * 2).toFloat(), options.rail).columns
+        controlCenterMinPanelDp(columns, cell, FolioTouch.MIN.toFloat(), (FolioSpace.LARGE * 2).toFloat())
+    }
+    CcTwoPaneHost(modifier, edit.active && twoPaneGate, addFeed, keepColumnsMin) { twoPane, panelSize ->
     BoxWithConstraints(panelSize.testTag("control-center").semantics { isTraversalGroup = true; traversalIndex = 0f }
         .graphicsLayer { scaleX = fitNow; scaleY = fitNow; transformOrigin = androidx.compose.ui.graphics.TransformOrigin(.5f, 0f) }.onGloballyPositioned { panelBounds = it.boundsInWindow() }) {
         val sizeCell = size.cell + if (wide) 8.dp else 0.dp

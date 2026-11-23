@@ -97,4 +97,11 @@ class ControlCenterColumnsTest {
         assertEquals(4, controlCenterGrid(379f, 700f, 8, false, size, minColumns = 1).columns)
         assertEquals(6, controlCenterGrid(700f, 800f, 12, false, size, minColumns = 5).columns)
     }
+
+    @Test fun theLeastPanelForSixColumnsKeepsEveryCellAtTheTouchSize() {
+        val width = controlCenterMinPanelDp(6, 90f)
+        val grid = controlCenterGrid(width, null, 12, false, 90f, 48f, 32f, true, minColumns = 6)
+        assertEquals(6, grid.columns)
+        assertTrue("cells are ${grid.cellDp} dp", grid.cellDp >= 48f - .01f)
+    }
 }

@@ -260,6 +260,15 @@ internal fun controlCenterGrid(panelWidthDp: Float, heightDp: Float?, controls: 
 }
 
 /**
+ * The narrowest panel that holds [columns] columns at the touch size: the cells, their gaps, the side padding and the page strip (counted whether or not the
+ * panel is wide enough to put it at the edge, so the answer is never too small). The editor's two panes use it to keep the columns the panel has outside it.
+ */
+internal fun controlCenterMinPanelDp(columns: Int, sizeCellDp: Float, touchDp: Float = 48f, sidePaddingDp: Float = 32f): Float {
+    val gap = sizeCellDp * CC_GAP_RATIO
+    return columns * touchDp + gap * (columns - 1) + sidePaddingDp + touchDp + gap
+}
+
+/**
  * The saved layout. Settings from before the choice existed only had "clock beside notifications": on is Full screen (how it was),
  * off is Card (the narrower panel it gave). Anything unreadable, or nothing at all, is Full screen.
  */

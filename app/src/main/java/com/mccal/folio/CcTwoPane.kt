@@ -109,21 +109,23 @@ internal data class CcTwoPaneSplit(val panelWidthDp: Float, val paneStartDp: Flo
  *  - With a hinge inside: the panel is everything before the first one and the list the room after it (to the next hinge if there is one), up to
  *    [CC_TWO_PANE_LIST_MAX_DP]; both must reach their least width, or there is no split. Never a fixed share across a crease.
  *  - With none: the list takes [CC_TWO_PANE_LIST_SHARE] of the container between its least and most, and the panel the rest less the gap.
+ * The panel needs at least [panelMinDp] (never under [CC_TWO_PANE_PANEL_MIN_DP]); the caller raises it so the panel keeps the columns it has outside the editor.
  */
-internal fun ccTwoPaneSplit(containerDp: Float, hingesDp: List<ClosedFloatingPointRange<Float>> = emptyList(), classScale: Float = 1f): CcTwoPaneSplit? {
+internal fun ccTwoPaneSplit(containerDp: Float, hingesDp: List<ClosedFloatingPointRange<Float>> = emptyList(), classScale: Float = 1f, panelMinDp: Float = CC_TWO_PANE_PANEL_MIN_DP): CcTwoPaneSplit? {
+    @Suppress("NAME_SHADOWING") val panelMinDp = maxOf(panelMinDp, CC_TWO_PANE_PANEL_MIN_DP)
     if (containerDp * classScale < CC_TWO_PANE_MIN_WIDTH_DP) return null
     val inside = hingesDp.filter { it.start > 0f && it.endInclusive < containerDp }.sortedBy { it.start }
     if (inside.isEmpty()) {
         val list = (containerDp * CC_TWO_PANE_LIST_SHARE).coerceIn(CC_TWO_PANE_LIST_MIN_DP, CC_TWO_PANE_LIST_MAX_DP)
         val panel = containerDp - list - CC_TWO_PANE_GAP_DP
-        return if (panel >= CC_TWO_PANE_PANEL_MIN_DP) CcTwoPaneSplit(panel, panel + CC_TWO_PANE_GAP_DP, list, onHinge = false, containerDp = containerDp) else null
+        return if (panel >= panelMinDp) CcTwoPaneSplit(panel, panel + CC_TWO_PANE_GAP_DP, list, onHinge = false, containerDp = containerDp) else null
     }
     val crease = inside.first()
     val panel = crease.start - CC_TWO_PANE_HINGE_MARGIN_DP
     val start = crease.endInclusive + CC_TWO_PANE_HINGE_MARGIN_DP
     val room = (inside.getOrNull(1)?.start?.minus(CC_TWO_PANE_HINGE_MARGIN_DP) ?: containerDp) - start
     val list = minOf(room, CC_TWO_PANE_LIST_MAX_DP)
-    return if (panel >= CC_TWO_PANE_PANEL_MIN_DP && list >= CC_TWO_PANE_LIST_MIN_DP) CcTwoPaneSplit(panel, start, list, onHinge = true, containerDp = containerDp) else null
+    return if (panel >= panelMinDp && list >= CC_TWO_PANE_LIST_MIN_DP) CcTwoPaneSplit(panel, start, list, onHinge = true, containerDp = containerDp) else null
 }
 
 /**
@@ -157,7 +159,7 @@ internal class CcAddPaneFeed {
  * either way, so the panel keeps its state when the editor opens.
  */
 @Composable
-internal fun CcTwoPaneHost(modifier: Modifier, engaged: Boolean, feed: CcAddPaneFeed, content: @Composable BoxScope.(CcTwoPaneSplit?, Modifier) -> Unit) {
+internal fun CcTwoPaneHost(modifier: Modifier, engaged: Boolean, feed: CcAddPaneFeed, panelMinDp: (containerDp: Float, heightDp: Float?) -> Float = { _, _ -> CC_TWO_PANE_PANEL_MIN_DP }, content: @Composable BoxScope.(CcTwoPaneSplit?, Modifier) -> Unit) {
     val density = LocalDensity.current
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val classScale = LocalConfiguration.current.classScale
@@ -166,7 +168,8 @@ internal fun CcTwoPaneHost(modifier: Modifier, engaged: Boolean, feed: CcAddPane
     BoxWithConstraints(modifier.onGloballyPositioned { leftPx = it.positionInWindow().x }) {
         val split = if (engaged && maxWidth != Dp.Infinity) {
             val widthPx = with(density) { maxWidth.toPx() }
-            ccTwoPaneSplit(maxWidth.value, ccHingeSpansDp(hinge, leftPx, widthPx, rtl, density.density), classScale)
+            ccTwoPaneSplit(maxWidth.value, ccHingeSpansDp(hinge, leftPx, widthPx, rtl, density.density), classScale,
+                panelMinDp(maxWidth.value, if (maxHeight == Dp.Infinity) null else maxHeight.value))
         } else null
         // The panel's own size: its half when split; otherwise whatever the host was told to fill, since this box now stands where the panel's did.
         val panel = when {
