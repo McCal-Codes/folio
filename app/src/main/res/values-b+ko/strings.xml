@@ -2733,4 +2733,9 @@
     <string name="show_hidden_pages_to_edit_home_screen">홈 화면을 편집하려면 숨긴 페이지를 표시하세요</string>
     <string name="show_hidden_pages_to_add_to_home_screen">홈 화면에 추가하려면 숨긴 페이지를 표시하세요.</string>
     <string name="home_editing_is_off_while_pages_are_hidden">페이지를 숨기는 동안에는 홈 화면을 편집할 수 없습니다</string>
+    <string name="help_tell_us">알려 주세요</string>
+    <string name="help_look_around">둘러보기</string>
+    <string name="help_translate">번역 돕기</string>
+    <string name="known_issues">알려진 문제</string>
+    <string name="release_notes">릴리스 노트</string>
 </resources>

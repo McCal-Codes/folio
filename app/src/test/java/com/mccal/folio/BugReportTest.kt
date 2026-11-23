@@ -4,6 +4,15 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class BugReportTest {
+    @Test fun `help links are https and point at the Folio repo`() {
+        listOf(BugReport.SUGGEST_FEATURE_URL, BugReport.HELP_TRANSLATE_URL, BugReport.KNOWN_ISSUES_URL).forEach {
+            assertEquals(true, it.startsWith("https://github.com/McCal-Codes/folio/issues"))
+        }
+        assertEquals(true, BugReport.SUGGEST_FEATURE_URL.endsWith("template=feature_request.yml"))
+        assertEquals(true, BugReport.HELP_TRANSLATE_URL.endsWith("template=translation.yml"))
+        assertEquals(true, BugReport.KNOWN_ISSUES_URL.endsWith("label%3Abug"))
+    }
+
     @Test fun `fills the bug form with the version, phone and Android`() {
         assertEquals("https://github.com/McCal-Codes/folio/issues/new?template=bug_report.yml&version=0.4.0" +
             "&phone=samsung+SM-F971U&android=17+%28API+37%29", BugReport.url("0.4.0", "samsung", "SM-F971U", "17", 37))
