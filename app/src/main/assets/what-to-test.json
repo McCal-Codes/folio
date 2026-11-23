@@ -324,6 +324,15 @@
       ]
     },
     {
+      "id": "bug-report-form",
+      "title": "Report a Bug",
+      "where": "Settings > Help > Report a Bug",
+      "steps": [
+        "Choose Use GitHub Instead. The form should open with Screen already picked and a short summary in Diagnostics. Close it without submitting unless you mean to report something.",
+        "Choose Email a Report, attach a screenshot, and check the email has the screenshot and the report file."
+      ]
+    },
+    {
       "id": "cc-two-pane-editor",
       "title": "Control Center in two panes",
       "where": "Control Center > Edit, on the unfolded screen",
