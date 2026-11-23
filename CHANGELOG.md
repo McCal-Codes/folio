@@ -122,6 +122,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Control Center connectivity, as on the iPhone Duo:** holding the Wi-Fi block now opens two columns of glass tiles (Airplane Mode and Cellular Data over Wi-Fi and Bluetooth), each with its icon above its name and state, instead of a four-row list. Where there is room the top row is two slim pills, as on the Duo. It is about 60 dp shorter, so on a flip's cover screen the last row's state is no longer cut off. <!-- beta 5 -->
 
 ### Fixed
+- **Home stops flickering when the fold sensor misreads:** on a Fold whose hinge sensor kept reporting "folded" while the phone was open, Home kept blurring and dimming on its own and the screen kept waking. The first false reading still plays, and repeats are ignored for a while, longer each time; a real fold is never ignored. <!-- beta 5 -->
 - **Remove button off a widget's text:** while editing Home, the minus on a widget now hangs a little off its corner instead of covering the first letters of the widget's name. <!-- beta 5 -->
 - **Market tabs fit a short window:** on a flip's cover screen or a phone on its side, the Market's side rail no longer runs the Settings tab off its end or draws the selected highlight past it. All five tabs and their names fit. <!-- beta 5 -->
 - **Control Center keeps editing when a page goes away:** removing controls until the second page was no longer needed ended edit mode, so the next tap opened a control. Editing now stays on. <!-- beta 5 -->
