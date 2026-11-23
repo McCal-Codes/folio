@@ -319,7 +319,8 @@
       "title": "Page overview",
       "where": "Home > page dots, or the Edit menu",
       "steps": [
-        "Long-press the page dots while icons wiggle. Hide a page, show it again, drag one to a new place, then tap Undo. With many pages, hold one near the bottom edge and check the grid scrolls and the page lands under your finger."
+        "Long-press the page dots while icons wiggle. Hide a page, show it again, drag one to a new place, then tap Undo. With many pages, hold one near the bottom edge and check the grid scrolls and the page lands under your finger.",
+        "On a fold: open the overview, fold and unfold the phone. It should stay open, and Home should come back on the page it was on. Tell us if it does not."
       ]
     }
   ]
