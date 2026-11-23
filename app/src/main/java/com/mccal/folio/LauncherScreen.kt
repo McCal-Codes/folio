@@ -258,9 +258,17 @@ fun LauncherScreen(
     val focusLock = LocalFocusLock.current
     var lockNotice by remember { mutableIntStateOf(0) }
     LaunchedEffect(focusLock) { if (focusLock != null) homeEdit.stop() }
+    // The Page overview: every Home page as a small picture, to hide, show and move them. Asked for from the page dots (a second long
+    // press, once Home is jiggling), the Home menu, or an empty-space long press while hidden pages have locked editing.
+    var pageOverview by rememberSaveable { mutableStateOf(false) }
+    var pageOverviewRequests by remember { mutableIntStateOf(0) }
+    // The real page Home was on when the overview opened, kept on the same page as it moves; Done goes back to it.
+    var overviewReal by remember { mutableIntStateOf(0) }
     // Long-press on empty Home starts jiggle mode (iPhone); a second long-press opens the Home options.
     val onEmptyLongPress: (Int) -> Unit = { index ->
-        if (focusLock != null) { haptic.perform(FolioHaptic.Refuse); lockNotice++ }
+        // Pages the person hid lock editing, and the way to bring them back is the overview, so it opens instead of refusing.
+        if (focusLock != null && focusLock.mode == null) { haptic.perform(FolioHaptic.PickedUp); pageOverviewRequests++ }
+        else if (focusLock != null) { haptic.perform(FolioHaptic.Refuse); lockNotice++ }
         else if (homeEdit.active) overlays.emptyCell = index
         else { homeEdit.lastEmptyIndex = index; haptic.perform(FolioHaptic.PickedUp); homeEdit.start() }
     }
@@ -293,6 +301,16 @@ fun LauncherScreen(
     val pageCount = visibleHomePages + 1
     val nativePager = rememberPagerState(initialPage = savedPage.coerceIn(-firstHome, pageCount - 1) + firstHome, pageCount = { pageCount + firstHome })
     val pager = remember(nativePager, firstHome) { LauncherPager(nativePager, firstHome) }
+    // Opens the overview, unless a Focus is limiting the pages (turn it off first, like every other edit).
+    val openPageOverview: () -> Unit = {
+        if (focusLock?.mode != null) { haptic.perform(FolioHaptic.Refuse); lockNotice++ }
+        else {
+            val shown = focusLock?.shown ?: List(homePages) { it }
+            overviewReal = shown.getOrNull(pager.currentPage.coerceIn(0, maxOf(0, shown.size - 1))) ?: 0
+            homeEdit.stop(); overlays.emptyCell = null; pageOverview = true
+        }
+    }
+    LaunchedEffect(pageOverviewRequests) { if (pageOverviewRequests > 0) openPageOverview() }
     // firstHome can change after launch (the Google app's answer about Discover, or the Left of Home choice): keep the same logical page.
     val previousFirstHome = remember { intArrayOf(firstHome) }
     LaunchedEffect(firstHome) {
@@ -438,11 +456,11 @@ fun LauncherScreen(
         // An app can pause Home after the destination is visible but before its settle completes.
         // A Focus with its own Home page brings Home back there, like iOS Focus pages.
         val active = state.focusModes.firstOrNull { it.id == state.activeFocus }
-        val focusPage = focusLock?.let { FocusPages.openPage(active, it.realPages) } ?: FocusModes.homePage(active, homePages)
+        val focusPage = focusLock?.let { FocusPages.openPage(active, it.realPages, it.shown) } ?: FocusModes.homePage(active, homePages)
         // Something open on Home (a sheet, a menu, a folder, edit mode) is closed by this press and nothing more.
-        val somethingOpen = sheet.isNotEmpty() || homeEdit.active || widgetSession != null || resize.active || picker.packageName != null || overlays.anyOpen
+        val somethingOpen = sheet.isNotEmpty() || homeEdit.active || widgetSession != null || resize.active || picker.packageName != null || overlays.anyOpen || pageOverview
         val page = homePressPage(homeFromFront, somethingOpen, focusPage, pager.currentPage, homePages, lastHomePage)
-        drag.clear(); widgetSession = null; resize.stop(); sheet = ""; picker.packageName = null
+        drag.clear(); widgetSession = null; resize.stop(); sheet = ""; picker.packageName = null; pageOverview = false
         picker.exactTarget = false; widgetPlacementMessage = null; overlays.closeAll(); homeEdit.stop()
         focus.clearFocus(); keyboard?.hide()
         pager.animateScrollToPage(page)
@@ -453,7 +471,7 @@ fun LauncherScreen(
     // Turning on a Focus with a Home page goes straight there.
     LaunchedEffect(state.activeFocus) {
         val active = state.focusModes.firstOrNull { it.id == state.activeFocus }
-        (focusLock?.let { FocusPages.openPage(active, it.realPages) } ?: FocusModes.homePage(active, homePages))?.let { pager.animateScrollToPage(it) }
+        (focusLock?.let { FocusPages.openPage(active, it.realPages, it.shown) } ?: FocusModes.homePage(active, homePages))?.let { pager.animateScrollToPage(it) }
     }
     LaunchedEffect(settingsRequests) { if (settingsRequests > 0) {
         drag.clear(); widgetSession = null; resize.stop(); overlays.menu = null; homeEdit.stop()
@@ -1339,7 +1357,20 @@ fun LauncherScreen(
                                     else if (dotWorm) Box(Modifier.size(4.dp).background(dotInk.faint, CircleShape))
                                     else Box(Modifier.size(if (index == pager.currentPage) 6.dp else 4.dp).background(if (index == pager.currentPage) LocalHomeInk.current.primary else LocalHomeInk.current.faint, CircleShape))
                                 }
-                            } else Text("${minOf(pager.currentPage + 1, homePages)} / $homePages", color = dotInk.primary, fontSize = FolioType.GROUP_LABEL.sp)
+                            } else {
+                                // Seven pages or more show "3 / 8" instead of dots, with no slice to press: the counter opens the Page overview
+                                // on a tap (the way to find a page among many) and, like the dots, starts editing or opens it on a long press.
+                                val counterLabel = stringResource(R.string.page_overview)
+                                Box(Modifier.heightIn(min = FolioTouch.MIN.dp).padding(horizontal = FolioSpace.SMALL.dp)
+                                    .combinedClickable(role = Role.Button, onClickLabel = counterLabel, onClick = { haptic.perform(FolioHaptic.Step); openPageOverview() },
+                                        onLongClickLabel = counterLabel, onLongClick = {
+                                            haptic.perform(FolioHaptic.PickedUp)
+                                            if (homeEdit.active || focusLock != null) openPageOverview() else homeEdit.start()
+                                        })
+                                    .testTag("home-page-counter"), contentAlignment = Alignment.Center) {
+                                    Text("${minOf(pager.currentPage + 1, homePages)} / $homePages", color = dotInk.primary, fontSize = FolioType.GROUP_LABEL.sp)
+                                }
+                            }
                             }
                             // The taps live here, a slice per dot, the full height of the strip. Each slice keeps its
                             // own name, so TalkBack still reads and activates one page at a time.
@@ -1359,9 +1390,11 @@ fun LauncherScreen(
                                                     scope.launch { pager.animateScrollToPage(index) }
                                                 }
                                             },
+                                            onLongClickLabel = stringResource(R.string.page_overview),
                                             onLongClick = {
+                                                // Already jiggling, a long press here did nothing; now it opens the Page overview.
                                                 haptic.perform(FolioHaptic.PickedUp)
-                                                homeEdit.start()
+                                                if (homeEdit.active || focusLock != null) openPageOverview() else homeEdit.start()
                                             }
                                         )
                                         .semantics { contentDescription = dotLabel }.testTag("home-page-dot-$index"))
@@ -1664,7 +1697,7 @@ fun LauncherScreen(
                 }
             }
             // iOS-style notice when editing is locked by a Focus.
-            FocusLockNotice(lockNotice, focusLock?.mode, Modifier.align(Alignment.TopCenter))
+            FocusLockNotice(lockNotice, focusLock, Modifier.align(Alignment.TopCenter))
             if (showFirstRun) {
                 // Full-screen, iOS Setup Assistant style; Back steps back, Skip Setup or Get Started finishes.
                 ModalBottomSheet(onDismissRequest = onFinishFirstRun, modifier = Modifier.testTag("first-run-setup"), fullScreen = true) {
@@ -2182,7 +2215,7 @@ fun LauncherScreen(
             }} else null
             // iPhone-style menu next to the icon; "Edit Home Screen" starts jiggle mode for moving.
             AppContextMenu(app, onHome = pinned, hidden = app.id in state.hiddenApps,
-                lockedBy = focusLock?.mode?.name,
+                lockedBy = focusLock?.let { lock -> lock.mode?.let { stringResource(R.string.home_editing_is_off_while_1_is_on, it.name) } ?: stringResource(R.string.home_editing_is_off_while_pages_are_hidden) },
                 onDismiss = { overlays.menu = null }, onMove = { overlays.menu = null; haptic.perform(FolioHaptic.PickedUp); homeEdit.start() },
                 onAddOrRemove = { if (app.isShortcut) model.deleteShortcut(app) else model.setPinned(app.id, !pinned); overlays.menu = null },
                 onCreateFolder = { overlays.newFolder = app.id; overlays.menu = null }, hasFolders = state.folders.any { app.id !in it.appIds },
@@ -2241,10 +2274,47 @@ fun LauncherScreen(
                 onPhoto = { if (wallpaperFraming) launcherActivity.chooseWallpaperPhoto() else sheet = "settings:wallpaper" },
                 onLook = { customizeHome = true },
                 onCustomize = { sheet = "settings" },
+                onPageOverview = openPageOverview,
                 onAddPage = { val page = model.addPage(); if (page >= 0) scope.launch { pager.animateScrollToPage(page) } },
                 onRemovePage = if (homeCellPage(index) == homePages - 1 && homePages > 1 && state.layout.contentPageCount < homePages) {{
                     if (model.removeLastEmptyPage()) scope.launch { pager.animateScrollToPage(homePages - 2) }
                 }} else null)
+        }
+        if (pageOverview) {
+            val real by model.state.collectAsStateWithLifecycle()
+            // Moving or hiding pages renumbers them: the page each screen rested on, and the saved one, follow the page they were on.
+            fun pagesChanged(oldShown: List<Int>, order: List<Int>?) {
+                val newShown = FocusPages.shown(model.state.value)
+                fun follow(index: Int) = if (index < 0) index else HomePages.followShownIndex(index, oldShown, order, newShown)
+                savedPage = follow(savedPage); lastHomePage = follow(lastHomePage)
+                homeMemory = HomePageMemory(follow(homeMemory.cover), follow(homeMemory.inner))
+                if (order != null) overviewReal = HomePages.remapPage(overviewReal, order)
+            }
+            val finish: (Int?) -> Unit = { open ->
+                pageOverview = false
+                val shown = FocusPages.shown(model.state.value)
+                val goTo = open ?: overviewReal
+                val index = shown.indexOf(goTo).takeIf { it >= 0 } ?: shown.indices.minByOrNull { kotlin.math.abs(shown[it] - goTo) } ?: 0
+                scope.launch { pager.scrollToPage(index.coerceIn(0, maxOf(0, shown.size - 1))) }
+            }
+            PageOverview(layout = real.layout, hidden = real.hiddenPages, appRows = real.homeAppRows, currentPage = overviewReal,
+                canUndo = real.canUndoEdit,
+                onMove = { from, to ->
+                    val before = FocusPages.shown(model.state.value)
+                    model.movePage(from, to)?.let { order -> pagesChanged(before, order) }
+                },
+                onSetHidden = { page, hide ->
+                    val before = FocusPages.shown(model.state.value)
+                    model.setPageHidden(page, hide).also { if (it) pagesChanged(before, null) }
+                },
+                onUndo = {
+                    val before = FocusPages.shown(model.state.value)
+                    // An undone move sends the pages back, so the page Home is on goes with it.
+                    val order = model.undoPageOrder()
+                    if (model.undoEdit()) pagesChanged(before, order)
+                },
+                onOpen = { page -> finish(page) },
+                onDone = { finish(null) })
         }
         revealFolderPage?.let { page ->
             LaunchedEffect(page, homePages) { if (page < homePages) { pager.animateScrollToPage(page); revealFolderPage = null } }

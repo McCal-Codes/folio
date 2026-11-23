@@ -22,7 +22,8 @@ lock: the real state is `gh pr list` and `git worktree list`. Keep it honest rat
 
 | Branch | What it changes | Files it holds |
 |---|---|---|
-| beta4-cc-customize | Control Center and Home editing, Tips page, panel fold padding, crash reports (not pushed yet) | CHANGELOG.md, strings.xml (and values-b+ko, values-b+zh+Hans), app/build.gradle.kts, CustomizationSheet.kt, ControlCenterSettings.kt, FoldAvoidance.kt |
+| beta4-cc-customize | Control Center and Home editing, Tips page, panel fold padding, crash reports (PR 656) | CHANGELOG.md, strings.xml (and values-b+ko, values-b+zh+Hans), app/build.gradle.kts, CustomizationSheet.kt, ControlCenterSettings.kt, FoldAvoidance.kt |
+| page-overview | Page overview: hide, show and reorder Home pages (PR 656) | CHANGELOG.md, strings.xml (and values-b+ko, values-b+zh+Hans), what-to-test.json, LauncherModel.kt, LauncherScreen.kt (dots, Edit menu, one overlay), LauncherActionSheet.kt, Focus.kt, new HomePages.kt and PageOverview.kt |
 
 Dependabot's open bumps are left out: they touch only `gradle/libs` or `build.gradle.kts`, and
 [REL-27](standards/releases.md) says when to take them.
