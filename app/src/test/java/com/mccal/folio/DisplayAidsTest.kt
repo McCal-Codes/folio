@@ -11,8 +11,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Folio Dev's Display aids: Android's own show-taps, pointer-location and don't-keep-activities switches. What an app may
- * write depends on two grants, and getting that wrong would show a live switch that silently does nothing.
+ * Folio Dev's Display aids: Android's own developer switches. Only the ones an app may really write are live, because a live
+ * switch that silently does nothing is worse than a link to Android's own page.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -24,14 +24,18 @@ class DisplayAidsTest {
         assertEquals(listOf(false, false, true, true, true), DisplayAid.entries.map { it.global })
     }
 
-    @Test fun `system switches need Modify system settings, the global one needs the secure grant`() {
-        assertEquals(AidAccess.WRITABLE, aidAccess(DisplayAid.SHOW_TAPS, canWriteSystem = true, canWriteSecure = false))
-        assertEquals(AidAccess.ALLOW_MODIFY_SETTINGS, aidAccess(DisplayAid.POINTER_LOCATION, canWriteSystem = false, canWriteSecure = false))
-        assertEquals(AidAccess.NEEDS_SECURE_GRANT, aidAccess(DisplayAid.KEEP_ACTIVITIES, canWriteSystem = true, canWriteSecure = false))
+    @Test fun `Android keeps show taps, pointer location and don't keep activities to itself`() {
+        listOf(DisplayAid.SHOW_TAPS, DisplayAid.POINTER_LOCATION, DisplayAid.KEEP_ACTIVITIES).forEach {
+            assertEquals(AidAccess.ANDROID_ONLY, aidAccess(it, canWriteSecure = true))
+            assertEquals(AidAccess.ANDROID_ONLY, aidAccess(it, canWriteSecure = false))
+        }
     }
 
-    @Test fun `the secure grant unlocks every switch`() {
-        DisplayAid.entries.forEach { assertEquals(AidAccess.WRITABLE, aidAccess(it, canWriteSystem = false, canWriteSecure = true)) }
+    @Test fun `stay awake and force resizable need the secure grant and are flipped in place with it`() {
+        listOf(DisplayAid.STAY_AWAKE, DisplayAid.FORCE_RESIZABLE).forEach {
+            assertEquals(AidAccess.NEEDS_SECURE_GRANT, aidAccess(it, canWriteSecure = false))
+            assertEquals(AidAccess.WRITABLE, aidAccess(it, canWriteSecure = true))
+        }
     }
 
     @Test fun `the grant command names the package it was asked for`() {

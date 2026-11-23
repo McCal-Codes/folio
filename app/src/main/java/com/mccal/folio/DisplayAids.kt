@@ -3,7 +3,6 @@ package com.mccal.folio
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.provider.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -16,28 +15,28 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 
 /**
- * Android's own developer switches that make a screenshot or a fold easier to read, and that an app is allowed to flip:
- * [SHOW_TAPS] and [POINTER_LOCATION] live in Settings.System (Modify system settings); [KEEP_ACTIVITIES], [STAY_AWAKE] and
- * [FORCE_RESIZABLE] in Settings.Global (the WRITE_SECURE_SETTINGS grant). Stay awake is a bitmask: 7 is AC, USB and wireless. Layout bounds, Force RTL and Smallest width are system properties or
- * need Android's own page, so Folio only links there. None of these flash or strobe.
+ * Android's own developer switches that make a screenshot or a fold easier to read. [STAY_AWAKE] and [FORCE_RESIZABLE] live in
+ * Settings.Global, so the WRITE_SECURE_SETTINGS grant lets Folio flip them. Stay awake is a bitmask: 7 is AC, USB and wireless.
+ * [SHOW_TAPS] and [POINTER_LOCATION] are private System settings that Android refuses to let an app write, and [KEEP_ACTIVITIES]
+ * also needs the activity manager told (its setting alone does nothing), so Folio shows where those stand and sends you to
+ * Android's Developer options to change them, as it does for Layout bounds, Force RTL and Smallest width. None of these flash or strobe.
  */
-internal enum class DisplayAid(val heading: String, val note: String, val key: String, val global: Boolean, val onValue: Int = 1) {
-    SHOW_TAPS("Show taps", "A dot where each touch lands, so a screenshot shows what was pressed.", "show_touches", false), // english-only
-    POINTER_LOCATION("Pointer location", "A bar of touch numbers along the top edge.", "pointer_location", false), // english-only
-    KEEP_ACTIVITIES("Don't keep activities", "Android destroys Folio each time you leave it, to test coming back after a fold.", "always_finish_activities", true), // english-only
+internal enum class DisplayAid(val heading: String, val note: String, val key: String, val global: Boolean, val onValue: Int = 1, val viaAndroid: Boolean = false) {
+    SHOW_TAPS("Show taps", "A dot where each touch lands, so a screenshot shows what was pressed.", "show_touches", false, viaAndroid = true), // english-only
+    POINTER_LOCATION("Pointer location", "A bar of touch numbers along the top edge.", "pointer_location", false, viaAndroid = true), // english-only
+    KEEP_ACTIVITIES("Don't keep activities", "Android destroys Folio each time you leave it, to test coming back after a fold.", "always_finish_activities", true, viaAndroid = true), // english-only
     STAY_AWAKE("Stay awake while charging", "The screen stays lit while the phone is plugged in or on a charger. Turn it off when you finish.", "stay_on_while_plugged_in", true, onValue = 7), // english-only
     FORCE_RESIZABLE("Force activities to be resizable", "Apps that refuse to resize follow a fold or flip window. Android may need a restart before it takes effect.", "force_resizable_activities", true), // english-only
 }
 
 /** What Folio can do about a switch right now. */
-internal enum class AidAccess { WRITABLE, ALLOW_MODIFY_SETTINGS, NEEDS_SECURE_GRANT }
+internal enum class AidAccess { WRITABLE, NEEDS_SECURE_GRANT, ANDROID_ONLY }
 
-/** A secure grant also covers Settings.System, so it unlocks every switch; Modify system settings covers only the System ones. */
-internal fun aidAccess(aid: DisplayAid, canWriteSystem: Boolean, canWriteSecure: Boolean): AidAccess = when {
+/** The switches Android keeps to itself are read-only here; the others need the secure grant. */
+internal fun aidAccess(aid: DisplayAid, canWriteSecure: Boolean): AidAccess = when {
+    aid.viaAndroid -> AidAccess.ANDROID_ONLY
     canWriteSecure -> AidAccess.WRITABLE
-    aid.global -> AidAccess.NEEDS_SECURE_GRANT
-    canWriteSystem -> AidAccess.WRITABLE
-    else -> AidAccess.ALLOW_MODIFY_SETTINGS
+    else -> AidAccess.NEEDS_SECURE_GRANT
 }
 
 /** The one command, run once from a computer, that lets Folio Dev change the protected switch. */
@@ -54,15 +53,15 @@ internal object DisplayAids {
         if (aid.global) Settings.Global.putInt(context.contentResolver, aid.key, value) else Settings.System.putInt(context.contentResolver, aid.key, value)
     }.getOrDefault(false)
 
-    fun access(context: Context, aid: DisplayAid): AidAccess = aidAccess(aid, Settings.System.canWrite(context),
+    fun access(context: Context, aid: DisplayAid): AidAccess = aidAccess(aid,
         context.checkSelfPermission(android.Manifest.permission.WRITE_SECURE_SETTINGS) == PackageManager.PERMISSION_GRANTED)
 }
 
 private object DisplayAidsText {
     const val GROUP = "Display aids" // english-only
-    const val ALLOW = "Allow Modify system settings" // english-only
     const val OPEN_ANDROID = "Open Android Developer options" // english-only
-    const val OTHERS = "Layout bounds, Force RTL and Smallest width stay in Android's own page: an app cannot change them." // english-only
+    const val OTHERS = "Show taps, Pointer location, Don't keep activities, Layout bounds, Force RTL and Smallest width are changed in Android's own page: an app cannot change them." // english-only
+    const val IN_ANDROID = "Change it in Android Developer options." // english-only
     fun grant(command: String) = "Needs one grant, run once from a computer: $command" // english-only
 }
 
@@ -85,9 +84,7 @@ internal fun DisplayAidsCard() {
             SettingsSwitch(aid.heading, on, { DisplayAids.set(context, aid, it); tick++ }, "display-aid-${aid.key}", enabled = access == AidAccess.WRITABLE)
             when (access) {
                 AidAccess.WRITABLE -> CardNote(aid.note)
-                AidAccess.ALLOW_MODIFY_SETTINGS -> IosActionRow(DisplayAidsText.ALLOW, "display-aid-allow-${aid.key}") {
-                    runCatching { context.startActivity(Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:${context.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-                }
+                AidAccess.ANDROID_ONLY -> CardNote("${aid.note} ${DisplayAidsText.IN_ANDROID}")
                 AidAccess.NEEDS_SECURE_GRANT -> CardNote(DisplayAidsText.grant(secureGrantCommand(context.packageName)))
             }
         }
