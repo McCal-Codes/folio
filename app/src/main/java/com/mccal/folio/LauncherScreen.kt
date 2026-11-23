@@ -239,6 +239,10 @@ fun LauncherScreen(
         interrupted?.let { IslandEvents.notice(recoveryContext, recoveryContext.getString(R.string.market_install_put_back, it.name)) }
         pulled.forEach { IslandEvents.notice(recoveryContext, recoveryContext.getString(R.string.text_1_s_was_pulled_so_it_s_off, it.name)) }
     }
+    // Keyd's source, offered once to anyone with the Market open. Apart from recovery above so Home never waits on the network.
+    LaunchedEffect(marketSession) {
+        if (MarketAccess.isOpen(recoveryContext)) withContext(Dispatchers.IO) { MarketAccess.offerKeydSource(marketSession.sources, marketSession.prefs) }
+    }
     DisposableEffect(sheet == "widgets") {
         val active = sheet == "widgets"
         if (active) LiveDiscover.setExternalResultPending(launcherActivity, "main", "widget-picker", true)
