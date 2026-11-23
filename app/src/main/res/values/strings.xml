@@ -2745,4 +2745,18 @@
     <string name="market_stat_works_on">Works on</string>
     <string name="market_cover_and_inner">Cover and inner</string>
     <string name="market_stat_get_on">Get it on</string>
+    <string name="page_overview">Page overview</string>
+    <string name="page_overview_hint">Tick a page to show it on Home. Hold and drag a page to move it.</string>
+    <string name="page_overview_shown">Shown</string>
+    <string name="page_overview_hidden">Hidden</string>
+    <string name="page_overview_keep_one">Keep at least one page showing.</string>
+    <string name="page_overview_empty">Empty page</string>
+    <string name="move_page_earlier">Move page earlier</string>
+    <string name="move_page_later">Move page later</string>
+    <string name="page_moved_to_position">Page moved to position %1$d of %2$d</string>
+    <string name="page_shown_on_home">Page %1$d shown on Home</string>
+    <string name="page_hidden_from_home">Page %1$d hidden from Home</string>
+    <string name="show_hidden_pages_to_edit_home_screen">Show hidden pages to edit Home Screen</string>
+    <string name="show_hidden_pages_to_add_to_home_screen">Show hidden pages to add to Home Screen.</string>
+    <string name="home_editing_is_off_while_pages_are_hidden">Home editing is off while pages are hidden</string>
 </resources>

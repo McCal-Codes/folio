@@ -61,3 +61,13 @@ internal data class BadgeTally(val count: Int, val exact: Boolean) {
 
 /** The style an icon's badge is drawn in: a dot when [dot] says the number is not reliable, whatever the setting. */
 internal fun badgeShape(style: BadgeStyle, dot: Boolean) = if (dot && style == BadgeStyle.COUNT) BadgeStyle.DOT else style
+
+/** How TalkBack reads an icon's badge: the number, "has notifications" for a dot, or nothing (A11Y: the drawn badge is not read on its own). */
+internal enum class BadgeSpeech { NONE, COUNT, DOT }
+
+/** [style] is the shape actually drawn ([badgeShape]), so a number Folio hides or cannot trust is not spoken either. */
+internal fun badgeSpeech(count: Int, style: BadgeStyle) = when {
+    count <= 0 || style == BadgeStyle.OFF -> BadgeSpeech.NONE
+    style == BadgeStyle.COUNT -> BadgeSpeech.COUNT
+    else -> BadgeSpeech.DOT
+}
