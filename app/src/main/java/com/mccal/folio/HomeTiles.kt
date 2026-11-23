@@ -383,7 +383,16 @@ internal fun AppTile(app: AppEntry, size: Float, labels: Boolean, modifier: Modi
         plain = Modifier.iconSwipes(openPanel?.let { { it(app) } }, stack?.let { { it(app) } })
             .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = tap))
     val a11yActions = gestures.customActions + rememberPanelActions(app, openPanel)
-    Column(modifier.fillMaxWidth().heightIn(min = 48.dp).semantics(mergeDescendants = true) { contentDescription = app.label }
+    // The drawn badge is not read on its own, so its count joins the icon's name: "Messages, 5 notifications" (or "has notifications" for a dot).
+    val badgeLook = LocalIconLook.current
+    val badgeKey = BadgeKey.of(app)
+    val badgeCount = if (badgeLook.badges == BadgeStyle.OFF || app.iconFrom != null) 0 else LocalBadgeCounts.current[badgeKey] ?: 0
+    val spokenLabel = when (badgeSpeech(badgeCount, badgeShape(badgeLook.badges, badgeKey in LocalBadgeDots.current))) {
+        BadgeSpeech.COUNT -> pluralStringResource(R.plurals.folder_unread, badgeCount, app.label, badgeCount)
+        BadgeSpeech.DOT -> stringResource(R.string.app_has_notifications, app.label)
+        BadgeSpeech.NONE -> app.label
+    }
+    Column(modifier.fillMaxWidth().heightIn(min = 48.dp).semantics(mergeDescendants = true) { contentDescription = spokenLabel }
         .then(gestures.modifier)
         .semantics {
             onLongClick(appOptionsLabel) { onLongClick(); true }

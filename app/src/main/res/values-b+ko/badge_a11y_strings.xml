@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_has_notifications">%1$s, 알림 있음</string>
+</resources>
