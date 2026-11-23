@@ -369,7 +369,7 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                     val staging = backgrounds.pendingArt != null || backgrounds.previewPending
                     // Gated for 0.7.0: staged art opens full screen with Cancel and Set at the bottom.
                     backgrounds.pendingArt?.takeIf { FeatureGate.WALLPAPER_PREVIEW.isOpen(wallpaperContext) }?.let { art ->
-                        WallpaperPreviewDialog(art.id, backgrounds.pendingArtBitmap, backgrounds.pendingArtPreviewBitmap, backgrounds::cancelPendingArt, backgrounds::setPendingArt)
+                        WallpaperPreviewDialog(art.id, backgrounds.pendingArtBitmap, backgrounds.pendingArtPreviewBitmap, state, backgrounds::cancelPendingArt, backgrounds::setPendingArt, backgrounds.pendingTweaks, backgrounds::tweakPending)
                     }
                     // A photo opens full screen too, to frame and blur. That screen belongs to Home (LauncherScreen), so it also opens
                     // without this page: from the Edit menu and from a shared photo.
@@ -968,13 +968,16 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         // a scope that went with it cancelled the report before it had been written.
                         val reportScope = rememberCoroutineScope()
                         TweakRow(Icons.Rounded.BugReport, FolioColors.Value.Red, stringResource(R.string.report_a_bug), "customization-report-bug") { askDiagnostics = true }
+                        var attachments by remember { mutableStateOf<List<android.net.Uri>>(emptyList()) }
                         if (askDiagnostics) {
-                            fun openForm() { runCatching { helpContext.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(BugReport.url(helpContext)))) } }
+                            // The form opens with a short summary already in it (and the Screen picked), built off the main thread.
+                            suspend fun openForm() { runCatching { helpContext.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(BugReport.urlWithDigest(helpContext)))) } }
                             AlertDialog(onDismissRequest = { askDiagnostics = false },
                                 title = { Text(stringResource(R.string.how_should_this_report_go)) },
-                                text = { Text(stringResource(R.string.email_needs_no_account)) },
+                                text = { Column { Text(stringResource(R.string.email_needs_no_account)); ReportAttach(attachments) { attachments = it } } },
                                 confirmButton = { TextButton(onClick = { askDiagnostics = false
-                                    reportScope.launch { Diagnostics.send(helpContext, email = true) } },
+                                    val picked = attachments; attachments = emptyList()
+                                    reportScope.launch { Diagnostics.send(helpContext, email = true, attachments = picked) } },
                                     modifier = Modifier.testTag("report-email")) { Text(stringResource(R.string.email_a_report)) } },
                                 dismissButton = { TextButton(onClick = { askDiagnostics = false
                                     // Copied off the main thread first, so the form opens with the details ready to paste.
@@ -2293,8 +2296,11 @@ private fun riskLabel(risk: OperationRisk) = when (risk) {
             CardAction(stringResource(R.string.clear), Modifier.fillMaxWidth(), destructive = true, onClick = { CrashLog.clear(context); reports = emptyList() })
         }
         val shareScope = rememberCoroutineScope()
+        var attachments by remember { mutableStateOf<List<android.net.Uri>>(emptyList()) }
+        ReportAttach(attachments) { attachments = it }
         CardAction(stringResource(R.string.share_diagnostics), onClick = {
-            shareScope.launch { Diagnostics.send(context, email = false) }
+            val picked = attachments; attachments = emptyList()
+            shareScope.launch { Diagnostics.send(context, email = false, attachments = picked) }
         }, modifier = Modifier.testTag("share-diagnostics"))
         // Copy is the other half of Share (#239): the report on the clipboard, to paste into a form, with the same text a shared file has.
         CardAction(stringResource(R.string.copy_diagnostics), onClick = {
@@ -2374,7 +2380,9 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
     /** The cover's layout by default; the inner screen's for an unfolded preview. */
     preset: LayoutPreset = state.compact,
     /** Which Home page to draw: the one Home is on (LocalPreviewPage) unless a caller pins one. */
-    page: Int = LocalPreviewPage.current) {
+    page: Int = LocalPreviewPage.current,
+    /** Off when the caller draws the picture itself (the full-screen wallpaper preview), so only Home's own parts are drawn. */
+    background: Boolean = true) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val backgroundRevision = LauncherBackgroundCache.revision.intValue
     val committedBitmap = remember(backgroundRevision) { cachedLauncherBackground(context) }
@@ -2411,6 +2419,7 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
             .clip(RoundedCornerShape(if (framed) corner else 0.dp))
             .testTag("customization-home-preview").clearedDescription(R.string.preview_of_home), contentAlignment = Alignment.Center) {
             Box(Modifier.requiredSize(refW.dp, refH.dp).graphicsLayer { scaleX = scale; scaleY = scale }) {
+                if (background) {
                 if (state.systemWallpaper) Box(Modifier.matchParentSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(
                     androidx.compose.ui.graphics.Color(tone.primary ?: 0xFF5A6B78.toInt()), androidx.compose.ui.graphics.Color(tone.secondary ?: tone.primary ?: 0xFF2E3A42.toInt())))))
                 else {
@@ -2422,6 +2431,7 @@ internal val LocalDeviceStatus = androidx.compose.runtime.compositionLocalOf { D
                 // Drawn over the background rather than inside it, because the preview lays the chosen photo over the
                 // background; on Home the same scrim is baked into the background's cached layer.
                 HomeScrim.of(state.homeScrim, ink.dark, previewDim).let { if (it.draws) Box(Modifier.matchParentSize().homeScrim(it)) }
+                }
                 CompositionLocalProvider(LocalHomeInk provides ink, LocalDuoPalette provides basePalette.copy(glass = glass), LocalHomeIconSize provides geometry.iconSize) {
                     Box(Modifier.offset(x = (if (left) refW - 16f - geometry.gridWidth else 16f).dp, y = geometry.contentTop.dp).width(geometry.gridWidth.dp).height((cells.height(shownRows)).dp)) {
                         placements.forEach { w ->

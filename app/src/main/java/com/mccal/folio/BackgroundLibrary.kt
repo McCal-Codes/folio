@@ -208,7 +208,8 @@ internal object BackgroundLibrary {
      * Two woodblock prints, both by an artist who died in 1858, both from a library that publishes its scans with no
      * restriction, and six abstract photographs from Unsplash under the Unsplash License (free to use, credit
      * appreciated, and the reason the set is kept small: the license does not allow compiling Unsplash images into
-     * a competing service). They are stored under `assets/wallpapers` rather than `res/`, so no density qualifier applies to
+     * a competing service), and six minimal pieces drawn for Folio itself (one of them the fresh-install default, [DEFAULT_ID]), so they carry the project's own license
+     * and the set can grow without leaning on a third party. They are stored under `assets/wallpapers` rather than `res/`, so no density qualifier applies to
      * them and the file is the same one on every phone, and they are cropped off their paper mounts and sized to
      * 2448 px wide, which is the widest window Folio runs in. That width is the point: a center crop never has to
      * scale them up.
@@ -224,7 +225,28 @@ internal object BackgroundLibrary {
      */
     fun builtIn(): List<Artwork> = BUILT_IN
 
+    /** The wallpaper a fresh install starts with: Folio's own, in its teal, so a first Home is Folio's and not a bare grey surface. */
+    const val DEFAULT_ID = "moon-hills"
+
     private val BUILT_IN = listOf(
+        Artwork(
+            id = DEFAULT_ID,
+            title = "Moon Hills", // english-only
+            artist = "Folio", // english-only
+            license = "MIT License", // english-only
+            detail = "2026. Made for Folio, in Folio Teal.", // english-only
+            source = "https://github.com/McCal-Codes/folio",
+            builtIn = true,
+        ),
+        Artwork(
+            id = "ember-hills",
+            title = "Ember Hills", // english-only
+            artist = "Folio", // english-only
+            license = "MIT License", // english-only
+            detail = "2026. Made for Folio.", // english-only
+            source = "https://github.com/McCal-Codes/folio",
+            builtIn = true,
+        ),
         Artwork(
             id = "night-view-of-saruwaka-machi",
             title = "Night View of Saruwaka-machi", // english-only
@@ -295,6 +317,42 @@ internal object BackgroundLibrary {
             license = "Unsplash License", // english-only
             detail = "2025. Unsplash.", // english-only
             source = "https://unsplash.com/photos/MNsXlmQ3r1g",
+            builtIn = true,
+        ),
+        Artwork(
+            id = "sage-dunes",
+            title = "Sage Dunes", // english-only
+            artist = "Folio", // english-only
+            license = "MIT License", // english-only
+            detail = "2026. Made for Folio.", // english-only
+            source = "https://github.com/McCal-Codes/folio",
+            builtIn = true,
+        ),
+        Artwork(
+            id = "ember-dusk",
+            title = "Ember Dusk", // english-only
+            artist = "Folio", // english-only
+            license = "MIT License", // english-only
+            detail = "2026. Made for Folio.", // english-only
+            source = "https://github.com/McCal-Codes/folio",
+            builtIn = true,
+        ),
+        Artwork(
+            id = "sand-grain",
+            title = "Sand Grain", // english-only
+            artist = "Folio", // english-only
+            license = "MIT License", // english-only
+            detail = "2026. Made for Folio.", // english-only
+            source = "https://github.com/McCal-Codes/folio",
+            builtIn = true,
+        ),
+        Artwork(
+            id = "teal-horizon",
+            title = "Teal Horizon", // english-only
+            artist = "Folio", // english-only
+            license = "MIT License", // english-only
+            detail = "2026. Made for Folio.", // english-only
+            source = "https://github.com/McCal-Codes/folio",
             builtIn = true,
         ),
     )
@@ -467,7 +525,13 @@ internal fun backgroundChoice(context: Context): BackgroundChoice {
     val saved = prefs.getString(BACKGROUND_CHOICE, null)
     if (saved == null) {
         val hadPhoto = prefs.getBoolean("photoEnabled", false) && launcherPhotoFile(context).isFile
-        val migrated = if (hadPhoto) BackgroundChoice.Photo else BackgroundChoice.None
+        // Nothing saved and no photo is a fresh install: it starts on Folio's own wallpaper. Anyone who has run Folio
+        // before already has a choice saved (this branch writes one the first time it runs), so nobody's Home changes.
+        val migrated = when {
+            hadPhoto -> BackgroundChoice.Photo
+            BackgroundLibrary.exists(context, BackgroundLibrary.DEFAULT_ID) -> BackgroundChoice.Art(BackgroundLibrary.DEFAULT_ID)
+            else -> BackgroundChoice.None
+        }
         prefs.edit { putString(BACKGROUND_CHOICE, migrated.save()) }
         return migrated
     }

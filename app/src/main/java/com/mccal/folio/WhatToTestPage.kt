@@ -81,18 +81,20 @@ internal fun WhatToTestPage(onOpenSetup: () -> Unit) {
     val finished = list.items.filter { it.id in answers }
     TestSection(stringResource(R.string.what_to_test_to_try, todo.size), todo, answers, open, { open = if (open == it.id) null else it.id }, ::answer, onOpenSetup)
     TestSection(stringResource(R.string.what_to_test_done_label, finished.size), finished, answers, open, { open = if (open == it.id) null else it.id }, ::answer, onOpenSetup)
+    var attachments by remember { mutableStateOf<List<android.net.Uri>>(emptyList()) }
     reporting?.let { item ->
         val note = item.title
         AlertDialog(onDismissRequest = { reporting = null },
             title = { Text(stringResource(R.string.how_should_this_report_go)) },
-            text = { Text(stringResource(R.string.email_needs_no_account)) },
+            text = { Column { Text(stringResource(R.string.email_needs_no_account)); ReportAttach(attachments) { attachments = it } } },
             confirmButton = { TextButton(onClick = { reporting = null
-                reportScope.launch { runCatching { context.startActivity(Diagnostics.reportIntent(context, email = true, note = note)) } } },
+                val picked = attachments; attachments = emptyList()
+                reportScope.launch { runCatching { context.startActivity(Diagnostics.reportIntent(context, email = true, note = note, attachments = picked)) } } },
                 modifier = Modifier.testTag("what-to-test-report-email")) { Text(stringResource(R.string.email_a_report)) } },
             dismissButton = { TextButton(onClick = { reporting = null
                 reportScope.launch {
                     Diagnostics.copy(context)
-                    runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(BugReport.url(context, note)))) }
+                    runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(BugReport.urlWithDigest(context, note)))) }
                 } },
                 modifier = Modifier.testTag("what-to-test-report-github")) { Text(stringResource(R.string.use_github_instead)) } })
     }
