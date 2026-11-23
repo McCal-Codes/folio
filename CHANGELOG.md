@@ -133,6 +133,7 @@ Folio shows the newest section on the phone after an update, and every version u
 
 ### Fixed
 - **Spotlight fits a short window:** on a flip's cover screen or a phone on its side, opening Spotlight no longer draws a Suggestions card half under the keyboard. With room for one row you get a row of app icons, and with less than that the search field stands alone. A regular phone keeps the whole card. <!-- beta 6 -->
+- **Today View ends above the Preview bar:** before Folio is your Home app, the last widget on Today View scrolled to rest under "Use as Home" on a short window such as a flip's cover screen. It now stops above the bar. Once Folio is the Home app nothing moves. <!-- beta 6 -->
 - **Home stops flickering when the fold sensor misreads:** on a Fold whose hinge sensor kept reporting "folded" while the phone was open, Home kept blurring and dimming on its own and the screen kept waking. The first false reading still plays, and repeats are ignored for a while, longer each time; a real fold is never ignored. <!-- beta 5 -->
 - **Remove button off a widget's text:** while editing Home, the minus on a widget now hangs a little off its corner instead of covering the first letters of the widget's name. <!-- beta 5 -->
 - **Market tabs fit a short window:** on a flip's cover screen or a phone on its side, the Market's side rail no longer runs the Settings tab off its end or draws the selected highlight past it. All five tabs and their names fit. <!-- beta 5 -->
