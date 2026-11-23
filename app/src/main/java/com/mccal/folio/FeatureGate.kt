@@ -216,6 +216,13 @@ internal enum class FeatureGate(
     CC_EDITOR("ccEditor", closedSince = "2026-11-11", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
 
     /**
+     * The Control Center editor on a wide window as two panes: the layout on the left and "Add a Control" as a list with plus buttons docked beside
+     * it, the divider on the hinge where there is one (McCal, 22 Nov 2026), instead of a floating card over the panel. Supporters and Folio Dev try it
+     * in the betas and everyone gets it in 0.7.0: flip [OPEN_IN_0_7_0] to open it. While shut, the gallery is the sheet or the card as before.
+     */
+    CC_TWO_PANE("ccTwoPane", closedSince = "2026-11-22", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
+
+    /**
      * Moving controls in Control Center: in edit mode, press and hold a control and drag it onto another to put it there, on the same
      * page (the first step toward the free grid in the Lab's control-center-options). Supporters and Folio Dev try it in the betas and
      * everyone gets it in 0.6.9: flip [OPEN_IN_0_6_9] to open it. While shut, edit mode only adds and removes, as before.
