@@ -357,6 +357,15 @@
         "Open Control Center a few times, from the Side Bar and by pulling down. The controls should come in together, small and soft, and sharpen in about a quarter of a second. Nothing should flash.",
         "Turn on Reduce Motion in Android's settings and open it again. The controls should just appear. Tell us if opening feels choppy or slower than before, or if any control flickers, on the cover screen or the unfolded one."
       ]
+    },
+    {
+      "id": "photos-widget-flip",
+      "title": "Photos widget turns over",
+      "where": "Home, Photos widget",
+      "steps": [
+        "Hold the Photos widget and choose Edit Widget, or tap the widget. It should turn over like a card and show its options on the back, with Done at the top. Change an option, then tap Done or press Back and it should turn back to the photo.",
+        "Turn on Reduce Motion in Android's settings and try again. The widget should fade to its options instead of turning. Tell us if the turn stutters, shows a flash, or if any option can't be reached on a small widget."
+      ]
     }
   ]
 }

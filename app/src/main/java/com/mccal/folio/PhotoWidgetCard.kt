@@ -55,6 +55,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
@@ -89,16 +91,27 @@ private fun photoDateLine(context: Context, uri: Uri): String? = runCatching {
 private fun canRead(context: Context, uri: String): Boolean =
     runCatching { context.contentResolver.openInputStream(Uri.parse(uri))?.close() != null }.getOrDefault(false)
 
-/** Photos options: change the photos, the date caption, shuffle and the slideshow speed (5, 10 or 30 seconds). */
+/**
+ * Photos options, the back of the widget: change the photos, the date caption, shuffle and the slideshow speed (5, 10 or
+ * 30 seconds). It fills the widget's own bounds and scrolls, so a small widget still reaches every option; Done turns it back.
+ */
 @Composable
-private fun PhotoOptionsDialog(state: PhotoWidgetState, onChange: (PhotoWidgetState) -> Unit, onChangePhotos: () -> Unit, onDismiss: () -> Unit) {
-    androidx.compose.material3.AlertDialog(onDismissRequest = onDismiss, modifier = Modifier.testTag("photo-options"),
-        title = { Text(stringResource(R.string.photo_options)) },
-        text = {
-            Column {
+private fun PhotoOptionsBack(state: PhotoWidgetState, onChange: (PhotoWidgetState) -> Unit, onChangePhotos: () -> Unit, onDismiss: () -> Unit) {
+    val shape = RoundedCornerShape(FolioRadius.PANEL.dp)
+    // The accent's light ink: the theme's primary is too dark to read on this card.
+    val ink = LocalAccent.current.ink
+    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides Color.White) {
+        Column(Modifier.fillMaxSize().clip(shape).background(FolioColors.PopoverSurface).testTag("photo-options")
+            .padding(horizontal = 14.dp, vertical = 8.dp)) {
+            Row(Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.photo_options), Modifier.weight(1f).semantics { heading() }, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                androidx.compose.material3.TextButton(onDismiss, colors = androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = ink)) { Text(stringResource(R.string.done)) }
+            }
+            // Fades at the edge that has more under it, so a small widget shows that its options scroll.
+            Column(Modifier.weight(1f).fadingVerticalScroll()) {
                 Row(Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp).clickable(role = Role.Button, onClick = onChangePhotos),
                     verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.change_photos), color = androidx.compose.material3.MaterialTheme.colorScheme.primary)
+                    Text(stringResource(R.string.change_photos), color = ink)
                 }
                 @Composable fun switchRow(label: String, on: Boolean, set: (Boolean) -> Unit) = Row(
                     Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp).toggleable(on, role = Role.Switch, onValueChange = set),
@@ -108,17 +121,17 @@ private fun PhotoOptionsDialog(state: PhotoWidgetState, onChange: (PhotoWidgetSt
                 switchRow(stringResource(R.string.photo_show_date), state.showCaption) { onChange(state.copy(showCaption = it)) }
                 switchRow(stringResource(R.string.photo_shuffle), state.shuffle) { onChange(state.copy(shuffle = it)) }
                 Text(stringResource(R.string.photo_interval), Modifier.padding(top = 8.dp), fontSize = FolioType.FOOTNOTE.sp)
-                PHOTO_INTERVALS.forEach { s ->
+                PHOTO_INTERVALS.forEach { sec ->
                     Row(Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp)
-                        .selectable(state.intervalSeconds == s, role = Role.RadioButton) { onChange(state.copy(intervalSeconds = s)) },
+                        .selectable(state.intervalSeconds == sec, role = Role.RadioButton) { onChange(state.copy(intervalSeconds = sec)) },
                         verticalAlignment = Alignment.CenterVertically) {
-                        androidx.compose.material3.RadioButton(state.intervalSeconds == s, null)
-                        Text(stringResource(R.string.photo_seconds, s), Modifier.padding(start = 12.dp))
+                        androidx.compose.material3.RadioButton(state.intervalSeconds == sec, null)
+                        Text(stringResource(R.string.photo_seconds, sec), Modifier.padding(start = 12.dp))
                     }
                 }
             }
-        },
-        confirmButton = { androidx.compose.material3.TextButton(onDismiss) { Text(stringResource(R.string.done)) } })
+        }
+    }
 }
 
 /**
@@ -177,7 +190,11 @@ internal fun PhotoWidgetCard(onEdit: () -> Unit) {
 
     // Tapping opens the options; while editing Home a tap is the usual widget-options tap instead.
     val editing = LocalHomeEdit.current.active
-    if (showOptions) PhotoOptionsDialog(state, onChange = ::update, onChangePhotos = { showOptions = false; pick() }, onDismiss = { showOptions = false })
+    // Back (or Done) turns the widget back to its photo.
+    androidx.activity.compose.BackHandler(showOptions) { showOptions = false }
+    // Edit Widget turns the widget over to its options (WidgetFlip); Reduce Motion cross-fades instead.
+    WidgetFlip(showOptions, Modifier.fillMaxSize(),
+        back = { PhotoOptionsBack(state, onChange = ::update, onChangePhotos = { showOptions = false; pick() }, onDismiss = { showOptions = false }) }) {
     Box(Modifier.fillMaxSize().clip(shape).background(FolioGlass.module).clickable { if (editing) onEdit() else showOptions = true }
         .semantics(mergeDescendants = true) { contentDescription = description }) {
         Crossfade(uri, animationSpec = if (reduce) snap() else tween(1200), label = "photoFade") { u ->
@@ -199,5 +216,6 @@ internal fun PhotoWidgetCard(onEdit: () -> Unit) {
                 Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = Color.White)
             }
         }
+    }
     }
 }
