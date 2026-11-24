@@ -359,6 +359,16 @@
       ]
     },
     {
+      "id": "duet-longer-depth",
+      "title": "Longer, softer fold effect",
+      "where": "Fold and unfold the phone, Duet on (Duo Clip)",
+      "steps": [
+        "Unfold the phone and watch Home come into focus. It should take a little under a second and ease out, with no jump. Then fold it and watch the cover come into focus the same way. Tell us if it feels too long, or if it ever seems to hold the blur after the phone is flat.",
+        "While the half that folds away is dark, look near the hinge: you should see a soft, dim hint of its own picture, getting darker toward the outer edge, and nothing bright or flickering anywhere.",
+        "Turn Reduce Motion on and try again: the effect should be a plain shade and finish quickly. Move the Intensity slider down and check the effect gets lighter all over."
+      ]
+    },
+    {
       "id": "cc-open-arrive",
       "title": "Control Center opens together",
       "where": "Control Center",

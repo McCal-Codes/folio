@@ -116,6 +116,19 @@ object DuetClip {
         return REFLECT_PEAK * window * Math.pow((1f - edge.coerceIn(0f, 1f)).toDouble(), REFLECT_REACH.toDouble()).toFloat()
     }
 
+    /**
+     * Depth: the shade is eased off near the hinge, so the half reads as glass turned away from you with a little of its own picture
+     * still showing at the hinge edge (the clip's far half is dim and soft there, not flat black). [LIFT_PEAK] of the shade is let go at
+     * the hinge edge, falling to nothing by about [LIFT_REACH] of the way across, so it cannot reach the outer edge, and it only ever
+     * lightens a shade that is already there: no shade (no fold, or a low Intensity) means no lift.
+     */
+    const val LIFT_PEAK = .3f
+    const val LIFT_REACH = 1.6f
+
+    /** The shade [shade] gives, with the hinge edge eased off by the lift. [edge] runs from the hinge (0) to the outer edge (1). */
+    fun lifted(shade: Float, edge: Float): Float =
+        shade * (1f - LIFT_PEAK * Math.pow((1f - edge.coerceIn(0f, 1f)).toDouble(), LIFT_REACH.toDouble()).toFloat())
+
     /** Share of the shade at [progress] for a point [edge] of the way from the hinge (0) to the outer edge (1). */
     fun shade(progress: Float, edge: Float): Float {
         val away = ((edge - HINGE_SPARED) / (1f - HINGE_SPARED)).coerceIn(0f, 1f)

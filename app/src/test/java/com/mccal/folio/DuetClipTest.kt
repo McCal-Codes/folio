@@ -80,6 +80,32 @@ class DuetClipTest {
         assertEquals(com.mccal.folio.FoldGeometry(true, 800f, false), com.mccal.folio.duet.clipCoverPanel(400f, 800f, com.mccal.folio.FoldGeometry(true, 5f, true)))
     }
 
+    @Test fun `the lift eases the shade near the hinge only, and never adds shade`() {
+        assertEquals("no shade, no lift", 0f, DuetClip.lifted(0f, 0f), 0f)
+        assertEquals("closed, the hinge edge keeps a little of its picture", DuetClip.SHADE_PEAK * (1f - DuetClip.LIFT_PEAK), DuetClip.lifted(DuetClip.SHADE_PEAK, 0f), 1e-6f)
+        assertEquals("the outer edge is exactly as dark as before", DuetClip.SHADE_PEAK, DuetClip.lifted(DuetClip.SHADE_PEAK, 1f), 1e-6f)
+        for (edge in listOf(0f, .1f, .3f, .6f, 1f)) for (s in listOf(0f, .2f, .6f, DuetClip.SHADE_PEAK)) {
+            assertTrue(DuetClip.lifted(s, edge) <= s + 1e-6f)
+            assertTrue(DuetClip.lifted(s, edge) >= 0f)
+        }
+        // Darker away from the hinge, so it still reads as depth, and a lower Intensity (less shade) lifts less in absolute terms.
+        var last = -1f
+        for (i in 0..20) { val v = DuetClip.lifted(DuetClip.SHADE_PEAK, i / 20f); assertTrue(v >= last - 1e-6f); last = v }
+        assertTrue(DuetClip.lifted(.3f, 0f) < DuetClip.lifted(DuetClip.SHADE_PEAK, 0f))
+        // Out-of-range edges are held to the half, not extrapolated.
+        assertEquals(DuetClip.lifted(.5f, 0f), DuetClip.lifted(.5f, -3f), 0f)
+        assertEquals(DuetClip.lifted(.5f, 1f), DuetClip.lifted(.5f, 9f), 0f)
+    }
+
+    @Test fun `the fades are longer than before, and keep their short length under Reduce Motion`() {
+        assertEquals(520f, unfoldFadeMs(true), 0f)
+        assertEquals(560f, coverFocusMs(true), 0f)
+        assertTrue(unfoldFadeMs(false) > unfoldFadeMs(true))
+        assertTrue(coverFocusMs(false) > coverFocusMs(true))
+        // About what the Duo clip takes (just under a second), and not so long that Home stays frosted.
+        assertTrue(unfoldFadeMs(false) in 800f..1100f)
+        assertTrue(coverFocusMs(false) in 700f..1000f)
+    }
 }
 
 class DuetMotionTest {
