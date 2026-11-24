@@ -459,16 +459,16 @@ class LauncherBackgroundController(
     }
 
     /** [crop]: the part of the staged photo the person framed (pinch and drag); null keeps the whole picture. */
-    internal fun applyPreview(crop: PhotoCrop? = null, blur: Boolean = false) {
+    internal fun applyPreview(crop: PhotoCrop? = null, adjust: PhotoAdjust = PhotoAdjust.NONE) {
         val staged = preview ?: return
         if (!previewPending || pendingOperation() != staged.operation ||
             previewFile()?.absolutePath != staged.file.absolutePath) return
         var framed: Bitmap? = null
         caught("Wallpaper: setting the photo") {
-            // Blur with no framing still saves the whole picture, blurred.
+            // Blur or dim with no framing still saves the whole picture, adjusted.
             val region = crop?.takeIf { it.fitsIn(staged.bitmap.width, staged.bitmap.height) }
-                ?: PhotoCrop(0, 0, staged.bitmap.width, staged.bitmap.height).takeIf { blur }
-            framed = region?.let { staged.frame(it, blur) }
+                ?: PhotoCrop(0, 0, staged.bitmap.width, staged.bitmap.height).takeIf { !adjust.isNone }
+            framed = region?.let { staged.frame(it, adjust) }
             staged.commit(launcherPhotoFile(activity))
         }
             .onSuccess {
@@ -727,10 +727,13 @@ class LauncherBackgroundController(
         }
 
         /** Keeps only the framed part: it replaces the staged file, so the commit that follows saves exactly what was framed. */
-        fun frame(crop: PhotoCrop, blur: Boolean = false): Bitmap {
-            val cropped = Bitmap.createBitmap(bitmap, crop.left, crop.top, crop.width, crop.height)
-            // A blurred picture keeps no detail, so it is saved small; the cropped copy is let go unless it is the staged bitmap itself.
-            val framed = if (blur) cropped.blurredForSaving().also { if (cropped !== bitmap) cropped.recycle() } else cropped
+        fun frame(crop: PhotoCrop, adjust: PhotoAdjust = PhotoAdjust.NONE): Bitmap {
+            var framed = Bitmap.createBitmap(bitmap, crop.left, crop.top, crop.width, crop.height)
+            // Each step makes a new picture and lets the one before go, unless that one is the staged bitmap itself.
+            fun then(next: (Bitmap) -> Bitmap) { val before = framed; framed = next(before); if (before !== bitmap) before.recycle() }
+            // A blurred picture keeps no detail, so it is saved small.
+            if (adjust.blur > 0f) then { it.blurredForSaving(adjust.blur) }
+            if (adjust.dim > 0f) then { it.dimmed(adjust.dim) }
             try {
                 FileOutputStream(file).use { output ->
                     require(framed.compress(Bitmap.CompressFormat.JPEG, 92, output)) { "The framed photo could not be saved." }

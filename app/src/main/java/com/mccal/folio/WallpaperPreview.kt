@@ -9,7 +9,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -22,6 +21,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -93,7 +94,7 @@ private const val HOME_PAGE_ASPECT = 420f / 720f
 private const val WALLPAPER_CONTROLS_DP = 176
 
 /** The same for the photo framing screen, which also has the Blur switch and a hint. */
-private const val FRAME_CONTROLS_DP = 252
+private const val FRAME_CONTROLS_DP = 300
 
 /** The line under a work's name: who made it and under what license, with whatever is blank left out. */
 internal fun wallpaperCredit(artist: String, license: String): String =
@@ -232,19 +233,17 @@ internal fun photoCrop(containerWidth: Float, containerHeight: Float, bitmapWidt
  * it, then Set keeps what you framed. Cancel leaves the wallpaper as it was.
  */
 @Composable
-internal fun PhotoFrameDialog(photo: Bitmap, state: LauncherState, onCancel: () -> Unit, onSet: (PhotoCrop, Boolean) -> Unit) {
+internal fun PhotoFrameDialog(photo: Bitmap, state: LauncherState, onCancel: () -> Unit, onSet: (PhotoCrop, PhotoAdjust) -> Unit) {
     val reduceMotion = LocalReduceMotion.current
     val appear = remember { Animatable(0f) }
     LaunchedEffect(Unit) { appear.animateTo(1f, tween(if (reduceMotion) FolioMotion.FADE_MS else PREVIEW_MS)) }
     var zoom by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     var area by remember { mutableStateOf(IntSize.Zero) }
-    var blur by remember { mutableStateOf(false) }
-    // The blurred copy is made the first time Blur is switched on, off the main thread, and kept for switching back and forth.
-    val soft by produceState<Bitmap?>(null, photo, blur) { if (blur && value == null) value = withContext(Dispatchers.Default) { photo.blurredSmall() } }
-    // Sharp picture first, the blurred one fading in over it: one soft cross-fade, a snap with Reduce Motion.
-    val softAlpha by androidx.compose.animation.core.animateFloatAsState(if (blur && soft != null) 1f else 0f,
-        if (reduceMotion) androidx.compose.animation.core.snap() else FolioMotion.spring<Float>(FolioMotion.Firm), label = "wallpaper blur")
+    // Blur and dim follow the sliders as they move: the GPU blurs the picture (Android 12 and up, which is all Folio runs on) and a
+    // black layer dims it, so nothing is drawn ahead or waited for. Set saves a copy with the same amounts (see PhotoAdjust).
+    var blur by remember { mutableFloatStateOf(0f) }
+    var dim by remember { mutableFloatStateOf(0f) }
     val description = stringResource(R.string.wallpaper_preview)
     Dialog(onDismissRequest = onCancel, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         Box(Modifier.fillMaxSize().background(Color.Black).graphicsLayer { alpha = appear.value }
@@ -252,6 +251,12 @@ internal fun PhotoFrameDialog(photo: Bitmap, state: LauncherState, onCancel: () 
             val image = remember(photo) { photo.asImageBitmap() }
             // The whole picture is drawn at its covering size (zoom 1) and moved from the middle, which is what photoCrop reads back.
             Canvas(Modifier.fillMaxSize().onSizeChanged { area = it }
+                    .graphicsLayer {
+                        // Clamp repeats the picture's edge pixels, as the saved copy's blur does, so the edges do not go dark or see through.
+                        renderEffect = if (blur > 0f) androidx.compose.ui.graphics.BlurEffect(
+                            blurSigmaFraction(blur) * maxOf(size.width, size.height), blurSigmaFraction(blur) * maxOf(size.width, size.height),
+                            androidx.compose.ui.graphics.TileMode.Clamp) else null
+                    }
                     .pointerInput(photo) {
                         detectTransformGestures { centroid, pan, gestureZoom, _ ->
                             val width = area.width.toFloat(); val height = area.height.toFloat()
@@ -273,38 +278,47 @@ internal fun PhotoFrameDialog(photo: Bitmap, state: LauncherState, onCancel: () 
                 val place = IntOffset(((this.size.width - width) / 2f + offset.x).roundToInt(), ((this.size.height - height) / 2f + offset.y).roundToInt())
                 val placed = IntSize(width.roundToInt(), height.roundToInt())
                 drawImage(image, dstOffset = place, dstSize = placed, filterQuality = FilterQuality.Medium)
-                if (softAlpha > 0f) soft?.let { drawImage(it.asImageBitmap(), dstOffset = place, dstSize = placed, alpha = softAlpha, filterQuality = FilterQuality.Medium) }
             }
+            if (dim > 0f) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = dimAlpha(dim))))
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = .25f), Color.Transparent, Color.Black.copy(alpha = .6f)))))
             RealHome(state, photo, FRAME_CONTROLS_DP.dp)
             Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars).padding(horizontal = FolioSpace.XXL.dp, vertical = FolioSpace.LARGE.dp),
                 horizontalAlignment = Alignment.CenterHorizontally) {
                 Spacer(Modifier.weight(1f))
-                BlurSwitch(blur) { blur = it }
+                PhotoAdjustPanel(blur, { blur = it }, dim, { dim = it })
                 Text(stringResource(R.string.wallpaper_frame_hint), color = Color.White.copy(alpha = .85f), fontSize = FolioType.FOOTNOTE.sp, textAlign = TextAlign.Center,
                     modifier = Modifier.padding(top = FolioSpace.MEDIUM.dp))
                 Row(Modifier.fillMaxWidth().padding(top = FolioSpace.LARGE.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
                     PreviewButton(stringResource(R.string.cancel), Color.White.copy(alpha = .22f), Color.White, "wallpaper-frame-cancel", onCancel, Modifier.weight(1f))
                     PreviewButton(stringResource(R.string.set), LocalAccent.current.fill, Color.White, "wallpaper-frame-set",
-                        { onSet(photoCrop(area.width.toFloat(), area.height.toFloat(), photo.width, photo.height, zoom, offset.x, offset.y), blur) }, Modifier.weight(1f))
+                        { onSet(photoCrop(area.width.toFloat(), area.height.toFloat(), photo.width, photo.height, zoom, offset.x, offset.y), PhotoAdjust(blur, dim)) }, Modifier.weight(1f))
                 }
             }
         }
     }
 }
 
-/** iOS's Blur switch: a pill that is lit while the picture is soft, so icons stand out on a busy photo. */
+/** Blur and Dim for the photo: two sliders that change the picture behind Home while they move, so icons can be made to stand out on a busy photo. */
 @Composable
-private fun BlurSwitch(on: Boolean, onChange: (Boolean) -> Unit) {
-    val label = stringResource(R.string.wallpaper_blur)
-    Box(Modifier.padding(top = FolioSpace.MEDIUM.dp).defaultMinSize(minHeight = FolioTouch.MIN.dp).clip(RoundedCornerShape(FolioRadius.RAIL.dp))
-        .background(if (on) Color.White.copy(alpha = .92f) else Color.White.copy(alpha = .22f))
-        .toggleable(value = on, role = Role.Switch, onValueChange = onChange).semantics { contentDescription = label }.testTag("wallpaper-frame-blur"),
-        contentAlignment = Alignment.Center) {
-        Text(label, color = if (on) Color.Black.copy(alpha = .85f) else Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(horizontal = FolioSpace.XXL.dp, vertical = FolioSpace.COMPACT.dp))
+private fun PhotoAdjustPanel(blur: Float, onBlur: (Float) -> Unit, dim: Float, onDim: (Float) -> Unit) {
+    Column(Modifier.padding(top = FolioSpace.MEDIUM.dp).widthIn(max = PHOTO_ADJUST_MAX_WIDTH_DP.dp).fillMaxWidth()
+        .clip(RoundedCornerShape(FolioRadius.ROW.dp)).background(Color.Black.copy(alpha = .6f))
+        .padding(horizontal = FolioSpace.MEDIUM.dp, vertical = FolioSpace.SMALL.dp)) {
+        AdjustSlider(stringResource(R.string.wallpaper_blur), blur, onBlur, "wallpaper-frame-blur")
+        AdjustSlider(stringResource(R.string.wallpaper_dim), dim, onDim, "wallpaper-frame-dim")
     }
 }
+
+@Composable
+private fun AdjustSlider(label: String, value: Float, onValue: (Float) -> Unit, tag: String) {
+    Row(Modifier.fillMaxWidth().defaultMinSize(minHeight = 40.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, color = Color.White.copy(alpha = .85f), fontSize = FolioType.FOOTNOTE.sp, maxLines = 1, modifier = Modifier.width(72.dp))
+        IosSlider(value, onValue, 0f..1f, Modifier.weight(1f).testTag(tag).semantics { contentDescription = label })
+    }
+}
+
+/** On a wide screen the sliders stay a comfortable width. */
+private const val PHOTO_ADJUST_MAX_WIDTH_DP = 520
 
 /**
  * Home as it will be: your own icons, widgets, folders, status and dock, drawn by the same code as the Settings preview,

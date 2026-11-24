@@ -1654,6 +1654,7 @@
     <string name="label_theme_import">Folio Theme</string>
     <string name="label_wallpaper_import">Folio Wallpaper</string>
     <string name="wallpaper_blur">Blur</string>
+    <string name="wallpaper_dim">Dim</string>
     <string name="wallpaper_photo_menu">Wallpaper Photo</string>
     <string name="wallpaper_frame_hint">Pinch to zoom, drag to move</string>
     <!-- Shown when opening a supporter code link. -->
