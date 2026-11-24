@@ -117,6 +117,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Keyd is listed for everyone:** once the Market is open to everyone, Keyd's source is already in Sources, added once with its key built into Folio, so the keyboard can be tried without a supporter code. Forgetting it is final, and a code coming off no longer takes it away. <!-- beta 6 -->
 
 ### Changed
+- **The Photos widget turns over for Edit Widget:** its options (change photos, date, shuffle, speed) now sit on the back of the widget, a card with Done, instead of in a dialog; the widget turns like a card, and fades with Reduce Motion <!-- beta 6 -->
 - **Control Center controls arrive together:** opening Control Center now brings its controls in small, soft and see-through, growing to full size and sharpening as they land, almost all at once and settled in about a quarter of a second, instead of rising one after another. Edit mode and Reduce Motion are unchanged (no motion). Nothing flashes. <!-- beta 6 -->
 - **A package's page opens on its color:** the icon and name sit on a band in the color its author chose (a section's color when they did not), and under it Version, Source and Works on read as three cells in a row, so you can tell at a glance where it comes from and whether it fits the cover screen. <!-- beta 5 -->
 - **Roadmap: Home Assistant in Control Center:** the roadmap now lists, under Exploring, a Control Center page for your smart home in the style of Apple's Home controls, from a Home Assistant server you run. Nothing is built yet. <!-- beta 5 -->
