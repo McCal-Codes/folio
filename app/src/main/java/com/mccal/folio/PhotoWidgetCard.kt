@@ -55,8 +55,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -109,7 +107,8 @@ private fun PhotoOptionsBack(state: PhotoWidgetState, onChange: (PhotoWidgetStat
                 Text(stringResource(R.string.photo_options), Modifier.weight(1f).semantics { heading() }, fontWeight = FontWeight.SemiBold, maxLines = 1)
                 androidx.compose.material3.TextButton(onDismiss, colors = androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = ink)) { Text(stringResource(R.string.done)) }
             }
-            Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+            // Fades at the edge that has more under it, so a small widget shows that its options scroll.
+            Column(Modifier.weight(1f).fadingVerticalScroll()) {
                 Row(Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp).clickable(role = Role.Button, onClick = onChangePhotos),
                     verticalAlignment = Alignment.CenterVertically) {
                     Text(stringResource(R.string.change_photos), color = ink)
