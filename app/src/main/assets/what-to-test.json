@@ -348,6 +348,15 @@
       "steps": [
         "Turn on TalkBack and touch an app icon that has a badge. It should say the app name and the count, such as \"Messages, 5 notifications\", or \"has notifications\" when the badge is a dot. With badges off it should say only the name. Tell us if a number is read twice or as a separate item."
       ]
+    },
+    {
+      "id": "cc-open-arrive",
+      "title": "Control Center opens together",
+      "where": "Control Center",
+      "steps": [
+        "Open Control Center a few times, from the Side Bar and by pulling down. The controls should come in together, small and soft, and sharpen in about a quarter of a second. Nothing should flash.",
+        "Turn on Reduce Motion in Android's settings and open it again. The controls should just appear. Tell us if opening feels choppy or slower than before, or if any control flickers, on the cover screen or the unfolded one."
+      ]
     }
   ]
 }
