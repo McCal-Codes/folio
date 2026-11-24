@@ -43,7 +43,7 @@ class DuetFoldFixtureTest {
         assertTrue("never beyond full", m.all { it in 0f..1f })
     }
 
-    @Test fun `opening lands on the open screen and clears in about half a second`() {
+    @Test fun `opening lands on the open screen and clears in a little under a second`() {
         val fold = timeline(expanded = false)
         fold.play(listOf(0L to 0f, 200L to 90f), until = 200)
         assertTrue("starting to open from the cover counts as opening", fold.opening)
@@ -51,10 +51,22 @@ class DuetFoldFixtureTest {
         fold.onDisplaySwitched(300)
         assertEquals("the new panel starts fully frosted", 1f, fold.targetM(300), 1e-4f)
         fold.onPanelLit(350)
+        val clearing = (350L..1300L step 10L).map { fold.targetM(it) }
+        assertTrue("it only ever clears: $clearing", clearing.zipWithNext().all { (a, b) -> b <= a + 1e-4f })
+        assertTrue("still frosted half a second in", clearing[50] > .1f)
+        assertEquals("clear by 900 ms after the panel lights", 0f, clearing.last(), 1e-4f)
+        assertTrue(fold.opening)
+    }
+
+    @Test fun `with Reduce Motion on, opening clears in about half a second as before`() {
+        val fold = timeline(expanded = false).also { it.reduceMotion = true }
+        fold.play(listOf(0L to 0f, 200L to 90f), until = 200)
+        fold.expanded = true
+        fold.onDisplaySwitched(300)
+        fold.onPanelLit(350)
         val clearing = (350L..900L step 10L).map { fold.targetM(it) }
         assertTrue("it only ever clears: $clearing", clearing.zipWithNext().all { (a, b) -> b <= a + 1e-4f })
         assertEquals("clear by 520 ms after the panel lights", 0f, clearing.last(), 1e-4f)
-        assertTrue(fold.opening)
     }
 
     @Test fun `opening back up before closing counts as opening again`() {

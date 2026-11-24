@@ -78,6 +78,7 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
     // A device that cannot fold starts on its one screen: a tablet launched wide was not just unfolded, so nothing plays on its first frames.
     remember(fold) { foldStartsExpanded(hasHinge(context), expanded).also { fold.expanded = it } }
     fold.unfoldStart = style.startAt
+    fold.reduceMotion = reduceMotion
     // The screen's own corner radius, so a tilted pane and the slightly shrunk open screen have the panel's corners.
     // Read when a fold starts rather than at first composition: the window's insets (and so its rounded corners) can
     // arrive after the first frame, and a 0 kept from then would square off the panel's corners until the next switch.
@@ -386,6 +387,8 @@ internal class FoldTimeline(private val context: Context, private val suLauncher
     val closing get() = closeStartAt >= 0 && expanded
     /** How frosted the open screen is when it lights: the style's own start (iPhone Duo starts where the real hinge is). */
     var unfoldStart = START_M_ON_UNFOLD
+    /** With Reduce Motion on, the fades keep their short, plain lengths. */
+    var reduceMotion = false
     /** Which way the hinge last went: true once it starts opening or lands on the open screen, false once it folds. */
     var opening = true
         private set
@@ -562,7 +565,7 @@ internal class FoldTimeline(private val context: Context, private val suLauncher
         // Fold8 showed the panel lights only as the hinge is nearly flat, so a hinge-bound fade was over before it
         // was visible. The fade is a steady, fixed-length ease from the moment the panel is lit instead.
         expanded && litAt >= 0 -> {
-            val t = ((now - litAt) / UNFOLD_FADE_MS).coerceIn(0f, 1f)
+            val t = ((now - litAt) / unfoldFadeMs(reduceMotion)).coerceIn(0f, 1f)
             if (t >= 1f) { litAt = -1L; flatAt = -1L; 0f }
             else {
                 val timed = unfoldStart * (1f - easeInOutSine(t))
@@ -626,7 +629,7 @@ internal class FoldTimeline(private val context: Context, private val suLauncher
 
         // Cover after folding: short focus-in.
         !expanded && coverLitAt >= 0 -> {
-            val t = ((now - coverLitAt) / COVER_MS).coerceIn(0f, 1f)
+            val t = ((now - coverLitAt) / coverFocusMs(reduceMotion)).coerceIn(0f, 1f)
             if (t >= 1f) { coverLitAt = -1L; 0f } else START_M_ON_COVER * (1f - easeInOutSine(t))
         }
         else -> 0f
@@ -666,7 +669,17 @@ internal fun coverHingeEdge(g: FoldGeometry): CoverEdge = when {
     else -> CoverEdge.BOTTOM
 }
 
-private fun easeInOutSine(t: Float): Float = (-(kotlin.math.cos(Math.PI * t) - 1) / 2).toFloat()
+/**
+ * How long the open screen takes to come into focus once its panel lights. The Duo clip's own frost takes about a second to clear (traced
+ * 24 Nov 2026: Folio's cleared in 0.65 s), so the fade is longer than it was; with Reduce Motion on it keeps the short, plain length.
+ * Where the hinge angle is continuous, the angle still sets the pace and this only caps it (see [FoldTimeline.targetM]).
+ */
+internal fun unfoldFadeMs(reduceMotion: Boolean): Float = if (reduceMotion) UNFOLD_FADE_MS else UNFOLD_FADE_LONG_MS
+
+/** The same for the cover, which comes into focus after folding. */
+internal fun coverFocusMs(reduceMotion: Boolean): Float = if (reduceMotion) COVER_MS else COVER_FOCUS_LONG_MS
+
+private fun easeInOutSine(t: Float): Float =(-(kotlin.math.cos(Math.PI * t) - 1) / 2).toFloat()
 
 @RequiresApi(33)
 /** Share of the morph during which the still picture stays fully visible. */
@@ -677,6 +690,8 @@ private const val MORPH_FOLD_MS = 420f
 private const val START_M_ON_UNFOLD = 1f
 /** Unfold fade length (the iPhone Duo reveal reads as ~half a second). */
 private const val UNFOLD_FADE_MS = 520f
+private const val UNFOLD_FADE_LONG_MS = 900f
+private const val COVER_FOCUS_LONG_MS = 820f
 /** Strongest whole-screen dim while folding. */
 private const val FOLD_DIM = .6f
 private const val HOLD_M_BEFORE_CLOSED = .9f

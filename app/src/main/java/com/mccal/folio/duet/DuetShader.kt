@@ -121,6 +121,8 @@ internal class DuetShader {
                 float hs = side < 0.0 ? max(hingePos, 1.0) : max(extent - hingePos, 1.0);
                 float edge = clamp(into / hs, 0.0, 1.0);
                 float s = min(1.0, clipShade(a, edge) * darken);
+                // Depth: the hinge edge keeps a little of its own picture, the same arithmetic as DuetClip.lifted in Kotlin.
+                s = s * (1.0 - ${DuetClip.LIFT_PEAK} * pow(1.0 - edge, ${DuetClip.LIFT_REACH}));
                 float k = 1.0 - s;
                 // Motion glass (Duo Fold Live): sample the half from where a viewer who moved would see it. It grows in with the fold.
                 float tilt = smoothstep(0.0, 0.15, a);
