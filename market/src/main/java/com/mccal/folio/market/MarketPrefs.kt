@@ -103,7 +103,16 @@ class MarketPrefs(private val store: KeyValueStore) {
         get() = store.get(INTRO_SEEN) == "1"
         set(value) { store.set(INTRO_SEEN, if (value) "1" else null) }
 
+    /**
+     * Whether Folio has already offered Keyd's source to everyone (see [Source.Kind.RECOMMENDED]). Set once, even when the
+     * source was there already, so forgetting it is final: Folio never adds it a second time.
+     */
+    var keydSourceOffered: Boolean
+        get() = store.get(KEYD_OFFERED) == "1"
+        set(value) { store.set(KEYD_OFFERED, if (value) "1" else null) }
+
     private companion object {
+        const val KEYD_OFFERED = "market:keyd-source-offered"
         const val FEATURED_STYLE = "market:featured-style"
         const val INTRO_SEEN = "market:intro-seen"
         const val BACKGROUND_REFRESH = "market:background-refresh"

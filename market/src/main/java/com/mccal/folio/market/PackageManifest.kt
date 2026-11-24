@@ -336,6 +336,8 @@ enum class Capability(val id: String, val needs: PackageAccess, val betterWith: 
      */
     PAGE_EFFECT_CHANNELS("tweaks.pageEffects.channels", PackageAccess.STANDARD),
     FOLD_TRANSITION("tweaks.foldTransition", PackageAccess.STANDARD),
+    /** StandBy 2: the clock, views and night mode work as they are; Now Playing and the notification glow and dots need notification access (StandBy.kt). */
+    STANDBY_2("tweaks.standby2", PackageAccess.STANDARD, betterWith = PackageAccess.NOTIFICATIONS),
     /** On Home without accessibility, over other apps with it. Nothing consumes it yet, so this is the plan, not a fact. */
     ISLAND_MESSAGES("island.messages", PackageAccess.STANDARD, betterWith = PackageAccess.ACCESSIBILITY),
     /** Silencing needs Do Not Disturb access, a Folio permission prompt rather than a tier, so it isn't counted here. */

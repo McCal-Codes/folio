@@ -1,18 +1,23 @@
 package com.mccal.folio
 
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.Paint
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
 /**
  * Blur for a wallpaper photo, the way iOS's Blur switch in the wallpaper editor softens a picture so icons stand out on it.
  *
- * The picture is shrunk to a small size first, blurred there, and scaled back up: blurring a 12-megapixel photo at full size
- * would take seconds, while the small copy takes a few milliseconds and the scaled-up result is smooth anyway.
+ * The framing screen blurs live with the GPU; Set saves a copy blurred here, at the size it is kept (never the whole 12-megapixel
+ * photo), with a strength that gives the same look.
  */
 private const val BLUR_SIDE = 180
-private const val BLUR_RADIUS = 5
+private const val MAX_BLUR_RADIUS = 10f
 private const val BLUR_PASSES = 3
 
 /** The longest side the saved, blurred wallpaper keeps; it has no detail to lose above this. */
@@ -55,18 +60,47 @@ private fun boxPass(source: IntArray, target: IntArray, width: Int, height: Int,
     }
 }
 
-/** The size the blur works at: the longest side [BLUR_SIDE], never larger than the picture itself, never under 1 px. */
-internal fun blurWorkingSize(width: Int, height: Int): Pair<Int, Int> {
-    val scale = min(1f, BLUR_SIDE.toFloat() / max(1, max(width, height)))
-    return max(1, (width * scale).roundToInt()) to max(1, (height * scale).roundToInt())
+/**
+ * What a person did to a photo on the framing screen: how much to blur it and how much to darken it, each 0 (none) to 1 (the most).
+ * Both are drawn live under the picture there and baked into the saved copy by [Bitmap.blurredForSaving] and [Bitmap.dimmed].
+ */
+internal data class PhotoAdjust(val blur: Float = 0f, val dim: Float = 0f) {
+    val isNone: Boolean get() = blur <= 0f && dim <= 0f
+
+    companion object { val NONE = PhotoAdjust() }
 }
 
 /**
- * A blurred copy of this picture at a small size ([BLUR_SIDE] on its longest side). Draw it stretched over the original's
- * place: it has no detail left to lose. Halving first keeps the shrink smooth instead of skipping pixels.
+ * The blur's strength is a box radius at a 180 px picture, 10 at the top of the slider (half of that is the one fixed blur
+ * Folio had before the slider). Everything else is worked out from it so the live preview and the saved copy look the same.
  */
-internal fun Bitmap.blurredSmall(): Bitmap {
-    val (targetWidth, targetHeight) = blurWorkingSize(width, height)
+private fun radiusAtReference(amount: Float) = amount.coerceIn(0f, 1f) * MAX_BLUR_RADIUS
+
+/** The box radius that gives [amount] on a picture [side] px on its longest side. */
+internal fun blurRadiusFor(amount: Float, side: Int): Int = (radiusAtReference(amount) * side / BLUR_SIDE).roundToInt()
+
+/**
+ * The spread (a Gaussian's sigma) of the blur at [amount], as a fraction of the picture's longest side. Three box passes of radius r
+ * spread as sqrt(r * (r + 1)), and this is the number the live preview hands to the GPU so it matches the saved copy.
+ */
+internal fun blurSigmaFraction(amount: Float): Float {
+    val r = radiusAtReference(amount)
+    return sqrt(r * (r + 1f)) / BLUR_SIDE
+}
+
+/** How dark the dim slider's top end is: 70% black, so the picture is still there to judge. */
+private const val MAX_DIM = .7f
+
+/** The black laid over the picture for a dim [amount]; 0 for none. */
+internal fun dimAlpha(amount: Float): Float = amount.coerceIn(0f, 1f) * MAX_DIM
+
+/**
+ * The blurred picture at the size it is saved: this picture's own shape, at most [BLURRED_SAVE_SIDE] on its longest side, with
+ * [amount] of blur. It is shrunk first (halving, which keeps the shrink smooth) so a 12-megapixel photo is never blurred whole.
+ */
+internal fun Bitmap.blurredForSaving(amount: Float): Bitmap {
+    val scale = min(1f, BLURRED_SAVE_SIDE.toFloat() / max(width, height))
+    val targetWidth = max(1, (width * scale).roundToInt()); val targetHeight = max(1, (height * scale).roundToInt())
     var current = this
     while (current.width / 2 >= targetWidth && current.height / 2 >= targetHeight) {
         val half = Bitmap.createScaledBitmap(current, current.width / 2, current.height / 2, true)
@@ -78,15 +112,17 @@ internal fun Bitmap.blurredSmall(): Bitmap {
     val pixels = IntArray(targetWidth * targetHeight)
     small.getPixels(pixels, 0, targetWidth, 0, 0, targetWidth, targetHeight)
     if (small !== this) small.recycle()
-    boxBlur(pixels, targetWidth, targetHeight, BLUR_RADIUS)
+    boxBlur(pixels, targetWidth, targetHeight, blurRadiusFor(amount, max(targetWidth, targetHeight)))
     return Bitmap.createBitmap(pixels, targetWidth, targetHeight, Bitmap.Config.ARGB_8888)
 }
 
-/** The blurred picture at the size it is saved: this picture's own shape, at most [BLURRED_SAVE_SIDE] on its longest side. */
-internal fun Bitmap.blurredForSaving(): Bitmap {
-    val small = blurredSmall()
-    val scale = min(1f, BLURRED_SAVE_SIDE.toFloat() / max(width, height))
-    val saved = Bitmap.createScaledBitmap(small, max(1, (width * scale).roundToInt()), max(1, (height * scale).roundToInt()), true)
-    if (saved !== small) small.recycle()
-    return saved
+/** A copy of this picture with [amount] of dim (see [dimAlpha]): the same as laying that much black over it. */
+internal fun Bitmap.dimmed(amount: Float): Bitmap {
+    val out = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val keep = 1f - dimAlpha(amount)
+    val paint = Paint().apply {
+        colorFilter = ColorMatrixColorFilter(ColorMatrix(floatArrayOf(keep, 0f, 0f, 0f, 0f, 0f, keep, 0f, 0f, 0f, 0f, 0f, keep, 0f, 0f, 0f, 0f, 0f, 1f, 0f)))
+    }
+    Canvas(out).drawBitmap(this, 0f, 0f, paint)
+    return out
 }

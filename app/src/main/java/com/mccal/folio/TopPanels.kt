@@ -185,7 +185,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     // Half folded, Control Center moves off the hinge like iPhone Duo's controls; Notification Center is a
     // scrolling list, which adapts by scrolling instead.
     val hinge = LocalHinge.current?.takeIf { it.active && current == ShadePanel.QUICK_SETTINGS }
-    CompositionLocalProvider(LocalHinge provides hinge, LocalCcLook provides ccLook, LocalCcTone provides tone, LocalPanelPull provides pull) {
+    CompositionLocalProvider(LocalWindowHinge provides LocalHinge.current, LocalHinge provides hinge, LocalCcLook provides ccLook, LocalCcTone provides tone, LocalPanelPull provides pull) {
     FoldAvoidingBox(Modifier.windowInsetsPadding(WindowInsets.folioSafeTop).navigationBarsPadding().padding(start = FolioSpace.LARGE.dp, end = FolioSpace.LARGE.dp, top = FolioSpace.XXL.dp, bottom = FolioSpace.MEDIUM.dp),
         contentAlignment = when {
             shape == ShadeShape.BOTH -> Alignment.TopCenter
@@ -1032,11 +1032,25 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
     // The gallery card, when it has to stand low, asks the panel to shrink out of its way; it glides there and comes back (a snap with reduced motion).
     var galleryFit by remember { mutableFloatStateOf(1f) }
     val fitNow by androidx.compose.animation.core.animateFloatAsState(galleryFit, if (LocalReduceMotion.current) androidx.compose.animation.core.snap() else FolioMotion.spring<Float>(FolioMotion.Glide), label = "gallery fit") // english-only
-    BoxWithConstraints(modifier.testTag("control-center").graphicsLayer { scaleX = fitNow; scaleY = fitNow; transformOrigin = androidx.compose.ui.graphics.TransformOrigin(.5f, 0f) }.onGloballyPositioned { panelBounds = it.boundsInWindow() }) {
+    // The editor on a wide window (FeatureGate.CC_TWO_PANE): the panel on the left and "Add a Control" as a list beside it (CcTwoPane.kt) instead of the floating card.
+    val twoPaneGate = remember { FeatureGate.CC_TWO_PANE.isOpen(context) }
+    val addFeed = remember { CcAddPaneFeed() }
+    // The panel keeps the columns it has outside the editor, so the pane must be wide enough for them at the touch size; if not, the editor stays one pane.
+    val keepColumnsMin = { containerDp: Float, heightDp: Float? ->
+        val cell = (size.cell + if (wide) 8.dp else 0.dp).value
+        val columns = controlCenterGrid(containerDp, heightDp, chosen.size, focusModes.isNotEmpty(), cell, FolioTouch.MIN.toFloat(), (FolioSpace.LARGE * 2).toFloat(), options.rail).columns
+        controlCenterMinPanelDp(columns, cell, FolioTouch.MIN.toFloat(), (FolioSpace.LARGE * 2).toFloat())
+    }
+    CcTwoPaneHost(modifier, edit.active && twoPaneGate, addFeed, keepColumnsMin) { twoPane, panelSize ->
+    BoxWithConstraints(panelSize.testTag("control-center").semantics { isTraversalGroup = true; traversalIndex = 0f }
+        .graphicsLayer { scaleX = fitNow; scaleY = fitNow; transformOrigin = androidx.compose.ui.graphics.TransformOrigin(.5f, 0f) }.onGloballyPositioned { panelBounds = it.boundsInWindow() }) {
         val sizeCell = size.cell + if (wide) 8.dp else 0.dp
         val tall = if (maxHeight == Dp.Infinity) null else maxHeight.value
         // Fills the window: 4, 6 or 8 columns by the width, cells near the size chosen; the page strip at the edge on a wide panel, under the grid on a narrow one.
-        val grid = controlCenterGrid(maxWidth.value, tall, chosen.size, focusModes.isNotEmpty(), sizeCell.value, FolioTouch.MIN.toFloat(), (FolioSpace.LARGE * 2).toFloat(), options.rail)
+        val gridFor = { minColumns: Int -> controlCenterGrid(maxWidth.value, tall, chosen.size, focusModes.isNotEmpty(), sizeCell.value, FolioTouch.MIN.toFloat(), (FolioSpace.LARGE * 2).toFloat(), options.rail, minColumns) }
+        // In the editor's two panes the panel keeps the columns it has outside the editor, so the layout being edited is the one that is saved, as long as the tiles stay at the touch size.
+        val keptColumns = twoPane?.let { controlCenterGrid(it.containerDp, tall, chosen.size, focusModes.isNotEmpty(), sizeCell.value, FolioTouch.MIN.toFloat(), (FolioSpace.LARGE * 2).toFloat(), options.rail).columns }
+        val grid = keptColumns?.let(gridFor)?.takeIf { it.cellDp >= FolioTouch.MIN } ?: gridFor(4)
         val gap = grid.gapDp.dp
         val cols = grid.columns
         val cell = grid.cellDp.dp
@@ -1158,10 +1172,13 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                 CC_BRIGHTNESS -> Icons.Rounded.LightMode; CC_VOLUME -> Icons.AutoMirrored.Rounded.VolumeUp; else -> Icons.Rounded.DarkMode }, true) } +
                 CcControl.entries.filter { it !in chosen && available(it) }.map { c -> CcGalleryItem(c.name, stringResource(c.label), c.icon(), false) }
         }
-        if (galleryOpen && edit.active) CcControlGallery(galleryItems, panel = panelBounds, fit = fitNow, minFit = FolioTouch.MIN / cell.value, onFit = { galleryFit = it }, onDismiss = { galleryOpen = false }, onAdd = { item ->
+        val addFromGallery: (CcGalleryItem) -> Unit = { item ->
             if (item.module) changeLayout(ccAdd(slots, item.id, cols, slotRows + slotPerPage) ?: slots, cols, focusOn) else changeControls(controlNames + item.id)
             if (galleryItems.size <= 1) galleryOpen = false
-        })
+        }
+        // With two panes the list beside the panel is the gallery: it is handed what to show and what a plus does, and the card stays shut.
+        if (twoPane != null) SideEffect { addFeed.items = galleryItems; addFeed.onAdd = addFromGallery }
+        if (galleryOpen && edit.active && twoPane == null) CcControlGallery(galleryItems, panel = panelBounds, fit = fitNow, minFit = FolioTouch.MIN / cell.value, onFit = { galleryFit = it }, onDismiss = { galleryOpen = false }, onAdd = addFromGallery)
         // The editor's gallery is a sheet, not rows under the grid, so the places page counts only its own rows (with the gallery's two counted too, a
         // control in the sixth row made the page "too tall", it became a scroll container and cut off the resize handles in the last column).
         fun controlsRows(index: Int) = if (slotMode) slotEnd(index.coerceIn(0, slotStarts.lastIndex)) - slotStarts[index.coerceIn(0, slotStarts.lastIndex)]
@@ -1431,7 +1448,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                         }
                         }
                         // Edit mode: "Add a Control" under the grid opens the gallery (the + in the header does the same).
-                        if (edit.active && spec.index == (if (slotMode) slotStarts.lastIndex else plan.perPage.lastIndex)) {
+                        if (edit.active && twoPane == null && spec.index == (if (slotMode) slotStarts.lastIndex else plan.perPage.lastIndex)) {
                             Row(Modifier.width(gridWidth).clip(RoundedCornerShape(FolioRadius.CARD.dp)).then(if (galleryItems.isEmpty()) Modifier else Modifier.clickable(role = androidx.compose.ui.semantics.Role.Button) { galleryOpen = true })
                                 .heightIn(min = FolioTouch.MIN.dp).padding(FolioSpace.SMALL.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                                 if (galleryItems.isNotEmpty()) Icon(Icons.Rounded.AddCircle, null, tint = Color.White, modifier = Modifier.padding(end = FolioSpace.SNUG.dp).size((FolioSpace.XL.dp.value * ccIconScale(LocalDensity.current.fontScale)).dp))
@@ -1544,7 +1561,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         if (edit.active) {
                             PanelPill(stringResource(R.string.done)) { edit.stop() }
-                            if (galleryItems.isNotEmpty()) { Spacer(Modifier.width(gap)); GlassIconButton(Icons.Rounded.Add, stringResource(R.string.add_a_control)) { galleryOpen = true } }
+                            if (galleryItems.isNotEmpty() && twoPane == null) { Spacer(Modifier.width(gap)); GlassIconButton(Icons.Rounded.Add, stringResource(R.string.add_a_control)) { galleryOpen = true } }
                             if (history.canUndo) { Spacer(Modifier.width(gap)); GlassIconButton(Icons.AutoMirrored.Rounded.Undo, stringResource(R.string.undo)) { undoEdit() } }
                         }
                         else if (pages.getOrNull(current)?.page == CcPage.CONTROLS) GlassIconButton(Icons.Rounded.Add, stringResource(R.string.edit_controls)) { edit.start() }
@@ -1592,6 +1609,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
             }
         }
         }
+    }
     }
 }
 
@@ -1715,13 +1733,29 @@ private fun ConnectivityPill(item: ConnectivityItem, modifier: Modifier) {
 }
 
 /** How long after the control before it a control starts to settle in, and how many controls count (the rest start with the last). */
-private const val CC_SETTLE_STAGGER_MS = 20
+private const val CC_SETTLE_STAGGER_MS = 6
 private const val CC_SETTLE_COUNT = 8
 
 /**
- * The arrival of Control Center, one shot and never a loop: once the panel is open each control fades in and rises 4 dp, [CC_SETTLE_STAGGER_MS] after
- * the one before it. The panel's own fade and lift already say "opening"; this says the controls landed. Nothing moves in edit mode (the controls
- * are being arranged), under Reduce Motion, or when [index] is negative. It starts from nothing on each open, so a closing panel is not cut short.
+ * How a control looks while it arrives: [alpha] fades in, [scale] grows from [SCALE_FROM] to 1, and [blurRadiusDp] clears from [BLUR_DP] to nothing, all on
+ * the same 0 to 1 progress, so a control comes in small, ghosted and soft and sharpens as it lands. Pure, so the ends can be tested.
+ * Measured on a screen recording of an iPhone's Control Center (23 Nov 2026): tiles arrive together a few frames after the swipe, slightly small and
+ * blurred, and are settled by about a quarter of a second.
+ */
+internal object CcSettle {
+    const val SCALE_FROM = .92f
+    const val BLUR_DP = 6f
+    fun alpha(progress: Float): Float = progress.coerceIn(0f, 1f)
+    fun scale(progress: Float): Float = SCALE_FROM + (1f - SCALE_FROM) * progress.coerceIn(0f, 1f)
+    fun blurRadiusDp(progress: Float): Float = BLUR_DP * (1f - progress.coerceIn(0f, 1f))
+}
+
+/**
+ * The arrival of Control Center, one shot and never a loop: once the panel is open each control fades in, grows from 92 percent and clears from a 6 dp
+ * blur, [CC_SETTLE_STAGGER_MS] after the one before it (so the grid reads as arriving together), on a quick spring that is settled in about a quarter of
+ * a second. The panel's own fade and lift already say "opening"; this says the controls landed. Nothing moves in edit mode (the controls are being
+ * arranged), under Reduce Motion, or when [index] is negative. It starts from nothing on each open, so a closing panel is not cut short. The blur layer
+ * exists only while the control is still arriving, so a settled control carries no extra render pass.
  */
 @Composable
 private fun Modifier.ccSettleIn(index: Int, open: Boolean, edit: Boolean): Modifier {
@@ -1731,10 +1765,17 @@ private fun Modifier.ccSettleIn(index: Int, open: Boolean, edit: Boolean): Modif
         if (!open) return@LaunchedEffect
         progress.snapTo(0f)
         delay(index.coerceAtMost(CC_SETTLE_COUNT - 1) * CC_SETTLE_STAGGER_MS.toLong())
-        progress.animateTo(1f, FolioMotion.spring(FolioMotion.Settle))
+        progress.animateTo(1f, FolioMotion.spring(FolioMotion.Quick))
     }
-    val rise = with(androidx.compose.ui.platform.LocalDensity.current) { 4.dp.toPx() }
-    return graphicsLayer { val p = progress.value.coerceIn(0f, 1f); alpha = p; translationY = rise * (1f - p) }
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    return graphicsLayer {
+        val p = progress.value
+        alpha = CcSettle.alpha(p)
+        val scale = CcSettle.scale(p)
+        scaleX = scale; scaleY = scale
+        val radius = CcSettle.blurRadiusDp(p) * density
+        renderEffect = if (radius >= .5f) androidx.compose.ui.graphics.BlurEffect(radius, radius, androidx.compose.ui.graphics.TileMode.Decal) else null
+    }
 }
 
 /** A 1×1 control that wiggles with a "–" while editing. */

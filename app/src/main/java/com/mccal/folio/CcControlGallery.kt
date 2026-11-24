@@ -81,6 +81,22 @@ internal fun ccGalleryFilter(items: List<CcGalleryItem>, query: String): List<Cc
     return if (q.isEmpty()) items else items.filter { it.label.contains(q, ignoreCase = true) }
 }
 
+/** One section of the gallery: a heading ([label], a string resource) and the [items] under it. */
+internal data class CcGallerySection(@androidx.annotation.StringRes val label: Int, val items: List<CcGalleryItem>)
+
+/**
+ * [shown] split into the sections the gallery lists, in order: the modules, then each group of controls, then the controls that are in none.
+ * A section with nothing in it is left out. Shared by the sheet, the card and the editor's side list so they never disagree.
+ */
+internal fun ccGallerySections(shown: List<CcGalleryItem>): List<CcGallerySection> {
+    val controls = shown.filter { !it.module }
+    return buildList {
+        shown.filter { it.module }.takeIf { it.isNotEmpty() }?.let { add(CcGallerySection(R.string.cc_gallery_modules, it)) }
+        CcGalleryGroup.entries.forEach { group -> controls.filter { ccGalleryGroup(it.id) == group }.takeIf { it.isNotEmpty() }?.let { add(CcGallerySection(group.label, it)) } }
+        controls.filter { ccGalleryGroup(it.id) == null }.takeIf { it.isNotEmpty() }?.let { add(CcGallerySection(R.string.cc_gallery_controls, it)) }
+    }
+}
+
 /**
  * The sheet Control Center's edit mode opens to add a control (as iOS's Add a Control): a search field, then the modules that are off and
  * the controls that are not on the page, each a round button with its name under it. A tap adds that item and the sheet stays open to add
@@ -195,50 +211,42 @@ internal const val CC_GALLERY_CARD_WIDTH_DP = 360
 
 @Composable
 private fun GalleryBody(items: List<CcGalleryItem>, shown: List<CcGalleryItem>, query: String, onQuery: (String) -> Unit, onAdd: (CcGalleryItem) -> Unit) {
-    val searchLabel = stringResource(R.string.search_controls)
     Column {
         run {
-            Row(Modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(Color.White.copy(alpha = .1f)).padding(horizontal = FolioSpace.COMPACT.dp, vertical = FolioSpace.SNUG.dp),
-                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(FolioSpace.SNUG.dp)) {
-                Icon(Icons.Rounded.Search, null, tint = FolioGlass.secondary, modifier = Modifier.size(20.dp))
-                Box(Modifier.weight(1f)) {
-                    if (query.isEmpty()) Text(stringResource(R.string.search_controls), color = FolioGlass.secondary, fontSize = FolioType.BODY.sp)
-                    BasicTextField(query, onQuery, singleLine = true, cursorBrush = SolidColor(Color.White),
-                        textStyle = TextStyle(color = Color.White, fontSize = FolioType.BODY.sp), keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
-                        modifier = Modifier.fillMaxWidth().semantics { contentDescription = searchLabel })
-                }
-            }
+            GallerySearchField(query, onQuery)
             if (shown.isEmpty()) {
                 Text(stringResource(if (items.isEmpty()) R.string.all_controls_added else R.string.no_controls_found), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp,
                     modifier = Modifier.padding(vertical = FolioSpace.LARGE.dp))
             } else LazyVerticalGrid(GridCells.Adaptive(88.dp), Modifier.weight(1f, fill = false).heightIn(max = 520.dp).padding(top = FolioSpace.COMPACT.dp),
                 horizontalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.COMPACT.dp)) {
-                val modules = shown.filter { it.module }
-                val controls = shown.filter { !it.module }
-                if (modules.isNotEmpty()) {
-                    item(span = { GridItemSpan(maxLineSpan) }) { GalleryHeading(stringResource(R.string.cc_gallery_modules)) }
-                    items(modules, key = { it.id }) { GalleryTile(it, onAdd) }
-                }
-                CcGalleryGroup.entries.forEach { group ->
-                    val inGroup = controls.filter { ccGalleryGroup(it.id) == group }
-                    if (inGroup.isNotEmpty()) {
-                        item(span = { GridItemSpan(maxLineSpan) }) { GalleryHeading(stringResource(group.label)) }
-                        items(inGroup, key = { it.id }) { GalleryTile(it, onAdd) }
-                    }
-                }
-                val rest = controls.filter { ccGalleryGroup(it.id) == null }
-                if (rest.isNotEmpty()) {
-                    item(span = { GridItemSpan(maxLineSpan) }) { GalleryHeading(stringResource(R.string.cc_gallery_controls)) }
-                    items(rest, key = { it.id }) { GalleryTile(it, onAdd) }
+                ccGallerySections(shown).forEach { section ->
+                    item(span = { GridItemSpan(maxLineSpan) }) { GalleryHeading(stringResource(section.label)) }
+                    items(section.items, key = { it.id }) { GalleryTile(it, onAdd) }
                 }
             }
         }
     }
 }
 
+/** The search field the gallery and the editor's side list share: a rounded field with a magnifier, hinting "Search Controls". */
 @Composable
-private fun GalleryHeading(text: String) =
-    Text(text, color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = FolioSpace.TINY.dp))
+internal fun GallerySearchField(query: String, onQuery: (String) -> Unit, modifier: Modifier = Modifier) {
+    val searchLabel = stringResource(R.string.search_controls)
+    Row(modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(Color.White.copy(alpha = .1f)).padding(horizontal = FolioSpace.COMPACT.dp, vertical = FolioSpace.SNUG.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(FolioSpace.SNUG.dp)) {
+        Icon(Icons.Rounded.Search, null, tint = FolioGlass.secondary, modifier = Modifier.size(20.dp))
+        Box(Modifier.weight(1f)) {
+            if (query.isEmpty()) Text(stringResource(R.string.search_controls), color = FolioGlass.secondary, fontSize = FolioType.BODY.sp)
+            BasicTextField(query, onQuery, singleLine = true, cursorBrush = SolidColor(Color.White),
+                textStyle = TextStyle(color = Color.White, fontSize = FolioType.BODY.sp), keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
+                modifier = Modifier.fillMaxWidth().semantics { contentDescription = searchLabel })
+        }
+    }
+}
+
+@Composable
+internal fun GalleryHeading(text: String, modifier: Modifier = Modifier) =
+    Text(text, color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold, modifier = modifier.padding(top = FolioSpace.TINY.dp))
 
 @Composable
 private fun GalleryTile(item: CcGalleryItem, onAdd: (CcGalleryItem) -> Unit) {

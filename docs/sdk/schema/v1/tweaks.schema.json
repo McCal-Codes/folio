@@ -35,7 +35,8 @@
               "tintNotifications",
               "tintMedia",
               "pageEffects",
-              "duet"
+              "duet",
+              "standby2"
             ]
           },
           "enabled": {

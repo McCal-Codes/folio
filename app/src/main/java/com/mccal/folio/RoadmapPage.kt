@@ -115,7 +115,7 @@ private enum class RoadmapPhase { Idle, Checking, Offline }
     SheetGroup {
         IosActionRow(stringResource(R.string.suggest_a_feature), "coming-soon-suggest") {
             runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
-                android.net.Uri.parse(BugReport.NEW_ISSUE + "?template=feature_request.yml"))) }
+                android.net.Uri.parse(BugReport.SUGGEST_FEATURE_URL))) }
         }
     }
     savedAt?.let { saved ->

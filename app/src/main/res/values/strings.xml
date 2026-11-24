@@ -1199,6 +1199,7 @@
     <string name="get_it_on_1_s">Get it on: %1$s</string>
     <string name="on_this_phone_1_s">On this phone: %1$s</string>
     <string name="added_with_your_supporter_code">Added with your supporter code</string>
+    <string name="added_by_folio_for_keyd">Added by Folio, for Keyd</string>
     <string name="that_listing_has_no_app_to_download">That listing has no app to download.</string>
     <string name="folio_couldn_t_download_that_app">Folio couldn\'t download that app.</string>
     <string name="that_app_didn_t_match_what_its_source">That app didn\'t match what its source promised, so nothing was installed.</string>
@@ -1307,6 +1308,11 @@
     <string name="make_a_stack">Make a Stack</string>
     <string name="remove_stack">Remove Stack</string>
     <string name="remove_widget_2">Remove Widget</string>
+    <string name="widget_size_dimensions">%1$d × %2$d</string>
+    <string name="widget_size_extra_large">Extra Large</string>
+    <string name="move_to_page">Move to Page</string>
+    <string name="edit_stack">Edit Stack</string>
+    <string name="widget_page_full">No room for this widget on that page</string>
     <string name="wallpaper_appearance_2">Wallpaper &amp; Appearance</string>
     <string name="add_page">Add Page</string>
     <string name="remove_this_empty_page">Remove This Empty Page</string>
@@ -1344,6 +1350,10 @@
     <string name="folio_bug_report_1">Folio %1$s bug report</string>
     <string name="report_email_body">What happened, and what did you expect instead?\n\n\nThe attached file has your phone and screen settings, Folio\'s recent events and its own log, so there\'s no need to describe those.</string>
     <string name="email_a_report">Email a Report</string>
+    <string name="attach_screenshots">Attach Screenshots</string>
+    <string name="screenshots_attached">Screenshots attached: %1$d</string>
+    <string name="remove_attached_screenshots">Remove Screenshots</string>
+    <string name="attach_screenshots_note">Optional, up to 3, and they go with Email a Report only. Check them for notifications and names first.</string>
     <string name="use_github_instead">Use GitHub Instead</string>
     <string name="how_should_this_report_go">How would you like to send it?</string>
     <string name="email_needs_no_account">Email needs no account: your mail app opens with the details attached as a file, so you can read it first, and nothing is sent until you send it. GitHub copies the same details for you to paste into the form.</string>
@@ -1383,7 +1393,7 @@
     <string name="android_s_three_buttons_are_on_so_you_ll">Android\'s three buttons are on, so you\'ll see both sets. Folio\'s bar sits above them; switch to gesture navigation in Android\'s Display settings to have only these.</string>
     <string name="report_a_bug">Report a Bug</string>
     <string name="show_welcome_again">Show Welcome Again</string>
-    <string name="report_a_bug_opens_github_in_your_browse">Report a Bug opens GitHub in your browser with your Folio version and phone filled in. Nothing is sent until you submit it.</string>
+    <string name="report_a_bug_opens_github_in_your_browse">Report a Bug opens GitHub in your browser with your Folio version, phone and screen filled in, and a short summary of what Folio was doing. Nothing is sent until you submit it.</string>
     <string name="for_sharing_your_setup_folio_shows_9_41">For sharing your setup: Folio shows 9:41 with full battery and signal, and hides notifications, music, messages, device names, calendar events and alarms. Android\'s own status bar and apps aren\'t changed. Turns off by itself after 30 minutes.</string>
     <string name="if_folio_closes_unexpectedly_twice_right">If Folio closes unexpectedly twice right after starting, it starts in Safe Mode with optional features paused. Your settings are never changed.</string>
     <string name="features_inspired_by_ios_jailbreak_tweak">Features inspired by iOS jailbreak tweaks, re-created for Folio. Get the ones you want from the Tweak Library; they show up here.</string>
@@ -1644,6 +1654,7 @@
     <string name="label_theme_import">Folio Theme</string>
     <string name="label_wallpaper_import">Folio Wallpaper</string>
     <string name="wallpaper_blur">Blur</string>
+    <string name="wallpaper_dim">Dim</string>
     <string name="wallpaper_photo_menu">Wallpaper Photo</string>
     <string name="wallpaper_frame_hint">Pinch to zoom, drag to move</string>
     <!-- Shown when opening a supporter code link. -->
@@ -1809,6 +1820,19 @@
     <string name="from_folio">From Folio</string>
     <string name="wallpaper_by_artist">%1$s by %2$s</string>
     <string name="wallpaper_preview">Wallpaper preview</string>
+    <string name="wallpaper_tweak_everything">Everything</string>
+    <string name="wallpaper_tweak_sky">Sky</string>
+    <string name="wallpaper_tweak_hills">Hills</string>
+    <string name="wallpaper_tweak_glow">Glow</string>
+    <string name="wallpaper_tweak_hue">Hue</string>
+    <string name="wallpaper_tweak_saturation">Saturation</string>
+    <string name="wallpaper_tweak_lightness">Lightness</string>
+    <string name="wallpaper_tweak_reset">Reset colors</string>
+    <string name="wallpaper_tweak_preset_teal">Teal</string>
+    <string name="wallpaper_tweak_preset_violet">Violet</string>
+    <string name="wallpaper_tweak_preset_rose">Rose</string>
+    <string name="wallpaper_tweak_preset_amber">Amber</string>
+    <string name="wallpaper_tweak_preset_slate">Slate</string>
     <string name="wallpapers_you_install_from_the_market">Wallpapers you install from the Market appear here, with the artist and the license they came with. Folio only shows art it can name.</string>
     <string name="a_picture_you_choose_in_folio_only_behind">A picture you choose in Folio, only behind Folio.</string>
     <string name="no_background_behind_home">No background behind Home.</string>
@@ -2740,4 +2764,23 @@
     <string name="market_stat_works_on">Works on</string>
     <string name="market_cover_and_inner">Cover and inner</string>
     <string name="market_stat_get_on">Get it on</string>
+    <string name="page_overview">Page overview</string>
+    <string name="page_overview_hint">Tick a page to show it on Home. Hold and drag a page to move it.</string>
+    <string name="page_overview_shown">Shown</string>
+    <string name="page_overview_hidden">Hidden</string>
+    <string name="page_overview_keep_one">Keep at least one page showing.</string>
+    <string name="page_overview_empty">Empty page</string>
+    <string name="move_page_earlier">Move page earlier</string>
+    <string name="move_page_later">Move page later</string>
+    <string name="page_moved_to_position">Page moved to position %1$d of %2$d</string>
+    <string name="page_shown_on_home">Page %1$d shown on Home</string>
+    <string name="page_hidden_from_home">Page %1$d hidden from Home</string>
+    <string name="show_hidden_pages_to_edit_home_screen">Show hidden pages to edit Home Screen</string>
+    <string name="show_hidden_pages_to_add_to_home_screen">Show hidden pages to add to Home Screen.</string>
+    <string name="home_editing_is_off_while_pages_are_hidden">Home editing is off while pages are hidden</string>
+    <string name="help_tell_us">Tell Us</string>
+    <string name="help_look_around">Look Around</string>
+    <string name="help_translate">Help Translate</string>
+    <string name="known_issues">Known Issues</string>
+    <string name="release_notes">Release Notes</string>
 </resources>

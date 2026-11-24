@@ -133,6 +133,8 @@ data class LauncherState(
     /** Top pulls open Folio's iOS-style panels instead of the Android system shade. */
     val folioPanels: Boolean = true,
     val minPages: Int = 1,
+    /** Home pages the person hid in the Page overview, by real page number. They keep their apps; see [HomePages]. */
+    val hiddenPages: Set<Int> = emptySet(),
     val statusStyle: StatusStyle = StatusStyle(),
     val foldEffect: Boolean = true,
     val foldIntensity: Float = 1f,
@@ -529,6 +531,12 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     private var redoPair: Pair<HomeLayout, HomeLayout>? = null
     private var undoImportSettings: UndoImportSettings? = null
     /**
+     * What a page move or hide changed besides the layout (page looks, hidden pages, Focus page sets), as (before, after, the
+     * layout that edit left). Undo puts it back only while it is still the edit being undone, so the one Undo covers all of it.
+     */
+    private var pageSideUndo: Triple<PageSide, PageSide, HomeLayout>? = null
+    private var lastMoveOrder: List<Int>? = null
+    /**
      * Smart Stacks a restored backup took off Home because an old overflow widget in it kept their slot number, with the
      * layout that restore made. They count only while that restore is still the one Undo would take back.
      */
@@ -745,10 +753,8 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
                     pendingShortcuts.removeAll { p -> newShortcuts.any { it.packageName == p.first && it.shortcutId == p.second } }
                     addedPackages.removeAll(arrivals.map { it.packageName }.toSet())
                     val homeArrivals = (if (old.addNewAppsToHome) arrivals else emptyList()) + newShortcuts
-                    // While a Focus hides Home pages, new arrivals go to a page that's showing, not one you can't see.
-                    val hiddenCells = FocusPages.lockingFocus(old)?.pages?.let { shown ->
-                        (0 until old.layout.pageCount).filter { it !in shown }.flatMap { page -> (0 until HOME_CELLS).map { homeCellIndex(page, it) } }
-                    }.orEmpty()
+                    // While a Focus limits Home pages, or pages are hidden, new arrivals go to a page that's showing, not one you can't see.
+                    val hiddenCells = FocusPages.hiddenCells(old)
                     val blockedForArrivals = (old.widgetPlacements.filter { it.page >= 0 }.flatMap { it.coveredIndices() } + hiddenCells).toSet()
                     val withArrivals = homeArrivals.fold(pins) { slots, app ->
                         if (app.id in old.dock || app.id in old.leadingSlots || old.folders.any { app.id in it.appIds }) slots
@@ -959,7 +965,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         mutable.update { old ->
             val enable = pinned && old.apps.any { it.id == id }
             old.copy(homeSlots = if (enable && id in old.leadingSlots) old.homeSlots else pinHomeApp(old.homeSlots, id,
-                enable, old.widgetPlacements.flatMapTo(mutableSetOf()) { it.coveredIndices() }.filterTo(mutableSetOf()) { it >= 0 }, old.homeAppRows),
+                enable, old.widgetPlacements.flatMapTo(mutableSetOf()) { it.coveredIndices() }.filterTo(mutableSetOf()) { it >= 0 } + FocusPages.hiddenCells(old), old.homeAppRows),
                 leadingSlots = if (enable) old.leadingSlots else old.leadingSlots.map { it?.takeUnless(id::equals) },
                 canUndoEdit = false)
         }
@@ -1081,6 +1087,8 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         val names = old.appNames + preview.appNames
         mutable.value = old.copy(appNames = names, appIconStyles = old.appIconStyles + preview.appIconStyles, iconActions = old.iconActions + preview.iconActions, apps = old.apps.withAppNames(names),
             homeSlots = restored.slots, leadingSlots = restored.leadingSlots, dock = trimmedDock(restored.dock),
+            // The hidden pages were numbers in the old layout; in a restored one they would hide other pages, so every page shows.
+            hiddenPages = emptySet(),
             widgetPlacements = restored.widgetPlacements, folders = restored.folders,
             widgetRestores = restored.widgetRestores, compact = preview.compact, expanded = preview.expanded, portrait = preview.portrait,
             // Kept for Undo, except on a number a restored widget still uses (only an old overflow widget keeps its number).
@@ -1191,7 +1199,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
      * widgets Android no longer has are left out, and Undo is offered like any other layout change.
      */
     fun restoreLayoutSnapshot(snapshot: LayoutSnapshot): Boolean {
-        if (mutable.value.loading || FocusPages.lockingFocus(mutable.value) != null) return false
+        if (mutable.value.loading || FocusPages.isLocked(mutable.value)) return false
         // Over a damaged layout this is the way back, like a restored backup (see applyImportedLayout).
         val recovering = statePayloadInvalid
         saveLayoutSnapshot("Before restoring", force = true)
@@ -1374,13 +1382,14 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         if (statePayloadInvalid) return false
         // The dock is as big as what is in it (four at least), so a place left empty at its end closes.
         val next = requested.copy(dock = trimmedDock(requested.dock))
-        // A Focus hiding Home pages locks editing: Home shows a filtered copy, so its positions aren't the real ones.
-        if (FocusPages.lockingFocus(mutable.value) != null) return false
+        // A Focus limiting Home pages, or a page the person hid, locks editing: Home shows a filtered copy, so its positions aren't the real ones.
+        if (FocusPages.isLocked(mutable.value)) return false
         val old = mutable.value
         if (old.layout == next) return false
         undoLayout = old.layout to next
         redoPair = null
         undoImportSettings = null
+        pageSideUndo = null
         mutable.value = old.copy(homeSlots = next.slots, leadingSlots = next.leadingSlots, dock = next.dock,
             widgetPlacements = next.widgetPlacements, folders = next.folders,
             widgetRestores = next.widgetRestores,
@@ -1398,7 +1407,9 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         if (!old.canUndoEdit || old.layout != after) return false
         val installed = (old.apps.map { it.id } + before.folders.map { it.id }).toSet()
         val settings = undoImportSettings
+        val side = pageSideUndo?.takeIf { it.third == after }?.first
         mutable.value = old.copy(homeSlots = reconcileHomeSlots(before.slots, installed),
+            pageStyles = side?.pageStyles ?: old.pageStyles, hiddenPages = side?.hiddenPages ?: old.hiddenPages, focusModes = side?.focusModes ?: old.focusModes,
             leadingSlots = before.leadingSlots.map { it?.takeIf(installed::contains) },
             dock = trimmedDock(before.dock.map { it?.takeIf(installed::contains) }), widgetPlacements = before.widgetPlacements, folders = before.folders,
             widgetStacks = WidgetStacks.prune(old.widgetStacks + stacksForUndo(), before.widgetPlacements.map { it.slot }.toSet()),
@@ -1411,7 +1422,9 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         undoLayout = null
         undoImportSettings = null
         setAsideStacks = null
-        redoPair = mutable.value.layout to after
+        // A page edit has no Redo: putting it back would need the page data again, and a hide changes no cell at all.
+        redoPair = if (side == null) mutable.value.layout to after else null
+        pageSideUndo = null
         persist()
         return true
     }
@@ -1427,12 +1440,57 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     }
     fun setLabels(value: Boolean) { if (statePayloadInvalid) return; undoLayout = null; undoImportSettings = null; mutable.update { it.copy(labels = value, canUndoEdit = false) }; persist() }
     /** Adds an empty Home page after the last one; returns its index. */
-    fun addPage(): Int { if (statePayloadInvalid || FocusPages.lockingFocus(state.value) != null) return -1; val next = state.value.homePages
+    fun addPage(): Int { if (statePayloadInvalid || FocusPages.isLocked(state.value)) return -1; val next = state.value.homePages
         undoLayout = null; mutable.update { it.copy(minPages = (next + 1).coerceAtMost(20), canUndoEdit = false) }; persist(); return next }
     /** Removes the last page when it has no apps or widgets. */
-    fun removeLastEmptyPage(): Boolean { if (statePayloadInvalid || FocusPages.lockingFocus(state.value) != null) return false; val s = state.value
+    fun removeLastEmptyPage(): Boolean { if (statePayloadInvalid || FocusPages.isLocked(state.value)) return false; val s = state.value
         if (s.homePages <= 1 || s.layout.contentPageCount >= s.homePages) return false
         undoLayout = null; mutable.update { it.copy(minPages = maxOf(1, it.homePages - 1), canUndoEdit = false) }; persist(); return true }
+
+    /**
+     * Moves Home page [from] to place [to] (the Page overview's drag, or a TalkBack move). Every holder of a page number follows the
+     * page: widgets, page looks, the hidden set and each Focus's pages. Returns the order (`order[new] = old`) so the screen can
+     * carry the page each display rested on, or null when nothing moved. One Undo puts all of it back.
+     */
+    fun movePage(from: Int, to: Int): List<Int>? {
+        val old = mutable.value
+        if (FocusPages.lockingFocus(old) != null) return null
+        val order = HomePages.moveOrder(old.layout.pageCount, from, to)
+        if (HomePages.isIdentity(order)) return null
+        val side = PageSide(HomePages.remapPageMap(old.pageStyles, order), HomePages.remapPages(old.hiddenPages, order),
+            old.focusModes.map { HomePages.remapFocus(it, order) })
+        return order.takeIf { commitPages(HomePages.reorder(old.layout, order), side) }?.also { lastMoveOrder = it }
+    }
+
+    /** The page order that [undoEdit] is about to apply when the last step was a page move, so the screen can follow the page it was on. */
+    fun undoPageOrder(): List<Int>? = lastMoveOrder?.takeIf { pageSideUndo?.third == mutable.value.layout }?.let(HomePages::inverse)
+
+    /** Hides or shows Home page [page]. Its apps stay where they are. The last page showing cannot be hidden. */
+    fun setPageHidden(page: Int, hide: Boolean): Boolean {
+        val old = mutable.value
+        if (FocusPages.lockingFocus(old) != null) return false
+        val hidden = HomePages.withHidden(old.hiddenPages, old.layout.pageCount, page, hide) ?: return false
+        return commitPages(old.layout, PageSide(old.pageStyles, hidden, old.focusModes))
+    }
+
+    /** One page-overview edit as an undoable step. Unlike [commitLayout] it allows a hide, which changes no cell. */
+    private fun commitPages(layout: HomeLayout, side: PageSide): Boolean {
+        if (statePayloadInvalid) return false
+        val old = mutable.value
+        val before = PageSide(old.pageStyles, old.hiddenPages, old.focusModes)
+        if (old.layout == layout && before == side) return false
+        undoLayout = old.layout to layout
+        redoPair = null
+        undoImportSettings = null
+        pageSideUndo = Triple(before, side, layout)
+        lastMoveOrder = null
+        mutable.value = old.copy(homeSlots = layout.slots, widgetPlacements = layout.widgetPlacements,
+            minPages = layout.minPages, pageStyles = side.pageStyles, hiddenPages = side.hiddenPages, focusModes = side.focusModes,
+            editRevision = old.editRevision + 1, canUndoEdit = true)
+        persist()
+        return true
+    }
+
     fun setSpotlightSection(section: String, visible: Boolean) = updateSettings(soon = false) {
         it.copy(spotlightHidden = if (visible) it.spotlightHidden - section else it.spotlightHidden + section) }
     fun setSearchEngine(engine: String) = updateSettings(soon = false) { it.copy(searchEngine = engine) }
@@ -1721,6 +1779,8 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
             .put("island", s.island)
             .put("folioPanels", s.folioPanels)
             .put("minPages", s.minPages)
+            // Only when a page is hidden, so a save from before the Page overview keeps its shape (and an older Folio simply shows every page).
+            .also { o -> if (s.hiddenPages.isNotEmpty()) o.put("hiddenPages", JSONArray(s.hiddenPages.sorted())) }
             .put("statusStyle", s.statusStyle.toJson())
             .put("foldEffect", s.foldEffect).put("foldSnapshot", s.foldSnapshot).put("foldIntensity", s.foldIntensity.toDouble()).put("duet", s.duet.toJson()).put("stayAwakeOnFold", s.stayAwakeOnFold)
             .put("panelBlur", s.panelBlur.toDouble()).put("notificationClock", s.notificationClock).put("groupNotifications", s.groupNotifications).put("notificationSections", s.notificationSections)
@@ -1978,6 +2038,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?, dockMirror: St
         island = j.optBoolean("island", true),
         folioPanels = j.optBoolean("folioPanels", true),
         minPages = j.optInt("minPages", 1).coerceIn(1, 20),
+        hiddenPages = j.optJSONArray("hiddenPages")?.let { a -> (0 until a.length()).map { a.optInt(it, -1) }.filter { it >= 0 }.toSet() } ?: emptySet(),
         statusStyle = StatusStyle.fromJson(j.optJSONObject("statusStyle")),
         foldEffect = j.optBoolean("foldEffect", true), foldSnapshot = j.optBoolean("foldSnapshot", false), foldIntensity = j.optDouble("foldIntensity", 1.0).toFloat().coerceIn(.3f, 1.5f), // A save from before Duet had today's fold, which is the Duo style; only a new save carries a choice.
         duet = if (j.has("duet") || j.length() == 0) com.mccal.folio.duet.DuetOptions.fromJson(j.optJSONObject("duet")) else com.mccal.folio.duet.DuetOptions(style = com.mccal.folio.duet.DuetStyles.DUO.id),

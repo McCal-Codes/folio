@@ -313,6 +313,77 @@
       "steps": [
         "Get several messages in one chat. The badge should show how many, and a dot where an app gives no count."
       ]
+    },
+    {
+      "id": "page-overview",
+      "title": "Page overview",
+      "where": "Home > page dots, or the Edit menu",
+      "steps": [
+        "Long-press the page dots while icons wiggle. Hide a page, show it again, drag one to a new place, then tap Undo. With many pages, hold one near the bottom edge and check the grid scrolls and the page lands under your finger.",
+        "On a fold: open the overview, fold and unfold the phone. It should stay open, and Home should come back on the page it was on. Tell us if it does not."
+      ]
+    },
+    {
+      "id": "bug-report-form",
+      "title": "Report a Bug",
+      "where": "Settings > Help > Report a Bug",
+      "steps": [
+        "Choose Use GitHub Instead. The form should open with Screen already picked and a short summary in Diagnostics. Close it without submitting unless you mean to report something.",
+        "Choose Email a Report, attach a screenshot, and check the email has the screenshot and the report file."
+      ]
+    },
+    {
+      "id": "cc-two-pane-editor",
+      "title": "Control Center in two panes",
+      "where": "Control Center > Edit, on the unfolded screen",
+      "steps": [
+        "Unfold the phone, open Control Center and tap Edit, then Add. The Add a Control list should sit beside your layout, with the divider on the crease and no tile crossing it. Tap a plus to add a control, a minus to remove one, and Done to leave.",
+        "Fold the phone, or hold it half open, and open Add again. You should get the single Add a Control gallery as before. Tell us if a tile crosses the crease, the list covers your layout, or anything is cut off."
+      ]
+    },
+    {
+      "id": "badge-talkback",
+      "title": "TalkBack reads badges",
+      "where": "Home, with TalkBack on",
+      "steps": [
+        "Turn on TalkBack and touch an app icon that has a badge. It should say the app name and the count, such as \"Messages, 5 notifications\", or \"has notifications\" when the badge is a dot. With badges off it should say only the name. Tell us if a number is read twice or as a separate item."
+      ]
+    },
+    {
+      "id": "cc-open-arrive",
+      "title": "Control Center opens together",
+      "where": "Control Center",
+      "steps": [
+        "Open Control Center a few times, from the Side Bar and by pulling down. The controls should come in together, small and soft, and sharpen in about a quarter of a second. Nothing should flash.",
+        "Turn on Reduce Motion in Android's settings and open it again. The controls should just appear. Tell us if opening feels choppy or slower than before, or if any control flickers, on the cover screen or the unfolded one."
+      ]
+    },
+    {
+      "id": "photos-widget-flip",
+      "title": "Photos widget turns over",
+      "where": "Home, Photos widget",
+      "steps": [
+        "Hold the Photos widget and choose Edit Widget, or tap the widget. It should turn over like a card and show its options on the back, with Done at the top. Change an option, then tap Done or press Back and it should turn back to the photo.",
+        "Turn on Reduce Motion in Android's settings and try again. The widget should fade to its options instead of turning. Tell us if the turn stutters, shows a flash, or if any option can't be reached on a small widget."
+      ]
+    },
+    {
+      "id": "wallpaper-recolor-live",
+      "title": "Recoloring follows your finger",
+      "where": "Settings > Wallpaper & Appearance > Folio background > Moon Hills or Ember Hills > Customize",
+      "steps": [
+        "Pick Moon Hills, tap Customize and drag Hue slowly and then quickly. The picture should change color as you drag, with no lag and no steps, and settle sharp a moment after you let go. Try Saturation, Lightness and the color presets too.",
+        "Tell us if the picture trails behind your finger, flashes soft or sharp while you drag, or if Home behind it flickers."
+      ]
+    },
+    {
+      "id": "photo-blur-dim",
+      "title": "Blur and Dim for a photo",
+      "where": "Edit menu > Wallpaper Photo, or share a photo to Folio",
+      "steps": [
+        "Pick a photo and, on the framing screen, drag Blur and Dim slowly and then quickly. The picture should soften and darken as you drag, with no lag. Tap Set: Home should look the way the preview did, with icons easy to read on it.",
+        "Tell us if the blur or the dim steps or trails behind your finger, if Home looks softer or darker than the preview did, or if the sliders hide too much of the screen on the cover display."
+      ]
     }
   ]
 }

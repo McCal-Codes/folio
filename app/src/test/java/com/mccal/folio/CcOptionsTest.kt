@@ -133,4 +133,20 @@ class CcOptionsTest {
         assertEquals(.25f, ccPageAlpha(3f), 0.001f)
         assertEquals(1f, ccPageAlpha(-1f), 0.001f)
     }
+
+    @Test fun `a control arrives small and soft and lands whole`() {
+        assertEquals(0f, CcSettle.alpha(0f), 0f)
+        assertEquals(.92f, CcSettle.scale(0f), 0.001f)
+        assertEquals(6f, CcSettle.blurRadiusDp(0f), 0.001f)
+        assertEquals(1f, CcSettle.alpha(1f), 0f)
+        assertEquals(1f, CcSettle.scale(1f), 0.001f)
+        assertEquals(0f, CcSettle.blurRadiusDp(1f), 0f)
+        assertEquals(.96f, CcSettle.scale(.5f), 0.001f)
+        assertEquals(3f, CcSettle.blurRadiusDp(.5f), 0.001f)
+        // A spring that overshoots, or a frame before the start, never takes a control past either end.
+        assertEquals(1f, CcSettle.alpha(1.2f), 0f)
+        assertEquals(1f, CcSettle.scale(1.2f), 0.001f)
+        assertEquals(0f, CcSettle.blurRadiusDp(1.2f), 0f)
+        assertEquals(.92f, CcSettle.scale(-.3f), 0.001f)
+    }
 }
