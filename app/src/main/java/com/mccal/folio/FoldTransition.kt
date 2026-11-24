@@ -214,16 +214,8 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
                 cover = !fold.expanded, geometry = foldGeometry(rotation, hinge, size.width, size.height), style = style,
                 cornerPx = cornerPx, tiltX = DuetMotionMath.rotate(tilt.x, tilt.y, rotation).first,
                 tiltY = DuetMotionMath.rotate(tilt.x, tilt.y, rotation).second) else null
-            // The open screen settles up to full size as it clears, and eases back down as it folds.
-            val settle = when {
-                !useBlurEffect() -> 1f
-                fold.expanded -> if (reduceMotion) 1f else 1f - FOLD_SCALE * m.coerceIn(0f, 1f)
-                else -> coverSettleScale(m, reduceMotion)
-            }
-            scaleX = settle; scaleY = settle
-            // Shrunk, the screen's square edges would show inside the panel's rounded ones.
-            clip = settle < 1f
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(cornerPx)
+            // The screen stays full size. It used to shrink a few percent, which showed the window's own background
+            // around it as a flat rim that the blur and shade never touch (#567587, 1.5% a side on the Fold8).
         } else Modifier.drawWithContent {
             drawContent()
             if (useBlurEffect() && m > 0f) {
@@ -674,9 +666,6 @@ internal fun coverHingeEdge(g: FoldGeometry): CoverEdge = when {
     else -> CoverEdge.BOTTOM
 }
 
-/** How far the cover content recedes while the effect is on, so the cover has depth and not only a blur; none under Reduce Motion. */
-internal fun coverSettleScale(m: Float, reduceMotion: Boolean): Float = if (reduceMotion) 1f else 1f - COVER_SCALE * m.coerceIn(0f, 1f)
-
 private fun easeInOutSine(t: Float): Float = (-(kotlin.math.cos(Math.PI * t) - 1) / 2).toFloat()
 
 @RequiresApi(33)
@@ -713,8 +702,6 @@ private const val COVER_FIRST_STEP = .02f
 /** From the closed threshold to 90 degrees, as the Duo model (angle / 90): the cover reads open past 12 degrees and is full by the handoff. */
 private const val COVER_BUILD_START_DEG = 5f
 private const val COVER_BUILD_END_DEG = 90f
-/** How much smaller the cover content gets at full effect (the open screen uses 3%); a little more, since the cover is the smaller screen. */
-private const val COVER_SCALE = .045f
 /** The brightest the hinge light gets (white at 14%): a hint of light, not a glow. */
 private const val COVER_LIGHT = .14f
 /** How far into the cover the light reaches from the hinge edge. */
@@ -730,13 +717,11 @@ private const val MIN_FOLD_DROP_DEG = 20f
 private const val CLOSED_STALL_MS = 1_800L
 private const val LIT_TIMEOUT_MS = 1_200L
 private const val IDLE_WAIT_MS = 500L
-/** How much smaller the open screen is at the start of the reveal (97%). */
-private const val FOLD_SCALE = .03f
 private const val MOVE_DEG = 3f
 private const val REOPEN_DEG = 15f
 
 /**
- * The fold effect on a preview (Settings): [m] 0 is open and clear, 1 half folded. Same shader, sweep and scale as Home,
+ * The fold effect on a preview (Settings): [m] 0 is open and clear, 1 half folded. Same shader and sweep as Home,
  * with the hinge down the middle and the left half moving.
  */
 @Composable
@@ -744,8 +729,6 @@ internal fun Modifier.foldPreviewEffect(style: DuetStyle = DuetStyles.DEFAULT, m
     val shader = remember { if (Build.VERSION.SDK_INT >= 33) DuetShader() else null }
     return graphicsLayer {
         val value = m()
-        val settle = 1f - FOLD_SCALE * value.coerceIn(0f, 1f)
-        scaleX = settle; scaleY = settle
         if (shader != null && Build.VERSION.SDK_INT >= 33) renderEffect = if (value > 0f)
             shader.effect(size.width, size.height, value, cover = false, geometry = FoldGeometry(false, size.width / 2f, false), style = style) else null
     }.then(if (shader == null) Modifier.drawWithContent {
