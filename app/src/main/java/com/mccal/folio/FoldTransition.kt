@@ -679,7 +679,7 @@ internal fun unfoldFadeMs(reduceMotion: Boolean): Float = if (reduceMotion) UNFO
 /** The same for the cover, which comes into focus after folding. */
 internal fun coverFocusMs(reduceMotion: Boolean): Float = if (reduceMotion) COVER_MS else COVER_FOCUS_LONG_MS
 
-private fun easeInOutSine(t: Float): Float =(-(kotlin.math.cos(Math.PI * t) - 1) / 2).toFloat()
+private fun easeInOutSine(t: Float): Float = (-(kotlin.math.cos(Math.PI * t) - 1) / 2).toFloat()
 
 @RequiresApi(33)
 /** Share of the morph during which the still picture stays fully visible. */

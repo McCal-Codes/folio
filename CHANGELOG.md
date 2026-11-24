@@ -8,6 +8,7 @@ Folio shows the newest section on the phone after an update, and every version u
 ## [0.7.0] - Unreleased
 
 ### Added
+- **Simple Mode preview:** a calm Home for someone who wants a simpler phone, set up by a helper. Settings › Accessibility › Experience › Simple, or "Setting this up for someone else?" during setup, gives a big labeled list or grid of up to six apps (the phone's own Phone, Messages, Camera, Photos, Clock and Contacts to start), with the time, date and battery on top. A helper can also add up to four people to call, picked from the contact picker; they sit at the top of Home, and tapping one opens the dialer with their number, so Folio needs no Contacts or call permission. Home stays put; Helper Settings opens with the phone's screen lock and changes the people, the apps, the style and the text size. Safe Mode shows Folio's usual Home so Simple can never trap anyone. What's New, tips and notices wait until Simple Mode is off, and leaving brings your usual Home back exactly. Supporters on the beta see it first. <!-- beta 6 -->
 - **Display aids in Folio Dev:** Settings › Advanced › Developer, once unlocked, has a Display aids card that shows where Show taps, Pointer location, Don't keep activities, Stay awake while charging and Force activities to be resizable stand. Stay awake and Force resizable flip in place once Folio Dev has the one-time grant; the other three, which Android keeps to itself, are changed through a link to Android's own Developer options. Folio Dev only, and nothing in it flashes. <!-- beta 6 -->
 - **No passphrase on Developer:** the page opens on what the switches do to the phone and shows them once you agree, until you leave the page. Folio Dev only. <!-- beta 6 -->
 - **More in Settings > Help:** Help now has Suggest a Feature and Help Translate (each opens its GitHub form in your browser), Known Issues (the open bugs), and Release Notes (the same What's New screen as Tips), in groups called Tell Us and Look Around, with Show Welcome Again on its own below. What to Test moves into Look Around on beta builds. Nothing is sent until you submit a form yourself. <!-- beta 6 -->
@@ -172,6 +173,9 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Blur behind the panels over an app:** where the phone does not let a window blur (One UI turns it off), Folio takes a screenshot of the app to blur. If the phone was slow to hand it over, the picture was thrown away and the panel stayed on plain frosted glass; it now fades in when it arrives. <!-- beta 1 -->
 - **App Library while folding:** resetting a search or switching profiles waits for the next layout pass, avoiding a crash when the window changes size. <!-- beta 1 -->
 - **Dual-Screen Ambient Light switch:** StandBy 2's options now show the switch for the outer-screen glow. It was in the code but missing from the page, so the glow could not be turned off. <!-- beta 1 -->
+
+### Fixed
+- **Simple Mode keeps a picked person:** adding a person to call opened the contact picker, and Helper Settings locked itself when Folio stopped for it, so you landed on Home and the person was never saved. Helper Settings now stays open for the pick, and its 5-minute idle lock waits while the picker is open, for up to 3 minutes. Turning the screen off while it is open locks it at once. <!-- beta 6 -->
 
 ## [0.6.9.2] - 2026-11-17
 
