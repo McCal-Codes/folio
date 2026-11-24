@@ -1,6 +1,7 @@
 package com.mccal.folio
 
 import android.graphics.Bitmap
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -79,6 +80,9 @@ import kotlin.math.roundToInt
 /** How long the preview takes to appear, once. */
 private const val PREVIEW_MS = 240
 
+/** One picture melting into the next in the preview: long enough to read as a glide, short enough that a slider is never far ahead of it. */
+private const val PICTURE_FADE_MS = 70
+
 /** The scale the preview grows from. */
 private const val PREVIEW_FROM = .96f
 
@@ -152,11 +156,13 @@ internal fun WallpaperPreviewDialog(
                 .semantics { contentDescription = description }
                 .testTag("wallpaper-preview-dialog"),
         ) {
-            // The thumbnail shows until the sharp one is decoded (no blank frame), then one 150 ms cross-fade; a snap with Reduce Motion.
-            val sharpAlpha by androidx.compose.animation.core.animateFloatAsState(
-                if (sharp != null) 1f else 0f, if (reduceMotion) androidx.compose.animation.core.snap() else tween(FolioMotion.FADE_MS), label = "sharp")
-            thumbnail?.let { Image(it.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
-            sharp?.let { Image(it.asImageBitmap(), null, Modifier.fillMaxSize().graphicsLayer { alpha = sharpAlpha }, contentScale = ContentScale.Crop) }
+            // The sharp picture once it is decoded, the thumbnail until then (no blank frame). Every change of picture, the thumbnail
+            // arriving, the sharp one replacing it, or a recolor slider moving, cross-fades instead of cutting, so a moving slider
+            // glides from one color to the next; a snap with Reduce Motion. The fade is short so the picture is never far behind a finger.
+            Crossfade(sharp ?: thumbnail, Modifier.fillMaxSize(),
+                animationSpec = if (reduceMotion) androidx.compose.animation.core.snap() else tween(PICTURE_FADE_MS), label = "wallpaper picture") { picture ->
+                if (picture != null && !picture.isRecycled) Image(picture.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            }
             // Home has a scrim behind its text and so does this, so the bottom text and buttons read over a pale picture.
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = .25f), Color.Transparent, Color.Black.copy(alpha = .6f)))))
 

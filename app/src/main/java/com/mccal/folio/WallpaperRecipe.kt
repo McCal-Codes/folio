@@ -164,8 +164,12 @@ private fun smoothStep(a: Float, b: Float, t: Float): Float {
 
 private fun expf(x: Float) = exp(x.toDouble()).toFloat()
 
-/** Draws a [recipe] with [tweaks] as an [n] by [n] square, one row at a time into [row] and handed to [emit] (so no whole-picture array is held). */
-internal fun renderHills(recipe: HillsRecipe, tweaks: WallpaperTweaks, n: Int, emit: (y: Int, row: IntArray) -> Unit) {
+/**
+ * Draws a [recipe] with [tweaks] as an [n] by [n] square, one row at a time into [row] and handed to [emit] (so no whole-picture array is held).
+ * [keepGoing] is asked before every row: a slider that has moved on makes the picture it was drawing worthless, so the drawing stops there
+ * instead of finishing and holding up the one that replaces it.
+ */
+internal fun renderHills(recipe: HillsRecipe, tweaks: WallpaperTweaks, n: Int, keepGoing: () -> Boolean = { true }, emit: (y: Int, row: IntArray) -> Unit) {
     val skyStops = recipe.sky.map { it.first to tweakedRgb(it.second, tweaks.effective(TweakPart.SKY)) }
     val hills = recipe.hills.map { tweakedRgb(it, tweaks.effective(TweakPart.HILLS)) }
     val glowTweak = tweaks.effective(TweakPart.GLOW)
@@ -185,6 +189,7 @@ internal fun renderHills(recipe: HillsRecipe, tweaks: WallpaperTweaks, n: Int, e
     val sky = FloatArray(3)
     val rgb = FloatArray(3)
     for (y in 0 until n) {
+        if (!keepGoing()) return
         val v = y.toFloat() / n
         // Piecewise-linear through the sky stops, held flat past the first and last.
         var k = 0
@@ -242,17 +247,25 @@ internal fun renderHills(recipe: HillsRecipe, tweaks: WallpaperTweaks, n: Int, e
     }
 }
 
-/** The piece [id] drawn with [tweaks] at [size] pixels square, or null for a piece that has no recipe. Call off the main thread. */
-internal fun renderTweaked(id: String, tweaks: WallpaperTweaks, size: Int): Bitmap? {
+/**
+ * The piece [id] drawn with [tweaks] at [size] pixels square, or null for a piece that has no recipe, or when [keepGoing] said stop
+ * part way (nothing half drawn is ever returned). Call off the main thread.
+ */
+internal fun renderTweaked(id: String, tweaks: WallpaperTweaks, size: Int, keepGoing: () -> Boolean = { true }): Bitmap? {
     val recipe = WallpaperRecipes.of(id) ?: return null
     val n = size.coerceIn(16, 2048)
     val bitmap = Bitmap.createBitmap(n, n, Bitmap.Config.ARGB_8888)
-    renderHills(recipe, tweaks, n) { y, row -> bitmap.setPixels(row, 0, n, 0, y, n, 1) }
+    var stopped = false
+    renderHills(recipe, tweaks, n, { keepGoing().also { if (!it) stopped = true } }) { y, row -> bitmap.setPixels(row, 0, n, 0, y, n, 1) }
+    if (stopped) { bitmap.recycle(); return null }
     return bitmap
 }
 
 /** How wide the colored copy behind Home is drawn: a little under the shipped 2448, which a center crop never has to scale up much on a phone. */
 internal const val TWEAKED_HOME_PX = 1800
 
-/** The quick copy drawn while a slider is moving. */
-internal const val TWEAKED_LIVE_PX = 640
+/**
+ * The quick copy drawn while a slider is moving. The pieces are soft gradients and hills that are drawn up to a phone screen anyway,
+ * so a small square costs a quarter of the work of 640 and looks the same under the finger; the full-size copy follows when it rests.
+ */
+internal const val TWEAKED_LIVE_PX = 320

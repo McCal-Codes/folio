@@ -116,4 +116,42 @@ class WallpaperRecipeTest {
         }
         assertNotNull(draw("moon-hills", WallpaperTweaks.NONE))
     }
+
+    @Test
+    fun `a drawing that is told to stop does no more rows`() {
+        val recipe = WallpaperRecipes.of("moon-hills")!!
+        var asked = 0
+        val rows = mutableListOf<Int>()
+        // Stops once five rows are done: the sixth question says no, so a moved slider never waits for the rest of the picture.
+        renderHills(recipe, WallpaperTweaks.NONE, 48, keepGoing = { asked++ < 5 }) { y, _ -> rows += y }
+        assertEquals(listOf(0, 1, 2, 3, 4), rows)
+        assertEquals(6, asked)
+        var none = 0
+        renderHills(recipe, WallpaperTweaks.NONE, 48, keepGoing = { false }) { _, _ -> none++ }
+        assertEquals(0, none)
+    }
+
+    @Test
+    fun `the cached recolor matches drawing from scratch`() {
+        val n = 64
+        val cases = listOf(
+            WallpaperTweaks.NONE,
+            WallpaperTweaks(all = ColorTweak(hue = 137f, saturation = 40f, lightness = -20f)),
+            WallpaperTweaks(all = ColorTweak(hue = -60f), sky = ColorTweak(lightness = 30f), hills = ColorTweak(saturation = -50f), glow = ColorTweak(hue = 90f, lightness = 20f)),
+        )
+        for (id in listOf("moon-hills", "ember-hills")) {
+            val recipe = WallpaperRecipes.of(id)!!
+            val pattern = HillsPattern.build(recipe, n)!!
+            for (tweaks in cases) {
+                val direct = IntArray(n * n)
+                renderHills(recipe, tweaks, n) { y, row -> row.copyInto(direct, y * n) }
+                val cached = IntArray(n * n)
+                pattern.renderRows(tweaks) { y, row -> row.copyInto(cached, y * n) }
+                for (i in direct.indices) for (shift in intArrayOf(16, 8, 0)) {
+                    val a = (direct[i] shr shift) and 0xFF; val b = (cached[i] shr shift) and 0xFF
+                    assertTrue("$id $tweaks pixel $i channel $shift: $a vs $b", kotlin.math.abs(a - b) <= 1)
+                }
+            }
+        }
+    }
 }

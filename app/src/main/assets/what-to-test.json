@@ -366,6 +366,15 @@
         "Hold the Photos widget and choose Edit Widget, or tap the widget. It should turn over like a card and show its options on the back, with Done at the top. Change an option, then tap Done or press Back and it should turn back to the photo.",
         "Turn on Reduce Motion in Android's settings and try again. The widget should fade to its options instead of turning. Tell us if the turn stutters, shows a flash, or if any option can't be reached on a small widget."
       ]
+    },
+    {
+      "id": "wallpaper-recolor-live",
+      "title": "Recoloring follows your finger",
+      "where": "Settings > Wallpaper & Appearance > Folio background > Moon Hills or Ember Hills > Customize",
+      "steps": [
+        "Pick Moon Hills, tap Customize and drag Hue slowly and then quickly. The picture should change color as you drag, with no lag and no steps, and settle sharp a moment after you let go. Try Saturation, Lightness and the color presets too.",
+        "Tell us if the picture trails behind your finger, flashes soft or sharp while you drag, or if Home behind it flickers."
+      ]
     }
   ]
 }
