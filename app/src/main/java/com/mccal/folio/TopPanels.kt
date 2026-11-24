@@ -1733,13 +1733,29 @@ private fun ConnectivityPill(item: ConnectivityItem, modifier: Modifier) {
 }
 
 /** How long after the control before it a control starts to settle in, and how many controls count (the rest start with the last). */
-private const val CC_SETTLE_STAGGER_MS = 20
+private const val CC_SETTLE_STAGGER_MS = 6
 private const val CC_SETTLE_COUNT = 8
 
 /**
- * The arrival of Control Center, one shot and never a loop: once the panel is open each control fades in and rises 4 dp, [CC_SETTLE_STAGGER_MS] after
- * the one before it. The panel's own fade and lift already say "opening"; this says the controls landed. Nothing moves in edit mode (the controls
- * are being arranged), under Reduce Motion, or when [index] is negative. It starts from nothing on each open, so a closing panel is not cut short.
+ * How a control looks while it arrives: [alpha] fades in, [scale] grows from [SCALE_FROM] to 1, and [blurRadiusDp] clears from [BLUR_DP] to nothing, all on
+ * the same 0 to 1 progress, so a control comes in small, ghosted and soft and sharpens as it lands. Pure, so the ends can be tested.
+ * Measured on a screen recording of an iPhone's Control Center (23 Nov 2026): tiles arrive together a few frames after the swipe, slightly small and
+ * blurred, and are settled by about a quarter of a second.
+ */
+internal object CcSettle {
+    const val SCALE_FROM = .92f
+    const val BLUR_DP = 6f
+    fun alpha(progress: Float): Float = progress.coerceIn(0f, 1f)
+    fun scale(progress: Float): Float = SCALE_FROM + (1f - SCALE_FROM) * progress.coerceIn(0f, 1f)
+    fun blurRadiusDp(progress: Float): Float = BLUR_DP * (1f - progress.coerceIn(0f, 1f))
+}
+
+/**
+ * The arrival of Control Center, one shot and never a loop: once the panel is open each control fades in, grows from 92 percent and clears from a 6 dp
+ * blur, [CC_SETTLE_STAGGER_MS] after the one before it (so the grid reads as arriving together), on a quick spring that is settled in about a quarter of
+ * a second. The panel's own fade and lift already say "opening"; this says the controls landed. Nothing moves in edit mode (the controls are being
+ * arranged), under Reduce Motion, or when [index] is negative. It starts from nothing on each open, so a closing panel is not cut short. The blur layer
+ * exists only while the control is still arriving, so a settled control carries no extra render pass.
  */
 @Composable
 private fun Modifier.ccSettleIn(index: Int, open: Boolean, edit: Boolean): Modifier {
@@ -1749,10 +1765,17 @@ private fun Modifier.ccSettleIn(index: Int, open: Boolean, edit: Boolean): Modif
         if (!open) return@LaunchedEffect
         progress.snapTo(0f)
         delay(index.coerceAtMost(CC_SETTLE_COUNT - 1) * CC_SETTLE_STAGGER_MS.toLong())
-        progress.animateTo(1f, FolioMotion.spring(FolioMotion.Settle))
+        progress.animateTo(1f, FolioMotion.spring(FolioMotion.Quick))
     }
-    val rise = with(androidx.compose.ui.platform.LocalDensity.current) { 4.dp.toPx() }
-    return graphicsLayer { val p = progress.value.coerceIn(0f, 1f); alpha = p; translationY = rise * (1f - p) }
+    val density = androidx.compose.ui.platform.LocalDensity.current.density
+    return graphicsLayer {
+        val p = progress.value
+        alpha = CcSettle.alpha(p)
+        val scale = CcSettle.scale(p)
+        scaleX = scale; scaleY = scale
+        val radius = CcSettle.blurRadiusDp(p) * density
+        renderEffect = if (radius >= .5f) androidx.compose.ui.graphics.BlurEffect(radius, radius, androidx.compose.ui.graphics.TileMode.Decal) else null
+    }
 }
 
 /** A 1×1 control that wiggles with a "–" while editing. */
