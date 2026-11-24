@@ -83,6 +83,12 @@ internal fun IosChip(selected: Boolean, onClick: () -> Unit, label: @Composable 
     }
 }
 
+/**
+ * The unfilled part of a slider's track. At .22 white it was about 2 to 1 against the dark settings card, under the 3 to 1 that
+ * a control's edge needs to be seen (WCAG 1.4.11); .34 is about 3 to 1, still a quiet line beside the white thumb.
+ */
+internal const val SLIDER_TRACK_ALPHA = .34f
+
 /** iOS slider: thin track filled in system blue with a round white thumb. */
 @Composable
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
@@ -94,7 +100,7 @@ internal fun IosSlider(value: Float, onValueChange: (Float) -> Unit, valueRange:
         track = { state ->
             val span = state.valueRange.endInclusive - state.valueRange.start
             val fraction = if (span > 0f) ((state.value - state.valueRange.start) / span).coerceIn(0f, 1f) else 0f
-            Box(Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(Color.White.copy(alpha = .22f))) {
+            Box(Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(Color.White.copy(alpha = SLIDER_TRACK_ALPHA))) {
                 Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().background(LocalAccent.current.fill))
             }
         })
