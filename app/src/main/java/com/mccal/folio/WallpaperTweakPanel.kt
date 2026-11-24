@@ -57,7 +57,7 @@ internal fun WallpaperTweakPanel(tweaks: WallpaperTweaks, onTweaks: (WallpaperTw
     var part by remember { mutableStateOf(TweakPart.ALL) }
     val tweak = tweaks[part]
     Column(
-        modifier.widthIn(max = WALLPAPER_TWEAK_PANEL_MAX_WIDTH_DP.dp).fillMaxWidth().clip(RoundedCornerShape(FolioRadius.ROW.dp)).background(Color.Black.copy(alpha = .42f))
+        modifier.widthIn(max = WALLPAPER_TWEAK_PANEL_MAX_WIDTH_DP.dp).fillMaxWidth().clip(RoundedCornerShape(FolioRadius.ROW.dp)).background(Color.Black.copy(alpha = .6f))
             .padding(horizontal = FolioSpace.MEDIUM.dp, vertical = FolioSpace.SMALL.dp).testTag("wallpaper-tweak-panel"),
         verticalArrangement = Arrangement.spacedBy(FolioSpace.HAIR.dp),
     ) {

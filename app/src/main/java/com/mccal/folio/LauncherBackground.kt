@@ -20,6 +20,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import java.io.File
 import java.io.FileOutputStream
 import java.nio.file.Files
@@ -206,24 +208,52 @@ class LauncherBackgroundController(
         private set
     private var tweakJob: kotlinx.coroutines.Job? = null
 
+    private class LivePattern(val id: String, val pattern: HillsPattern)
+    private var livePattern: LivePattern? = null
+
     /**
-     * A slider moved. Draws a quick copy at once so the picture follows the finger, then, once the slider has rested a moment,
-     * the full-screen copy, which fades in over it. Anything newer replaces both.
+     * A slider moved. One worker keeps the picture up with the sliders: it draws a quick copy of the newest colors, shows it, and
+     * looks again, so the picture updates as often as a copy can be drawn and never falls behind by more than one. (It used to start
+     * over on every move, and a copy that takes longer to draw than the gap between two moves was then thrown away every time, so the
+     * picture only changed when the finger paused.) Once the sliders rest a moment it draws the full-screen copy, which fades in over
+     * the quick one and is dropped part way if a slider moves again.
      */
     internal fun tweakPending(next: WallpaperTweaks) {
         val art = pendingArt ?: return
         if (!WallpaperRecipes.isCustomizable(art.id)) return
         pendingTweaks = next
-        tweakJob?.cancel()
+        if (tweakJob?.isActive == true) return
         val metrics = activity.resources.displayMetrics
         tweakJob = activity.lifecycleScope.launch {
-            val quick = withContext(Dispatchers.Default) { renderTweaked(art.id, next, TWEAKED_LIVE_PX) }
-            if (pendingArt != art || pendingTweaks != next) return@launch
-            pendingArtBitmap = quick
-            dropPreviewBitmap()
-            kotlinx.coroutines.delay(TWEAK_SETTLE_MS)
-            val sharp = withContext(Dispatchers.Default) { renderTweaked(art.id, next, maxOf(metrics.widthPixels, metrics.heightPixels)) }
-            if (pendingArt == art && pendingTweaks == next) pendingArtPreviewBitmap = sharp
+            var shown: WallpaperTweaks? = null
+            while (true) {
+                val staged = pendingArt ?: return@launch
+                val want = pendingTweaks
+                if (want != shown) {
+                    val quick = withContext(Dispatchers.Default) {
+                        // The shape of the piece is worked out once; each move after that only mixes the colors through it.
+                        val cached = livePattern?.takeIf { it.id == staged.id }
+                        val pattern = cached?.pattern ?: WallpaperRecipes.of(staged.id)?.let { HillsPattern.build(it, TWEAKED_LIVE_PX) }
+                            ?.also { livePattern = LivePattern(staged.id, it) }
+                        pattern?.render(want)
+                    } ?: return@launch
+                    if (pendingArt != staged) return@launch
+                    shown = want
+                    pendingArtBitmap = quick
+                    dropPreviewBitmap()
+                    continue
+                }
+                // Rested on these colors: wait for another move, and only if none comes draw the sharp copy.
+                val moved = kotlinx.coroutines.withTimeoutOrNull(TWEAK_SETTLE_MS) {
+                    androidx.compose.runtime.snapshotFlow { pendingTweaks }.first { it != want }
+                }
+                if (moved != null) continue
+                val sharp = withContext(Dispatchers.Default) {
+                    renderTweaked(staged.id, want, maxOf(metrics.widthPixels, metrics.heightPixels)) { isActive && pendingTweaks == want }
+                } ?: continue
+                if (pendingArt == staged && pendingTweaks == want) pendingArtPreviewBitmap = sharp
+                return@launch
+            }
         }
     }
 
@@ -263,6 +293,7 @@ class LauncherBackgroundController(
     fun setPendingArt() {
         val art = pendingArt ?: return
         tweakJob?.cancel()
+        livePattern = null
         setArtTweaks(activity, art.id, pendingTweaks)
         setBackgroundChoice(activity, art)
         Diagnostics.backgroundSet(art)
@@ -296,6 +327,7 @@ class LauncherBackgroundController(
 
     fun cancelPendingArt() {
         tweakJob?.cancel()
+        livePattern = null
         pendingTweaks = WallpaperTweaks.NONE
         pendingArt = null
         pendingArtBitmap = null
