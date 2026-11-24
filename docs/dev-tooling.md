@@ -42,13 +42,34 @@ Read only. It writes the fold state each second, a screenshot of every display o
 seconds, and any crash or ANR, then a `summary.txt` that says plainly if no fold was seen. Run it while someone
 folds the phone, then read the summary and the screenshots.
 
-### The foldable emulators do not fold
+### The foldable emulators do not fold, but they can play the effect
 
 `Folio_Fold_API_37` (and `_Break`, `_Sweep`) declare a hinge and an outer display in `config.ini`, boot with two
 displays (1968x2184 and 984x2184), and accept `adb emu fold`, `adb emu unfold`, `adb emu posture 1|2|3` and
-`adb emu sensor set hinge-angle0 N`. All of them return OK. In the guest nothing follows: `dumpsys device_state`
-stays on one state (`DEFAULT`), the focused window stays on the inner display, and the layout does not change.
-So a fold test on those AVDs passes or fails for the wrong reason.
+`adb emu sensor set hinge-angle0 N`. All of them return OK. The first three do nothing in the guest: `dumpsys device_state`
+stays on one state (`DEFAULT`), the focused window stays on the inner display, and the layout does not change. So a
+fold test that waits for the device state passes or fails for the wrong reason.
+
+Two things do reach Folio, and together they play the fold effect (checked 23 Nov 2026):
+
+- `adb emu sensor set hinge-angle0 N` is delivered to the app as the hinge sensor (the guest lists "Goldfish hinge
+  sensor0", and Folio's trace shows `raw=` following it). It drives the closing ramp.
+- `adb shell wm size 984x2184` then `wm size reset` (emulator only, never a phone) flips Folio between its cover and
+  inner layouts, because Folio decides that from the display size. That plays the half after the cut.
+
+```bash
+bash tools/emu-fold-test.sh            # one fold and unfold, prints the effect value over time
+bash tools/emu-fold-test.sh -n 3 -r    # three, and record a video
+```
+
+It turns on Folio's frame trace (`adb shell setprop log.tag.FolioFoldTrace DEBUG`, then restart Folio) and prints the
+effect value `m` (0 clean, 1 fully folded) with how long the cover and unfold reveals take. It only runs on an
+emulator serial. Limits: each `adb emu` call takes about a second, so the hinge steps are far slower than a hand,
+and the emulator renders in software, so read the timings as shape, not speed. A size change is an instant jump,
+which is what the Fold8's 0/90/180 reports are too. The stock Home is light and empty and hides the blur, so give
+the emulator Folio's own Moon Hills once (Settings > Wallpaper & Appearance > Folio background); it lives in the AVD's
+userdata and survives reboots. The emulator image has no root and Folio Dev's fast build is not debuggable, so that
+has to be done in Settings.
 
 What was checked, 23 Nov 2026, Emulator on API 37 (`google_apis_playstore`, revision 6):
 
@@ -59,10 +80,10 @@ What was checked, 23 Nov 2026, Emulator on API 37 (`google_apis_playstore`, revi
 - Google's "emulator adaptive" post (Android Developers Blog, August 2026) documents `adb emu fold`, `unfold` and
   `posture` for foldable emulators, so the commands are the right ones.
 
-Not established: why this image ignores them. Untried: a system image other than API 37 revision 6 (a different API
-level or revision), or an AVD created from Android Studio's stock "7.6 Fold-in with outer display" profile. `avdmanager`
-is not installed here (the SDK has no `cmdline-tools`), so creating one means Android Studio's Device Manager.
-Until one of those folds for real, treat every fold behavior as needing the Fold8 or a tester.
+Not established: why this image ignores `fold`, `unfold` and `posture`. Untried: a system image other than API 37
+revision 6, or an AVD created from Android Studio's stock "7.6 Fold-in with outer display" profile (`avdmanager` is
+not installed here, so that means Android Studio's Device Manager). Real hinge behavior (the Fold8 reports only 0, 90
+and 180, and the user's hand sets the speed) still needs the Fold8 or a tester.
 
 ## Checks before a push
 
