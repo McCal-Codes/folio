@@ -76,8 +76,8 @@ way of bringing that back:
 - **The iPhone Duo Side Bar.** The status bar, Dynamic Island and dock live on the right edge. Thanks to
   [DuoLauncher](https://github.com/jakesgoodapps/DuoLauncher), whose dev made it possible for me to build on top of their work.
 - **Left-handed mode and Spotlight.** Flip the Side Bar to the left, and search everything from Spotlight.
-- **Page effects and the fold.** Flipbook turns Home's pages in 3D as you swipe, inspired by Barrel, and Duet plays the
-  fold animation from the iPhone Duo. See Settings › Roadmap for what else is planned.
+- **Page effects and the fold.** Flipbook turns Home's pages in 3D as you swipe, inspired by Barrel, and the fold
+  animation from the iPhone Duo plays when you fold or unfold. See Settings › Roadmap for what else is planned.
 
 There's a lot to this launcher, and it's fun. I hope you have as much fun with it as I've had making it.
 
