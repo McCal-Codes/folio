@@ -65,6 +65,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -318,7 +319,10 @@ private fun SimplePeople(setup: SimpleSetup, model: LauncherModel, go: (SimpleSc
     var removing by remember { mutableStateOf(false) }
     val index = people.indexOfFirst { it.phone == chosen }
     val addPeople = stringResource(R.string.simple_add_people)
+    // Leaving this page ends the wait, so a stale flag never skips a later lock or holds the idle timer.
+    DisposableEffect(Unit) { onDispose { SimpleHelperPick.finished() } }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        SimpleHelperPick.finished()
         val uri = result.data?.data ?: return@rememberLauncherForActivityResult
         readPickedContact(context, uri)?.let { picked ->
             model.setSimpleSetup(setup.copy(people = people.withFavorite(picked)))
@@ -330,8 +334,8 @@ private fun SimplePeople(setup: SimpleSetup, model: LauncherModel, go: (SimpleSc
         SimpleLead(stringResource(R.string.simple_add_people_detail))
         SimpleRow(addPeople, if (full) stringResource(R.string.simple_people_full) else null,
             icon = Icons.Rounded.Add, iconColor = FolioColors.GreenLight, enabled = !full) {
-            if (!full) runCatching { picker.launch(pickContactIntent()) }
-                .onFailure { IslandEvents.notice(context, context.getString(R.string.app_is_unavailable, addPeople)) }
+            if (!full) runCatching { SimpleHelperPick.launched(); picker.launch(pickContactIntent()) }
+                .onFailure { SimpleHelperPick.finished(); IslandEvents.notice(context, context.getString(R.string.app_is_unavailable, addPeople)) }
         }
         if (people.isNotEmpty()) {
             SimpleButtonPair(stringResource(R.string.move_up), Icons.Rounded.ArrowUpward, { if (index >= 0) model.setSimpleSetup(setup.copy(people = people.movedUp(index))) },

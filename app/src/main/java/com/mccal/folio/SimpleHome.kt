@@ -152,8 +152,27 @@ internal enum class SimpleScreen(val parent: SimpleScreen?) {
 /** Helper Settings locks itself after this long untouched. */
 internal const val SIMPLE_IDLE_RELOCK_MS = 5 * 60_000L
 
-/** Folio stopping locks Helper Settings, unless it is only being recreated for a fold, a turn, a font size or dark mode. */
-internal fun relocksOnStop(changingConfigurations: Boolean) = !changingConfigurations
+/**
+ * Folio stopping locks Helper Settings, unless it is only being recreated for a fold, a turn, a font size or dark mode,
+ * or Helper Settings itself just opened the system contact picker: that stops Folio too, and locking then would drop the
+ * helper back to Home before the picked person comes back.
+ */
+internal fun relocksOnStop(changingConfigurations: Boolean, helperPickStop: Boolean = false) = !changingConfigurations && !helperPickStop
+
+/**
+ * Helper Settings has the system contact picker open. [waiting] holds from launching it until its answer comes back or
+ * Helper Settings closes, so the 5-minute idle lock does not fire while someone is still looking for a contact.
+ * [consumeStop] is true once, for the one stop that launching the picker causes, then false again, so a later real
+ * exit from Folio still locks.
+ */
+internal object SimpleHelperPick {
+    @Volatile var waiting = false
+        private set
+    @Volatile private var stopExpected = false
+    fun launched() { waiting = true; stopExpected = true }
+    fun consumeStop(): Boolean = stopExpected.also { stopExpected = false }
+    fun finished() { waiting = false; stopExpected = false }
+}
 
 /**
  * Only a new press of Home locks it. A recreated Folio counts its Home presses from zero again, so a count lower than
@@ -287,11 +306,15 @@ private fun SimpleHome(state: LauncherState, setup: SimpleSetup, model: Launcher
         homeSeen = homeRequests
     }
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
-        if (relocksOnStop(activity?.isChangingConfigurations == true)) { screen = SimpleScreen.HOME; hint = false; holding = false }
+        if (relocksOnStop(activity?.isChangingConfigurations == true, SimpleHelperPick.consumeStop())) { screen = SimpleScreen.HOME; hint = false; holding = false }
     }
     var touched by remember { mutableLongStateOf(0L) }
     LaunchedEffect(screen, touched) {
-        if (screen.unlocked) { kotlinx.coroutines.delay(SIMPLE_IDLE_RELOCK_MS); screen = SimpleScreen.HOME }
+        if (screen.unlocked) {
+            // Not while the contact picker is open: wait out another full period instead.
+            do { kotlinx.coroutines.delay(SIMPLE_IDLE_RELOCK_MS) } while (SimpleHelperPick.waiting)
+            screen = SimpleScreen.HOME
+        }
     }
     // Back, like Home, just returns to Simple Home. On Home it does nothing, as on any Home.
     BackHandler { hint = false; screen = SimpleScreen.HOME }
