@@ -350,6 +350,15 @@
       ]
     },
     {
+      "id": "duet-no-outline",
+      "title": "No outline during the fold",
+      "where": "Fold and unfold the phone, Duet on",
+      "steps": [
+        "Fold and unfold the phone slowly with Home showing and look at the edge of the screen while the blur and shade play. There should be no thin light outline around the screen, and no step or jump at the edges.",
+        "Check it on the cover screen too, and with a wallpaper from Folio and one from your photos. Tell us if you still see a rim, and which screen and wallpaper it was on."
+      ]
+    },
+    {
       "id": "cc-open-arrive",
       "title": "Control Center opens together",
       "where": "Control Center",

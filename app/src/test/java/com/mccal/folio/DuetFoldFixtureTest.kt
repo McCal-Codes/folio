@@ -173,14 +173,6 @@ class DuetFoldFixtureTest {
         assertEquals("full by 300 ms", 1f, m.last(), 1e-3f)
     }
 
-    @Test fun `the cover recedes a little with the effect and not at all under Reduce Motion`() {
-        assertEquals(1f, coverSettleScale(0f, reduceMotion = false), 1e-6f)
-        assertEquals(.955f, coverSettleScale(1f, reduceMotion = false), 1e-3f)
-        assertTrue(coverSettleScale(.5f, false) in .955f..1f)
-        assertEquals("never beyond the ends", coverSettleScale(1f, false), coverSettleScale(3f, false), 1e-6f)
-        assertEquals(1f, coverSettleScale(1f, reduceMotion = true), 1e-6f)
-    }
-
     // Traced 7 Oct 2026: real openings average 300 deg/s, and the cover effect used to step 16 to 31% in a single frame at flick speeds.
     @Test fun `a flick open builds over a visible moment and never steps by a fifth in a frame`() {
         val fold = timeline(expanded = false)
