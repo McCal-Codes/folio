@@ -48,10 +48,34 @@ class WallpaperBlurTest {
         assertEquals(4, pixels.size)
     }
 
-    @Test fun theWorkingSizeKeepsTheShapeAndNeverGrows() {
-        assertEquals(180 to 135, blurWorkingSize(4000, 3000))
-        assertEquals(101 to 180, blurWorkingSize(1080, 1920))
-        assertEquals(50 to 40, blurWorkingSize(50, 40))
-        assertEquals(1 to 180, blurWorkingSize(1, 4000))
+    @Test fun theSliderGrowsTheRadiusAndTheSpreadTogether() {
+        assertEquals(0, blurRadiusFor(0f, 1080))
+        assertEquals(30, blurRadiusFor(.5f, 1080))
+        assertEquals(60, blurRadiusFor(1f, 1080))
+        assertEquals(5, blurRadiusFor(.5f, 180))
+        assertEquals(0f, blurSigmaFraction(0f), 0f)
+        assertTrue(blurSigmaFraction(.25f) < blurSigmaFraction(.5f) && blurSigmaFraction(.5f) < blurSigmaFraction(1f))
+        // Three box passes of radius r spread as sqrt(r * (r + 1)); at the top of the slider that is 10.5 of 180.
+        assertEquals(kotlin.math.sqrt(110f) / 180f, blurSigmaFraction(1f), 1e-6f)
+    }
+
+    @Test fun anOutOfRangeAmountIsHeldToTheSlider() {
+        assertEquals(0, blurRadiusFor(-1f, 1080))
+        assertEquals(60, blurRadiusFor(3f, 1080))
+        assertEquals(0f, dimAlpha(-.5f), 0f)
+        assertEquals(dimAlpha(1f), dimAlpha(9f), 0f)
+    }
+
+    @Test fun dimGoesFromNoneToMostButNeverBlack() {
+        assertEquals(0f, dimAlpha(0f), 0f)
+        assertTrue(dimAlpha(1f) >= .5f && dimAlpha(1f) < 1f)
+        assertTrue(dimAlpha(.3f) < dimAlpha(.6f))
+    }
+
+    @Test fun anAdjustmentWithNothingInItIsNone() {
+        assertTrue(PhotoAdjust.NONE.isNone)
+        assertTrue(PhotoAdjust(blur = 0f, dim = 0f).isNone)
+        assertTrue(!PhotoAdjust(blur = .1f).isNone)
+        assertTrue(!PhotoAdjust(dim = .1f).isNone)
     }
 }

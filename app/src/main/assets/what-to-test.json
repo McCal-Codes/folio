@@ -375,6 +375,15 @@
         "Pick Moon Hills, tap Customize and drag Hue slowly and then quickly. The picture should change color as you drag, with no lag and no steps, and settle sharp a moment after you let go. Try Saturation, Lightness and the color presets too.",
         "Tell us if the picture trails behind your finger, flashes soft or sharp while you drag, or if Home behind it flickers."
       ]
+    },
+    {
+      "id": "photo-blur-dim",
+      "title": "Blur and Dim for a photo",
+      "where": "Edit menu > Wallpaper Photo, or share a photo to Folio",
+      "steps": [
+        "Pick a photo and, on the framing screen, drag Blur and Dim slowly and then quickly. The picture should soften and darken as you drag, with no lag. Tap Set: Home should look the way the preview did, with icons easy to read on it.",
+        "Tell us if the blur or the dim steps or trails behind your finger, if Home looks softer or darker than the preview did, or if the sliders hide too much of the screen on the cover display."
+      ]
     }
   ]
 }

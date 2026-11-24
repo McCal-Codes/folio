@@ -2272,7 +2272,7 @@ fun LauncherScreen(
         // A photo chosen for the wallpaper (picked on the Wallpaper page, shared to Folio, or from the Edit menu) opens full screen here to
         // frame and blur, so Set and Cancel both land on Home. With the gate closed the Wallpaper page's own preview rows do it.
         launcherActivity.backgrounds.previewBitmap?.takeIf { launcherActivity.backgrounds.previewPending && !state.systemWallpaper && wallpaperFraming }?.let { photo ->
-            PhotoFrameDialog(photo, state, launcherActivity.backgrounds::cancelPreview) { crop, blur -> launcherActivity.backgrounds.applyPreview(crop, blur) }
+            PhotoFrameDialog(photo, state, launcherActivity.backgrounds::cancelPreview) { crop, adjust -> launcherActivity.backgrounds.applyPreview(crop, adjust) }
         }
         if (customizeHome) CustomizeHomeSheet(sample = state.apps.firstOrNull(), style = state.iconStyle, tint = state.iconTint,
             tintFromWallpaper = state.iconTintFromWallpaper, onStyle = { model.setIconStyle(it, state.iconTint) },

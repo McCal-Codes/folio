@@ -1616,6 +1616,7 @@
     <string name="label_theme_import">Folio 테마</string>
     <string name="label_wallpaper_import">Folio 배경화면</string>
     <string name="wallpaper_blur">흐림 효과</string>
+    <string name="wallpaper_dim">어둡게</string>
     <string name="wallpaper_photo_menu">배경화면 사진</string>
     <string name="wallpaper_frame_hint">확대하려면 손가락을 모으고, 움직이려면 드래그하세요</string>
     <!-- Shown when opening a supporter code link. -->
