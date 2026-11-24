@@ -1,0 +1,35 @@
+{
+  "$schema": "https://folio.mccal.dev/schema/v1/depiction.schema.json",
+  "format": 1,
+  "tint": "#D4A84B",
+  "blocks": [
+    {
+      "type": "hero",
+      "image": "assets/performatively-banner.webp"
+    },
+    {
+      "type": "featureList",
+      "items": [
+        "Read on the inner screen",
+        "Your book's cover shows on the outer screen",
+        "Decorate the cover with stickers",
+        "The cover shows on regular phones too"
+      ]
+    },
+    {
+      "type": "screenshots",
+      "images": [
+        "assets/performatively-pack.webp"
+      ]
+    },
+    {
+      "type": "markdown",
+      "text": "A friend of Folio made Performatively. Get opens it on Google Play, where Android installs it; Folio does not install it, change it, or share anything with it."
+    },
+    {
+      "type": "link",
+      "title": "Performatively on Google Play",
+      "url": "https://play.google.com/store/apps/details?id=com.bunsoootchi.performatively"
+    }
+  ]
+}

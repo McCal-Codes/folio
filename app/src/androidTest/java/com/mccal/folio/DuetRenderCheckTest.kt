@@ -49,7 +49,7 @@ class DuetRenderCheckTest {
         for (y in h / 2..h step 40) c.drawLine(0f, y.toFloat(), w.toFloat(), y.toFloat(), p)
     }
 
-    private fun render(style: com.mccal.folio.duet.DuetStyle, m: Float): Bitmap {
+    private fun render(style: com.mccal.folio.duet.DuetStyle, m: Float, cover: Boolean = false): Bitmap {
         val reader = ImageReader.newInstance(w, h, PixelFormat.RGBA_8888, 1,
             HardwareBuffer.USAGE_GPU_SAMPLED_IMAGE or HardwareBuffer.USAGE_GPU_COLOR_OUTPUT)
         val renderer = HardwareRenderer()
@@ -58,7 +58,7 @@ class DuetRenderCheckTest {
             val content = RenderNode("card").apply {
                 setPosition(0, 0, w, h)
                 beginRecording().drawBitmap(card(), 0f, 0f, null); endRecording()
-                setRenderEffect(DuetShader().effect(w.toFloat(), h.toFloat(), m, cover = false,
+                setRenderEffect(DuetShader().effect(w.toFloat(), h.toFloat(), m, cover = cover,
                     geometry = FoldGeometry(horizontal = false, hingePx = w / 2f, movingAfterHinge = false),
                     style = style, cornerPx = 16f).asAndroidRenderEffect())
             }
@@ -113,5 +113,23 @@ class DuetRenderCheckTest {
         }
         if (recorded.isNotEmpty()) fail("No reference yet for ${recorded.joinToString()}: saved in files/duet-golden; copy them into androidTest/assets/duet-golden")
         if (problems.isNotEmpty()) fail(problems.joinToString("\n"))
+    }
+
+    /** Duo Clip on the cover screen is the inside's look with the whole screen as the moving half, so it has its own reference. */
+    @Test fun duoClipCoverMatchesItsReference() {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val out = File(instrumentation.targetContext.filesDir, "duet-golden").apply { mkdirs() }
+        val drawn = render(DuetStyles.CLIP, m = .6f, cover = true)
+        assertTrue("the cover should differ from the inside", difference(drawn, render(DuetStyles.CLIP, .6f)) > .5)
+        val golden = runCatching { instrumentation.context.assets.open("duet-golden/clip-cover.png").use(BitmapFactory::decodeStream) }.getOrNull()
+        if (golden == null) {
+            File(out, "clip-cover.png").outputStream().use { drawn.compress(Bitmap.CompressFormat.PNG, 100, it) }
+            fail("No reference yet for clip-cover.png: saved in files/duet-golden; copy it into androidTest/assets/duet-golden")
+        }
+        val d = difference(drawn, golden!!)
+        if (d > 2.0) {
+            File(out, "changed-clip-cover.png").outputStream().use { drawn.compress(Bitmap.CompressFormat.PNG, 100, it) }
+            fail("clip cover differs from its reference by ${"%.2f".format(d)}/255")
+        }
     }
 }

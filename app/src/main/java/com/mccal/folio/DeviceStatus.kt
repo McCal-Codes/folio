@@ -30,11 +30,19 @@ data class DeviceStatus(
     val chargeOnHold: Boolean = false,
     val wifiConnected: Boolean = false,
     val wifiLevel: Int? = null,
+    /** The joined network's name, when Android hands it over (it needs the location permission, which Folio does not ask for); null otherwise. */
+    val wifiName: String? = null,
     val cellularLevel: Int? = null,
+    /** The network the phone is on (its carrier), when there is service; null otherwise. Needs no permission. */
+    val carrierName: String? = null,
     val airplane: Boolean = false,
     /** Ringer on silent or vibrate. */
     val silent: Boolean = false,
 )
+
+/** A network name from [WifiInfo.getSsid] without its quotes, or null for a blank one or the placeholder Android gives when the name is hidden. */
+internal fun wifiNameOrNull(raw: String?): String? =
+    raw?.trim()?.removeSurrounding("\"")?.trim()?.takeIf { it.isNotEmpty() && it != WifiManager.UNKNOWN_SSID }
 
 /**
  * Charging as Home shows it: on the cable. At a charge limit, like Samsung's battery protection holding at 80%, Android
@@ -63,14 +71,46 @@ class DeviceStatusMonitor(private val context: Context) : DefaultLifecycleObserv
     private var networkRegistered = false
     private var phoneRegistered = false
     private var receiverRegistered = false
+    // Android hands out the network's name only to a callback that asks for location info, and every update that callback gets counts as
+    // a read of the phone's location (One UI shows its blue "location in use" dot for it, about every 20 seconds as the signal moved).
+    // So the everyday callback asks for nothing, and a second one that does is registered only until the name is known: once per Wi-Fi
+    // network, not on every signal change.
+    @Volatile private var networkCaps: NetworkCapabilities? = null
+    @Volatile private var cachedWifiName: String? = null
+    private var nameRegistered = false
+    private val nameLock = Any()
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
-        override fun onAvailable(network: Network) = updateConnection()
-        override fun onLost(network: Network) = updateConnection()
-        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) = updateConnection()
+        // A new default network (another Wi-Fi, or back from mobile data) has a name of its own to look up.
+        override fun onAvailable(network: Network) { forgetWifiName(); updateConnection() }
+        override fun onLost(network: Network) { networkCaps = null; forgetWifiName(); updateConnection() }
+        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
+            networkCaps = capabilities
+            if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) { if (cachedWifiName == null) askForWifiName() } else forgetWifiName()
+            updateConnection()
+        }
     }
+    private val nameCallback = object : ConnectivityManager.NetworkCallback(FLAG_INCLUDE_LOCATION_INFO) {
+        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
+            val name = wifiNameOrNull((capabilities.transportInfo as? WifiInfo)?.ssid) ?: return
+            synchronized(nameLock) {
+                cachedWifiName = name
+                // Known: stop being told about every signal change, so the location is not read again until the network changes.
+                if (nameRegistered) { runCatching { connection.unregisterNetworkCallback(this) }; nameRegistered = false }
+            }
+            updateConnection()
+        }
+    }
+    private fun askForWifiName() = synchronized(nameLock) {
+        if (!nameRegistered) nameRegistered = runCatching { connection.registerDefaultNetworkCallback(nameCallback); true }.getOrDefault(false)
+    }
+    private fun forgetWifiName() = synchronized(nameLock) {
+        cachedWifiName = null
+        if (nameRegistered) { runCatching { connection.unregisterNetworkCallback(nameCallback) }; nameRegistered = false }
+    }
+    private fun carrierOrNull(): String? = runCatching { phone.networkOperatorName }.getOrNull()?.trim()?.takeIf { it.isNotEmpty() }
     private val phoneCallback = object : TelephonyCallback(), TelephonyCallback.SignalStrengthsListener {
         override fun onSignalStrengthsChanged(signalStrength: SignalStrength) {
-            mutable.update { it.copy(cellularLevel = signalStrength.level.coerceIn(0, 4)) }
+            mutable.update { it.copy(cellularLevel = signalStrength.level.coerceIn(0, 4), carrierName = carrierOrNull()) }
         }
     }
     private val receiver = object : BroadcastReceiver() {
@@ -110,24 +150,25 @@ class DeviceStatusMonitor(private val context: Context) : DefaultLifecycleObserv
         }
         networkRegistered = runCatching { connection.registerDefaultNetworkCallback(networkCallback); true }.getOrDefault(false)
         phoneRegistered = runCatching { phone.registerTelephonyCallback(context.mainExecutor, phoneCallback); true }.getOrDefault(false)
-        mutable.update { it.copy(cellularLevel = runCatching { phone.signalStrength?.level }.getOrNull()) }
+        mutable.update { it.copy(cellularLevel = runCatching { phone.signalStrength?.level }.getOrNull(), carrierName = carrierOrNull()) }
         updateConnection()
     }
 
     @Suppress("DEPRECATION")
     private fun updateConnection() {
-        val caps = runCatching { connection.getNetworkCapabilities(connection.activeNetwork) }.getOrNull()
+        val caps = networkCaps ?: runCatching { connection.getNetworkCapabilities(connection.activeNetwork) }.getOrNull()
         val info = (caps?.transportInfo as? WifiInfo) ?: runCatching { wifi.connectionInfo }.getOrNull()
         val connected = info?.supplicantState == SupplicantState.COMPLETED || caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
         val level = info?.rssi?.takeIf { connected && it > -127 }?.let { WifiManager.calculateSignalLevel(it, 5) }
         val airplane = Settings.Global.getInt(context.contentResolver, Settings.Global.AIRPLANE_MODE_ON, 0) == 1
         val silent = runCatching { context.getSystemService(android.media.AudioManager::class.java).ringerMode != android.media.AudioManager.RINGER_MODE_NORMAL }
             .getOrDefault(false)
-        mutable.update { it.copy(wifiConnected = connected, wifiLevel = level, airplane = airplane, silent = silent) }
+        mutable.update { it.copy(wifiConnected = connected, wifiLevel = level, wifiName = if (connected) cachedWifiName else null, airplane = airplane, silent = silent) }
     }
 
     override fun onStop(owner: LifecycleOwner) {
         if (networkRegistered) runCatching { connection.unregisterNetworkCallback(networkCallback) }
+        forgetWifiName()
         if (phoneRegistered) runCatching { phone.unregisterTelephonyCallback(phoneCallback) }
         if (receiverRegistered) runCatching { context.unregisterReceiver(receiver) }
         networkRegistered = false; phoneRegistered = false; receiverRegistered = false

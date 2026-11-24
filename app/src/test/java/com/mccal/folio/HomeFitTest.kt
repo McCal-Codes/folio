@@ -72,7 +72,7 @@ class HomeFitTest {
                 // Preview adds a bar that a window under about 400 dp has no room for beside four rows; it only needs to keep its own floors.
                 val room = h - 16f - limitShortfall(g, h, preview)
                 assertTrue("$name rows ${g.rowHeight} icon ${g.iconSize}", g.rowHeight >= 48f && g.iconSize >= LAST_RESORT_ICON)
-                if (room >= floorHeight(g)) {
+                if (room >= floorHeight(g, h)) {
                     assertEquals("$name reachable rows (page ends ${p.end}, limit ${limit(g, h, preview)})", BASE_APP_ROWS, p.reachableRows)
                 }
                 // Every cell is inside the grid's own width, and the grid keeps off the Side Bar.
@@ -89,7 +89,7 @@ class HomeFitTest {
     /** Where the page ends in edit mode: the usual rows pushed down by the room the edit bar asks for (what HomePagePane does). */
     private fun editEnd(g: HomeGeometry, w: Float, fontScale: Float, p: Placed): Pair<Float, Boolean> {
         val beside = jiggleBarBesideGrid(g.horizontalDock, g.dockBesideRail, g.homeWidth, g.gridWidth, fontScale)
-        return p.end + jiggleBarRoom(JIGGLE_BAR_BOTTOM.value, g.contentTop, g.expanded, beside) to beside
+        return p.end + jiggleBarRoom((if (g.expanded) JIGGLE_BAR_BOTTOM_UNFOLDED else JIGGLE_BAR_BOTTOM).value, g.contentTop, beside) to beside
     }
 
     @Test fun `edit mode does not push a row under the dock where the bar sits beside the page`() {
@@ -102,6 +102,14 @@ class HomeFitTest {
                 if (beside) assertTrue("$tag preview=$preview duo=$duo auto=$auto edit mode ends $end, page limit ${limit(g, h, preview)}", end <= limit(g, h, preview) + 0.5f)
             }
         }
+    }
+
+    /** A flip's cover screen wraps Done under the other pills; Home then gives way for that second row too, and for nothing beside the page. */
+    @Test fun `a wrapped edit bar asks for one more row of room`() {
+        val oneRow = JIGGLE_BAR_BOTTOM.value
+        val wrapped = oneRow + JIGGLE_BAR_ROW.value + FolioSpace.SMALL
+        assertEquals(wrapped - oneRow, jiggleBarRoom(wrapped, 0f, false) - jiggleBarRoom(oneRow, 0f, false), 0.01f)
+        assertEquals(0f, jiggleBarRoom(wrapped, 0f, true), 0f)
     }
 
     /** F01 (27 Oct sweep): the fold AVD's inner display, upright and regular, with the Preview bar and without it. */
@@ -142,13 +150,19 @@ class HomeFitTest {
                 val room = h - 16f - limitShortfall(g, h, preview)
                 assertTrue("$name row ${g.rowHeight} icon ${g.iconSize}", g.rowHeight >= 48f && g.iconSize >= LAST_RESORT_ICON)
                 assertTrue("$name dock inside", g.dockTop >= 8f && g.dockTop + g.dockHeight <= h + 0.01f)
-                if (room >= floorHeight(g) + 4f * (homeLabelHeight(2f) - 20f)) assertEquals("$name reachable rows (page ends ${p.end}, limit ${limit(g, h, preview)})", BASE_APP_ROWS, p.reachableRows)
+                if (room >= floorHeight(g, h) + 4f * (homeLabelHeight(2f) - 20f)) assertEquals("$name reachable rows (page ends ${p.end}, limit ${limit(g, h, preview)})", BASE_APP_ROWS, p.reachableRows)
             }
         }
     }
 
-    /** Height the usual four rows need at the smallest sizes Home goes to: widget, gap, four rows. */
-    private fun floorHeight(g: HomeGeometry) = if (g.splitColumns) MIN_WIDGET_HEIGHT + 18f + 2f * 52f else MIN_WIDGET_HEIGHT + 18f + 4f * 52f
+    /**
+     * Height the usual four rows need at the smallest sizes Home goes to: widget, gap, four rows. A stacked page under Tier A height stops
+     * at a 40 dp icon (a 60 dp row) and scrolls beyond that; the rest go down to the 32 dp last resort (a 52 dp row).
+     */
+    private fun floorHeight(g: HomeGeometry, h: Float): Float {
+        val row = if (!g.splitColumns && h < TIER_A_MIN_HEIGHT) MIN_ROW_ICON + 20f else 52f
+        return if (g.splitColumns) MIN_WIDGET_HEIGHT + 18f + 2f * 52f else MIN_WIDGET_HEIGHT + 18f + 4f * row
+    }
 
     private fun limitShortfall(g: HomeGeometry, h: Float, preview: Boolean) = h - limit(g, h, preview)
 
@@ -216,7 +230,7 @@ class HomeFitTest {
                 assertTrue("$name rows ${g.rowHeight} cells ${g.cellWidth}", g.rowHeight >= 48f && g.cellWidth >= 48f - 0.01f)
                 assertTrue("$name dock inside", g.dockTop >= 8f && g.dockTop + g.dockHeight <= h + 0.01f)
                 val room = h - 16f - limitShortfall(g, h, preview)
-                if (room >= floorHeight(g)) assertEquals("$name every row reachable (ends ${p.end})", BASE_APP_ROWS, p.reachableRows)
+                if (room >= floorHeight(g, h)) assertEquals("$name every row reachable (ends ${p.end})", BASE_APP_ROWS, p.reachableRows)
                 else assertTrue("$name under the floor still reaches two rows, got ${p.reachableRows}", p.reachableRows >= 2)
             }
         }
@@ -238,7 +252,7 @@ class HomeFitTest {
                 // A11Y-1: an app tile is tappable over its whole cell (AppTile: full cell width, at least 48 dp tall). Icon plus its label
                 // line must not outgrow the row pitch, or neighboring tiles' hit areas would overlap, even at the 32 dp last-resort icon.
                 assertTrue("$name tile ${g.iconSize} + label 20 over row pitch ${g.rowHeight}", g.iconSize + 20f <= g.rowHeight + 0.01f)
-                if (room >= floorHeight(g)) assertEquals("$name every row reachable (ends ${p.end})", BASE_APP_ROWS, p.reachableRows)
+                if (room >= floorHeight(g, h)) assertEquals("$name every row reachable (ends ${p.end})", BASE_APP_ROWS, p.reachableRows)
                 // One dp of width must not change the icon by more than a few dp, in either layout, unless it crosses the split.
                 last?.let { prev -> if (prev.splitColumns == g.splitColumns) assertTrue("$name icon jumps ${prev.iconSize} to ${g.iconSize}", Math.abs(prev.iconSize - g.iconSize) <= 3f) }
                 last = g

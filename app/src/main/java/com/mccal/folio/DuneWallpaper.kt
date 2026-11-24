@@ -13,7 +13,12 @@ import android.content.IntentFilter
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.animation.core.Animatable
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.ImageBitmap
@@ -60,6 +65,25 @@ internal fun DuneWallpaper(modifier: Modifier = Modifier, scrim: HomeScrim = Hom
     val photo = produceState(initialValue = initial, key1 = context, key2 = revision) {
         value = withContext(Dispatchers.IO) { loadLauncherBackground(context) }
     }.value
+    // A new picture arriving after this one was first drawn fades in over the old one (iOS does the same when the wallpaper is set).
+    // The first picture of a cold start, found while the screen is already up, just appears: nothing was there to fade from.
+    val reduceMotion = LocalReduceMotion.current
+    val firstRevision = remember { revision }
+    var settled by remember { mutableStateOf(photo) }
+    // A picture still fading in when the next one arrives stays under it at the strength it had reached, so a second change continues
+    // from what is on screen instead of dropping back to the last settled picture. Plain fields: the fade's own value redraws the layer.
+    val layers = remember { BackgroundLayers<android.graphics.Bitmap>() }
+    // Made anew for each picture, so the first frame of a change already has the new one at zero and never flashes it at full.
+    val fade = remember(photo) {
+        val fades = backgroundFades(revision != firstRevision, reduceMotion, settled !== photo)
+        layers.change(photo, fades)
+        Animatable(if (fades) 0f else 1f).also { layers.fade = it }
+    }
+    LaunchedEffect(fade) {
+        if (fade.value < 1f) fade.animateTo(1f, FolioMotion.spring(FolioMotion.Glide))
+        settled = photo
+        layers.under.clear()
+    }
     // Drawn once into its own layer and reused: the background never redraws itself, but during a swipe everything
     // above it does, so it was redrawn every frame (a gradient, three dunes and 29 strokes, full screen) and the GPU
     // missed frames. A cached layer is one texture copy a frame instead.
@@ -67,19 +91,48 @@ internal fun DuneWallpaper(modifier: Modifier = Modifier, scrim: HomeScrim = Hom
         .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
         // After the layer, so the scrim is rasterised into it with the background rather than composited over it every
         // frame. A vertical gradient is the same at every x, so the drift sliding it sideways cannot show.
-        .homeScrim(scrim)) { drawLauncherBackground(photo?.asImageBitmap(), palette.dark) }
+        .homeScrim(scrim)) {
+        // Read here, in the draw phase, so the fade redraws this layer and nothing else (DYN-16).
+        val progress = fade.value.coerceIn(0f, 1f)
+        if (progress < 1f) {
+            drawLauncherBackground(settled?.takeUnless { it.isRecycled }?.asImageBitmap(), palette.dark)
+            layers.under.forEach { (bitmap, strength) -> if (!bitmap.isRecycled) drawLauncherBackground(bitmap.asImageBitmap(), palette.dark, alpha = strength) }
+        }
+        drawLauncherBackground(photo?.asImageBitmap(), palette.dark, alpha = progress)
+    }
+}
+
+/** A new background fades in over the old one only when it arrives after the screen was up, motion is on, and it really is a different picture. */
+internal fun backgroundFades(arrivedLate: Boolean, reduceMotion: Boolean, changed: Boolean) = arrivedLate && !reduceMotion && changed
+
+/**
+ * The pictures a change leaves under the new one: each earlier picture that was still fading in, with how visible it had got, lowest first.
+ * Drawn in order they are exactly what was on screen when the change came, so the next fade starts from it (DYN-9, nothing jumps).
+ */
+internal class BackgroundLayers<T : Any> {
+    val under = mutableListOf<Pair<T, Float>>()
+    private var top: T? = null
+    var fade: Animatable<Float, androidx.compose.animation.core.AnimationVector1D>? = null
+
+    /** [next] is arriving; [fades] says whether it fades in (otherwise it simply replaces everything). */
+    fun change(next: T?, fades: Boolean) {
+        val shown = top
+        val reached = fade?.value ?: 1f
+        if (!fades) under.clear() else if (shown != null && reached < 1f) under += shown to reached
+        top = next
+    }
 }
 
 /** The flat surface Home draws with no picture chosen, in dark and in light appearance. Automatic ink reads these (see [flatBackgroundTone]). */
 internal val FLAT_BACKGROUND_DARK = Color(0xFF0B0B0C)
 internal val FLAT_BACKGROUND_LIGHT = Color(0xFFE9E9EC)
 
-internal fun DrawScope.drawLauncherBackground(photo: ImageBitmap?, dark: Boolean = false) {
+internal fun DrawScope.drawLauncherBackground(photo: ImageBitmap?, dark: Boolean = false, alpha: Float = 1f) {
     if (photo == null || photo.width <= 0 || photo.height <= 0) {
         // No picture chosen. A flat surface rather than a scene: DES-2a says Folio does not draw backgrounds, and
         // this is the absence of one. It still has to be opaque, because Home's window is see-through and a window
         // with nothing behind it keeps showing the frame before (#12, #35).
-        drawRect(if (dark) FLAT_BACKGROUND_DARK else FLAT_BACKGROUND_LIGHT)
+        drawRect(if (dark) FLAT_BACKGROUND_DARK else FLAT_BACKGROUND_LIGHT, alpha = alpha)
         return
     }
     val destinationWidth = size.width.toInt().coerceAtLeast(1)
@@ -100,6 +153,7 @@ internal fun DrawScope.drawLauncherBackground(photo: ImageBitmap?, dark: Boolean
         srcOffset = IntOffset((photo.width - sourceWidth) / 2, (photo.height - sourceHeight) / 2),
         srcSize = IntSize(sourceWidth, sourceHeight),
         dstSize = IntSize(destinationWidth, destinationHeight),
+        alpha = alpha,
     )
 }
 
@@ -240,6 +294,8 @@ internal fun SystemWallpaperParallax(pager: androidx.compose.foundation.pager.Pa
                 val token = view.windowToken ?: return@collect
                 val pages = if (live) count else maxOf(MIN_PARALLAX_SPAN, count)
                 val steps = (pages - 1).coerceAtLeast(1)
+                // The fold's copy of the wallpaper (PhoneWallpaperCopy.kt) sits where this puts Android's.
+                WallpaperPlacement.fraction = (position / steps).coerceIn(0f, 1f)
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
                     runCatching {
                         // yStep is 1f, not 0f: a wallpaper that works out its vertical pixel offset from the step

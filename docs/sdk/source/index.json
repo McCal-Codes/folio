@@ -8,12 +8,16 @@
   "featured": [
     {
       "package": "com.mccal.folio.theme.clear",
-      "label": "Theme of the week",
-      "image": "assets/home-clear.webp"
+      "label": "Theme of the week"
     },
     {
       "package": "com.mccal.folio.cabinet",
       "label": "Built-in tweak"
+    },
+    {
+      "package": "com.bunsoootchi.performatively",
+      "label": "From a friend of Folio",
+      "image": "assets/performatively-banner.webp"
     }
   ],
   "packages": [
@@ -225,6 +229,108 @@
             "tweaks.pageEffects"
           ]
         }
+      }
+    },
+    {
+      "id": "com.mccal.folio.duet",
+      "version": "1.0.0",
+      "manifest": {
+        "format": 1,
+        "id": "com.mccal.folio.duet",
+        "name": "Duet",
+        "version": "1.0.0",
+        "author": {
+          "name": "Folio",
+          "url": "https://github.com/McCal-Codes/folio"
+        },
+        "minFolio": "0.6.8",
+        "section": "tweaks",
+        "kind": [
+          "tweakBundle"
+        ],
+        "permissions": [
+          "tweaks"
+        ],
+        "screens": [
+          "cover",
+          "inner"
+        ],
+        "icon": "assets/icons/duet.png",
+        "depiction": "depiction.json",
+        "license": "MIT",
+        "description": "The fold animation follows your hinge as you open and close the phone.",
+        "requires": {
+          "features": [
+            "tweaks.foldTransition"
+          ]
+        }
+      }
+    },
+    {
+      "id": "com.mccal.folio.standby-2",
+      "version": "1.0.0",
+      "manifest": {
+        "format": 1,
+        "id": "com.mccal.folio.standby-2",
+        "name": "StandBy 2",
+        "version": "1.0.0",
+        "author": {
+          "name": "Folio",
+          "url": "https://github.com/McCal-Codes/folio"
+        },
+        "minFolio": "0.7.0",
+        "section": "tweaks",
+        "kind": [
+          "tweakBundle"
+        ],
+        "permissions": [
+          "tweaks"
+        ],
+        "screens": [
+          "cover",
+          "inner"
+        ],
+        "icon": "assets/icons/standby-2.png",
+        "depiction": "depiction.json",
+        "license": "MIT",
+        "description": "Twelve clock looks, Now Playing, Up Next, notification colors and a night mode for StandBy.",
+        "requires": {
+          "features": [
+            "tweaks.standby2"
+          ]
+        }
+      }
+    },
+    {
+      "id": "com.bunsoootchi.performatively",
+      "version": "1.0.0",
+      "manifest": {
+        "format": 1,
+        "id": "com.bunsoootchi.performatively",
+        "name": "Performatively",
+        "version": "1.0.0",
+        "author": {
+          "name": "bunsoootchi"
+        },
+        "minFolio": "0.7.0",
+        "section": "apps",
+          "icon": "assets/icons/performatively.png",
+        "kind": [
+          "externalApp"
+        ],
+        "permissions": [],
+        "screens": [
+          "cover",
+          "inner"
+        ],
+        "depiction": "depiction.json",
+        "description": "Read on the inner screen while your book's cover shows on the outer screen, decorated with stickers.",
+        "via": [
+          {
+            "store": "playStore",
+            "id": "com.bunsoootchi.performatively"
+          }
+        ]
       }
     },
     {

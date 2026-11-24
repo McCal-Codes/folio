@@ -63,6 +63,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.layout.positionOnScreen
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.semantics.onLongClick
@@ -236,6 +238,8 @@ internal fun widgetLabel(context: android.content.Context, id: Int, controller: 
     SUGGESTIONS_WIDGET -> context.getString(R.string.suggestions)
     BIG_CLOCK_WIDGET -> context.getString(R.string.big_clock)
     MUSIC_WIDGET -> context.getString(R.string.music)
+    PHOTO_WIDGET -> context.getString(R.string.photos_widget)
+    SEARCH_WIDGET -> context.getString(R.string.search)
     INFO_WIDGET -> context.getString(R.string.widget_panel)
     EMPTY_WIDGET -> context.getString(R.string.add_widget)
     else -> controller.manager.getAppWidgetInfo(id)?.provider?.packageName?.let { swapped[it]?.label } ?: controller.label(id)
@@ -255,6 +259,12 @@ internal fun MovableWidget(id: Int, slot: Int, controller: WidgetController, dra
         if (isTarget) 1.02f else 1f, FolioMotion.spring(FolioMotion.Control), label = "widgetTargetScale"
     )
     Box(modifier.dropRegion(drag, cell, page = page, widgetId = id)
+        // Where the widget is, so holding it opens its menu beside it (WidgetContextMenu); measured outside the drop-target scale.
+        // On screen, not in the window: the menu's dialog measures itself on screen, and the two differ in split screen.
+        .onGloballyPositioned {
+            val toScreen = it.positionOnScreen() - it.positionInWindow()
+            WidgetBounds.update(slot, it.boundsInWindow().translate(toScreen).toAndroidBounds())
+        }
         .graphicsLayer { scaleX = targetScale; scaleY = targetScale }) {
         val chrome = Modifier.fillMaxSize().then(if (id < 0) Modifier.jiggle("widget-$slot", .35f) else Modifier)
             .alpha(if (drag.source?.target == cell) .3f else 1f)
@@ -264,7 +274,7 @@ internal fun MovableWidget(id: Int, slot: Int, controller: WidgetController, dra
             .semantics { onLongClick(context.getString(R.string.move_or_replace_widget)) { onAdd(); true } }
         if (cards.size > 1) SmartStack(cards, slot, controller, chrome, onAdd)
         else WidgetSlot(id, slot, controller, chrome, onAdd) { BuiltinWidgetCard(id, slot, opensApp = true, onAdd = onAdd) }
-    if (edit.active && id != EMPTY_WIDGET && id != INFO_WIDGET) JiggleRemoveButton(stringResource(R.string.remove_widget)) { edit.onRemove(cell) }
+    if (edit.active && id != EMPTY_WIDGET && id != INFO_WIDGET) JiggleRemoveButton(stringResource(R.string.remove_widget), inset = (-6).dp) { edit.onRemove(cell) }
     }
 }
 
@@ -304,6 +314,11 @@ internal fun BuiltinWidgetCard(id: Int, slot: Int, opensApp: Boolean = false, on
         SUGGESTIONS_WIDGET -> SuggestionsCard(onAdd)
         BIG_CLOCK_WIDGET -> BigClockCard(onTap, slot, home = opensApp)
         MUSIC_WIDGET -> MusicWidgetCard(onTap)
+        PHOTO_WIDGET -> PhotoWidgetCard(onAdd)
+        SEARCH_WIDGET -> SearchWidgetCard(onOpen = {
+            val activity = context.findMainActivity()
+            if (opensApp && !edit.active && activity != null) activity.openSpotlight() else onAdd()
+        })
         INFO_WIDGET -> if (slot % 3 == 2) ExpandedCard(onAdd) else GlassCard(onClick = onAdd) {
             Icon(Icons.Rounded.Widgets, null, tint = Color.White, modifier = Modifier.size(28.dp))
             Text(stringResource(R.string.your_widgets), color = Color.White, fontSize = FolioType.SUBHEAD.sp, maxLines = 1)
@@ -415,170 +430,6 @@ internal fun SmartStack(cards: List<Int>, slot: Int, controller: WidgetControlle
     }
 }
 
-
-@Composable
-internal fun WidgetActions(
-    placement: WidgetPlacement,
-    constraints: WidgetSpanConstraints?,
-    canConfigure: Boolean,
-    onConfigure: () -> Unit,
-    isValid: (Int, Int) -> Boolean,
-    onResize: (Int, Int) -> Unit,
-    onStartResize: (Int, Int) -> Unit,
-    onMoveToPage: (Int) -> Boolean,
-    homePages: Int,
-    onReplace: () -> Unit,
-    onRemove: () -> Unit,
-    onClose: () -> Unit,
-    /** A built-in widget's own look (today, only Big Clock's color and weight). Real AppWidgets configure
-     * through [onConfigure] instead - that gate only ever fires for a real `AppWidgetProviderInfo`, which a
-     * built-in widget's negative id never has, so this is a separate entry rather than folded into it. */
-    onCustomize: (() -> Unit)? = null,
-    onPlace: (() -> Unit)? = null,
-    onExpand: (() -> Unit)? = null,
-    stackCards: List<Int> = emptyList(),
-    stackLabel: (Int) -> String? = { null },
-    stackRotate: Boolean = true,
-    onStackRotate: (Boolean) -> Unit = {},
-    onAddToStack: () -> Unit = {},
-    onRemoveFromStack: (Int) -> Unit = {},
-    onShowFirstInStack: (Int) -> Unit = {},
-    /** Rows the widget's page shows (More rows); sizes never reach past them. */
-    rows: Int = GRID_ROWS,
-) {
-    val sheetMaxHeight = with(LocalDensity.current) {
-        (LocalWindowInfo.current.containerSize.height * .88f).toDp()
-    }
-    var width by remember(placement.slot, placement.spanX) { mutableIntStateOf(placement.spanX) }
-    var height by remember(placement.slot, placement.spanY) { mutableIntStateOf(placement.spanY) }
-    var customSize by remember(placement.slot) { mutableStateOf(false) }
-    val minWidth = constraints?.minimum?.width ?: 2
-    val minHeight = constraints?.minimum?.height ?: 2
-    val maxWidth = minOf(GRID_COLUMNS - placement.column, constraints?.maximum?.width ?: GRID_COLUMNS)
-    val maxHeight = minOf(rows.coerceAtMost(GRID_ROWS) - placement.row, constraints?.maximum?.height ?: GRID_ROWS)
-    val feasible = placement.page >= -1 && placement.row in 0 until GRID_ROWS &&
-        !(placement.id >= 0 && constraints == null) && minWidth <= maxWidth && minHeight <= maxHeight
-    val valid = feasible && isValid(width, height)
-    fun fits(w: Int, h: Int) = feasible && w in minWidth..maxWidth && h in minHeight..maxHeight && isValid(w, h)
-    val secondary = Color.White.copy(alpha = .6f)
-
-    // iOS-style widget menu: quick sizes, widget actions, Smart Stack, and a red Remove at the bottom.
-    Column(Modifier.fillMaxWidth().heightIn(max = sheetMaxHeight).verticalScroll(rememberScrollState())
-        .padding(horizontal = FolioSpace.XL.dp, vertical = FolioSpace.TINY.dp),
-        verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
-        Row(Modifier.fillMaxWidth().heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(if (stackCards.size > 1) stringResource(R.string.smart_stack) else stringResource(R.string.widget), Modifier.weight(1f), color = Color.White,
-                fontSize = 22.sp, fontWeight = FontWeight.Bold)
-            // The circle is still 32 dp; the tap is 48 (A11Y-1). The target is the box around it, not the circle.
-            Box(Modifier.size(FolioTouch.MIN.dp).clickable(onClickLabel = stringResource(R.string.close_widget_options), onClick = onClose),
-                contentAlignment = Alignment.Center) {
-                Box(Modifier.size(32.dp).clip(CircleShape).background(Color.White.copy(alpha = .14f)), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Rounded.Close, stringResource(R.string.close_widget_options), tint = Color.White, modifier = Modifier.size(18.dp))
-                }
-            }
-        }
-
-        SheetGroupLabel(stringResource(R.string.size))
-        SheetGroup {
-            Row(Modifier.fillMaxWidth().padding(FolioSpace.MEDIUM.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
-                listOf(Triple(stringResource(R.string.small), 2, 2), Triple(stringResource(R.string.medium), 4, 2), Triple(stringResource(R.string.large), 4, 4)).forEach { (label, w, h) ->
-                    val ok = fits(w, h) || (placement.spanX == w && placement.spanY == h)
-                    IosChip(selected = placement.spanX == w && placement.spanY == h,
-                        onClick = { if (ok && (placement.spanX != w || placement.spanY != h)) { onResize(w, h); onClose() } },
-                        label = { Text(label, color = if (ok) Color.Unspecified else Color.White.copy(alpha = .3f)) },
-                        modifier = Modifier.weight(1f).testTag("widget-size-${label.lowercase()}-${placement.slot}"))
-                }
-            }
-            // Shapes beyond Small, Medium and Large, for a widget whose limits allow them (Suggestions: one cell, a row, a column).
-            val extraSizes = listOf(Triple(stringResource(R.string.widget_shape_tiny), 1, 1), Triple(stringResource(R.string.widget_shape_row), GRID_COLUMNS, 1),
-                Triple(stringResource(R.string.widget_shape_column), 1, 4)).filter { (_, w, h) -> constraints != null && fits(w, h) || (placement.spanX == w && placement.spanY == h) }
-            if (extraSizes.isNotEmpty()) Row(Modifier.fillMaxWidth().padding(horizontal = FolioSpace.MEDIUM.dp).padding(bottom = FolioSpace.MEDIUM.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
-                extraSizes.forEach { (label, w, h) ->
-                    IosChip(selected = placement.spanX == w && placement.spanY == h,
-                        onClick = { if (placement.spanX != w || placement.spanY != h) { onResize(w, h); onClose() } },
-                        label = { Text(label) }, modifier = Modifier.weight(1f).testTag("widget-size-${w}x$h-${placement.slot}"))
-                }
-            }
-            MenuDivider()
-            MenuRow(stringResource(R.string.resize_on_home), Icons.Rounded.OpenInFull) { if (feasible) onStartResize(width, height) }
-            MenuDivider()
-            MenuRow(if (customSize) stringResource(R.string.hide_custom_size) else stringResource(R.string.custom_size), Icons.Rounded.Tune) { customSize = !customSize }
-            if (customSize) Column(Modifier.padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.SMALL.dp), verticalArrangement = Arrangement.spacedBy(FolioSpace.TINY.dp)) {
-                if (!feasible) Text(stringResource(R.string.move_this_widget_into_the_six_row_grid_b), color = FolioColors.Red, fontSize = FolioType.FOOTNOTE.sp)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.width), Modifier.weight(1f), color = Color.White)
-                    IconButton(enabled = constraints?.canResizeHorizontally != false,
-                        onClick = { if (feasible) width = (width - 1).coerceAtLeast(minWidth) }) { Icon(Icons.Rounded.Remove, stringResource(R.string.decrease_widget_width), tint = Color.White) }
-                    Text(pluralStringResource(R.plurals.columns, width, width), Modifier.width(88.dp), textAlign = TextAlign.Center, color = Color.White)
-                    IconButton(enabled = constraints?.canResizeHorizontally != false,
-                        onClick = { if (feasible) width = (width + 1).coerceAtMost(maxWidth) }) { Icon(Icons.Rounded.Add, stringResource(R.string.increase_widget_width), tint = Color.White) }
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.height), Modifier.weight(1f), color = Color.White)
-                    IconButton(enabled = constraints?.canResizeVertically != false,
-                        onClick = { if (feasible) height = (height - 1).coerceAtLeast(minHeight) }) { Icon(Icons.Rounded.Remove, stringResource(R.string.decrease_widget_height), tint = Color.White) }
-                    Text(pluralStringResource(R.plurals.rows, height, height), Modifier.width(88.dp), textAlign = TextAlign.Center, color = Color.White)
-                    IconButton(enabled = constraints?.canResizeVertically != false,
-                        onClick = { if (feasible) height = (height + 1).coerceAtMost(maxHeight) }) { Icon(Icons.Rounded.Add, stringResource(R.string.increase_widget_height), tint = Color.White) }
-                }
-                if (!valid) Text(stringResource(R.string.that_size_overlaps_another_item_or_exten), color = secondary, fontSize = FolioType.FOOTNOTE.sp)
-                IosChip(selected = valid, onClick = { if (valid) { onResize(width, height); onClose() } }, label = { Text(stringResource(R.string.apply_size)) },
-                    modifier = Modifier.fillMaxWidth())
-            }
-        }
-
-        SheetGroupLabel(stringResource(R.string.widget))
-        SheetGroup {
-            if (canConfigure) { MenuRow(stringResource(R.string.edit_widget), Icons.Rounded.Settings) { onConfigure() }; MenuDivider() }
-            if (onCustomize != null) { MenuRow(stringResource(R.string.customize), Icons.Rounded.Palette) { onCustomize() }; MenuDivider() }
-            if (onPlace != null) { MenuRow(stringResource(R.string.place_freely), Icons.Rounded.OpenWith) { onPlace() }; MenuDivider() }
-            if (onExpand != null) { MenuRow(stringResource(R.string.expand_widget_temporarily), Icons.Rounded.OpenInFull) { onExpand() }; MenuDivider() }
-            MenuRow(stringResource(R.string.replace_widget), Icons.Rounded.FindReplace) { onReplace() }
-            if (homePages > 1) {
-                MenuDivider()
-                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(FolioSpace.MEDIUM.dp), horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
-                    repeat(homePages) { page ->
-                        IosChip(selected = placement.page == page, onClick = { onMoveToPage(page) },
-                            label = { Text(stringResource(R.string.page_1, page + 1)) }, modifier = Modifier.testTag("widget-move-${placement.slot}-page-$page"))
-                    }
-                }
-            }
-        }
-
-        SheetGroupLabel(stringResource(R.string.smart_stack))
-        SheetGroup {
-            MenuRow(if (stackCards.size > 1) stringResource(R.string.add_widget_to_stack) else stringResource(R.string.make_a_stack), Icons.Rounded.Layers) { onAddToStack() }
-            if (stackCards.size > 1) {
-                stackCards.forEachIndexed { index, card ->
-                    MenuDivider()
-                    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(start = FolioSpace.LARGE.dp), verticalAlignment = Alignment.CenterVertically) {
-                        val cardName = stackLabel(card) ?: stringResource(R.string.widget)
-                        Text("${index + 1}. $cardName", Modifier.weight(1f), color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        if (index > 0) TextButton(onClick = { onShowFirstInStack(card) }) { Text(stringResource(R.string.show_first)) }
-                        IconButton(onClick = { onRemoveFromStack(card) }) {
-                            Icon(Icons.Rounded.RemoveCircleOutline, stringResource(R.string.remove_from_stack, cardName), tint = FolioColors.Red)
-                        }
-                    }
-                }
-                MenuDivider()
-                Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).padding(start = FolioSpace.LARGE.dp, end = FolioSpace.SMALL.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(stringResource(R.string.smart_rotate), color = Color.White)
-                        Text(stringResource(R.string.show_the_next_widget_every_30_minutes), color = secondary, fontSize = FolioType.FOOTNOTE.sp)
-                    }
-                    IosSwitch(stackRotate, onStackRotate)
-                }
-            }
-        }
-        if (stackCards.size > 1) Text(stringResource(R.string.swipe_up_or_down_on_the_stack_to_flip_be), color = secondary, fontSize = FolioType.FOOTNOTE.sp,
-            modifier = Modifier.padding(start = FolioSpace.TINY.dp))
-
-        SheetGroup(Modifier.padding(top = FolioSpace.SMALL.dp)) {
-            MenuRow(if (stackCards.size > 1) stringResource(R.string.remove_stack) else stringResource(R.string.remove_widget_2), Icons.Rounded.RemoveCircleOutline, destructive = true) { onRemove() }
-        }
-        Spacer(Modifier.height(16.dp))
-    }
-}
 
 @Composable
 internal fun ExpandedWidgetPreview(

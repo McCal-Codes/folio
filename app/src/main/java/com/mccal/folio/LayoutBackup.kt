@@ -49,7 +49,7 @@ data class LayoutImportPreview(
 )
 
 /** The widgets Folio draws itself, which a backup carries by id. A kind missing here is dropped on export and skipped on import. */
-internal val BACKUP_BUILTIN_WIDGETS = setOf(CLOCK_WIDGET, DATE_WIDGET, INFO_WIDGET, UP_NEXT_WIDGET, SUGGESTIONS_WIDGET, BIG_CLOCK_WIDGET, MUSIC_WIDGET)
+internal val BACKUP_BUILTIN_WIDGETS = setOf(CLOCK_WIDGET, DATE_WIDGET, INFO_WIDGET, UP_NEXT_WIDGET, SUGGESTIONS_WIDGET, BIG_CLOCK_WIDGET, MUSIC_WIDGET, PHOTO_WIDGET, SEARCH_WIDGET)
 
 fun layoutBackupScope(context: Context): String {
     val prefs = context.getSharedPreferences("layout_backup_identity", Context.MODE_PRIVATE)
@@ -100,7 +100,7 @@ fun encodeLayoutBackup(
     fun preset(value: LayoutPreset) = JSONObject().put("iconSize", value.iconSize).put("rowGap", value.rowGap)
         .put("dockWidth", value.dockWidth).put("dockPosition", value.dockPosition).put("dockAlignToGrid", value.dockAlignToGrid)
         .put("dockPlacement", value.dockPlacement.name).put("statusAlignToGrid", value.statusAlignToGrid).put("statusPosition", value.statusPosition)
-        .put("columnGap", value.columnGap).put("dockSpacing", value.dockSpacing).put("widgetScale", value.widgetScale).put("pageTop", value.pageTop)
+        .put("columnGap", value.columnGap).put("dockSpacing", value.dockSpacing).put("widgetScale", value.widgetScale).put("pageTop", value.pageTop).put("dockSize", value.dockSize).put("dockCentered", value.dockCentered).put("dockCompact", value.dockCompact)
     val root = JSONObject().put("version", LAYOUT_BACKUP_VERSION).put("sourceScope", sourceScope).put("apps", apps)
         .put("homeSlots", JSONArray(state.homeSlots)).put("leadingSlots", JSONArray(state.leadingSlots))
         .put("dock", JSONArray(state.dock)).put("folders", folders).put("widgets", widgets)
@@ -280,7 +280,9 @@ fun decodeLayoutBackup(raw: String, currentApps: List<AppEntry>, currentProfiles
             item.optDouble("statusPosition", 0.0).toFloat(),
             // Added with More rows.
             item.optDouble("columnGap", DEFAULT_COLUMN_GAP.toDouble()).toFloat(), item.optDouble("dockSpacing", 0.0).toFloat(),
-            item.optDouble("widgetScale", 1.0).toFloat(), item.optBoolean("pageTop", false))
+            item.optDouble("widgetScale", 1.0).toFloat(), item.optBoolean("pageTop", false),
+            // Added with Dock › Size.
+            item.optDouble("dockSize", 1.0).toFloat(), item.optBoolean("dockCentered", false), item.optBoolean("dockCompact", false))
         require(loaded == loaded.sanitized()) { "Invalid layout preset" }
         return loaded
     }

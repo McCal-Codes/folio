@@ -67,6 +67,7 @@ class SharedGridIntegrationTest {
                 .performScrollToNode(hasTestTag(visibleProviderTag))
             compose.onNodeWithTag(visibleProviderTag, useUnmergedTree = true).assertIsDisplayed()
             compose.onNodeWithTag(visibleProviderTag, useUnmergedTree = true).performClick()
+            compose.continueToPlacement()
             compose.onNodeWithTag("widget-placement-mode").assertIsDisplayed()
             pressBack()
             compose.onNodeWithTag("visual-widget-picker").assertIsDisplayed()
@@ -194,6 +195,7 @@ class SharedGridIntegrationTest {
             compose.onNode(hasText("Search widgets") and hasSetTextAction())
                 .performTextInput(provider.loadLabel(compose.activity.packageManager).toString())
             compose.onNodeWithTag("widget-provider-${provider.provider.flattenToString()}").performScrollTo().performClick()
+            compose.continueToPlacement()
             compose.onNodeWithTag("widget-placement-preview").assertIsDisplayed().assert(
                 SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.StateDescription, "Ready to place"))
             compose.onNodeWithTag("widget-placement-apply").performClick()

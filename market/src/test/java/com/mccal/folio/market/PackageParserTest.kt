@@ -154,7 +154,7 @@ class PackageParserTest {
         val cabinetPage = ok(Depiction.parse(File(root, "docs/sdk/source/packages/cabinet/depiction.json").readText()))
         assertEquals(0xFF0A84FF.toInt(), cabinetPage.tint)
         assertEquals(
-            listOf("Screenshots", "Markdown", "FeatureList", "Compatibility", "Changelog", "Link", "Donation"),
+            listOf("Hero", "Screenshots", "Markdown", "FeatureList", "Compatibility", "Changelog", "Link", "Donation"),
             cabinetPage.blocks.map { it::class.simpleName },
         )
         val page = ok(Depiction.parse(fullDepiction))

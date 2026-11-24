@@ -2,6 +2,7 @@
 
 package com.mccal.folio
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import android.accessibilityservice.AccessibilityService
@@ -119,7 +120,9 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     private data class Settings(val dockEverywhere: Boolean, val islandEverywhere: Boolean, val leftHanded: Boolean, val dock: List<String>, val eventsOff: Set<String> = emptySet(),
         val buttons: ButtonBarSettings = ButtonBarSettings(), val islandHideFullScreen: Boolean = true, val islandHideLandscape: Boolean = false, val islandHideLandscapeInner: Boolean = false,
         val reduceMotion: Boolean = false, val shadePull: Boolean = false, val shadeOverApps: Boolean = false, val folioPanels: Boolean = true,
-        val pullTarget: PullTarget = PullTarget.BOTH, val crackgate: Boolean = false, val shadePullTab: Boolean = true)
+        val pullTarget: PullTarget = PullTarget.BOTH, val crackgate: Boolean = false, val shadePullTab: Boolean = true,
+        /** Home's Dock › Size for the phone-sized and the large-screen layouts; the one for the screen it is drawn on is used. */
+        val dockSizeCompact: Float = 1f, val dockSizeExpanded: Float = 1f)
     /** Buttons in Every App (Settings › Dynamic Island › In Every App). */
     internal data class ButtonBarSettings(val on: Boolean = false, val height: Float = 52f, val width: Float = .5f,
         val androidOrder: Boolean = false, val light: Boolean = false, val fade: Boolean = true)
@@ -259,6 +262,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     private fun readSettings(): Settings = runCatching {
         val j = JSONObject(prefs.getString(SettingKeys.STATE, "{}") ?: "{}")
         val dockIds = j.optJSONArray(SettingKeys.DOCK)?.let { a -> (0 until a.length()).mapNotNull { a.optString(it).takeIf { s -> s.isNotBlank() && s != "null" } } }.orEmpty()
+        val sizeCompact = j.optJSONObject("compact")?.optDouble("dockSize", 1.0)?.toFloat() ?: 1f
+        val sizeExpanded = j.optJSONObject("expanded")?.optDouble("dockSize", 1.0)?.toFloat() ?: 1f
         val off = j.optJSONArray(SettingKeys.ISLAND_EVENTS_OFF)?.let { a -> (0 until a.length()).map(a::getString).toSet() }.orEmpty()
         Settings(j.optBoolean(SettingKeys.DOCK_EVERYWHERE, false), j.optBoolean(SettingKeys.ISLAND_EVERYWHERE, false), j.optBoolean(SettingKeys.LEFT_HANDED, false), dockIds, off,
             ButtonBarSettings(j.optBoolean(SettingKeys.BUTTON_BAR, false),
@@ -270,7 +275,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
             j.optBoolean(SettingKeys.ISLAND_HIDE_LANDSCAPE_INNER, false), j.optBoolean("reduceMotion", false),
             j.optBoolean("shadePull", false), j.optBoolean("shadeOverApps", false), j.optBoolean("folioPanels", true),
             pullTargetFrom(j.optString("pullTarget").ifEmpty { null }),
-            crackgate = j.optJSONObject("duet")?.optBoolean("crackgate", false) == true, shadePullTab = j.optBoolean("shadePullTab", true))
+            crackgate = j.optJSONObject("duet")?.optBoolean("crackgate", false) == true, shadePullTab = j.optBoolean("shadePullTab", true),
+            dockSizeCompact = sizeCompact, dockSizeExpanded = sizeExpanded)
     }.getOrDefault(Settings(false, false, false, emptyList()))
 
     private fun sync() {
@@ -302,8 +308,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     // ---- Folio's panels over other apps ------------------------------------------------------
 
     private data class ShadeConfig(val overApps: Boolean, val panels: Boolean, val clock: Boolean, val grouped: Boolean,
-        val controls: List<String>, val size: PanelSize, val centered: Boolean, val layout: NcLayout, val sections: Boolean = false,
-        val look: CcLook = CcLook.CLEAR, val options: CcOptions = CcOptions())
+        val controls: List<String>, val size: PanelSize, val centered: Boolean, val layout: NcLayout, val sections: Boolean = false, val left: Boolean = false,
+        val look: CcLook = CcLook.CLEAR, val options: CcOptions = CcOptions(), val ccLayout: CcSavedLayout? = null)
 
     private fun readShadeConfig(): ShadeConfig = runCatching {
         val j = JSONObject(prefs.getString(SettingKeys.STATE, "{}") ?: "{}")
@@ -313,8 +319,10 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                 ?: CcControl.DEFAULTS,
             runCatching { PanelSize.valueOf(j.optString("ccSize")) }.getOrDefault(PanelSize.STANDARD), j.optBoolean("ccCentered", false),
             ncLayoutFrom(j.optString("ncLayout").ifEmpty { null }, if (j.has("ncSplit")) j.optBoolean("ncSplit") else null),
-            j.optBoolean("notificationSections", false),
-            runCatching { CcLook.valueOf(j.optString("ccLook")) }.getOrDefault(CcLook.CLEAR), CcOptions.read(j))
+            j.optBoolean("notificationSections", false), j.optBoolean("ccLeft", false),
+            runCatching { CcLook.valueOf(j.optString("ccLook")) }.getOrDefault(CcLook.CLEAR), CcOptions.read(j),
+            // The layout made in the editor, so over an app Control Center is arranged as it is on Home.
+            ccLayoutFromJson(j.optJSONObject("ccLayout")))
     }.getOrDefault(ShadeConfig(false, true, true, true, CcControl.DEFAULTS, PanelSize.STANDARD, false, NcLayout.FULL_SCREEN))
 
     private var shade: ComposeView? = null
@@ -356,9 +364,9 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
             val view = ComposeView(service).apply {
                 setViewTreeLifecycleOwner(owner); setViewTreeSavedStateRegistryOwner(owner)
                 setContent {
-                    val current by shadePanel.collectAsState()
-                    val status by monitor.state.collectAsState()
-                    val reduceMotion = settings.collectAsState().value.reduceMotion
+                    val current by shadePanel.collectAsStateWithLifecycle()
+                    val status by monitor.state.collectAsStateWithLifecycle()
+                    val reduceMotion = settings.collectAsStateWithLifecycle().value.reduceMotion
                     // The window is added with its panel already chosen, which would start the animation at its end: open one frame later,
                     // on the same spring Home's own panels use, so the shade slides in like them and closes the way it opened.
                     var shown by remember { mutableStateOf(false) }
@@ -367,14 +375,14 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                         MotionSpeed.spring(.86f, androidx.compose.animation.core.Spring.StiffnessMediumLow))
                     val wide = androidx.compose.ui.platform.LocalConfiguration.current.fitsRegularHomeLayout()
                     CompositionLocalProvider(LocalShadeOverApps provides true, LocalShadeReply provides { item -> replyFromShade(item) }, LocalDeviceStatus provides status,
-                        LocalReduceMotion provides reduceMotion, LocalShadeBackdropBlur provides (shadeBlurPx > 0), LocalShadeBackdropImage provides shadeBackdrop.collectAsState().value, LocalWallpaperTone provides wallpaperTone,
+                        LocalReduceMotion provides reduceMotion, LocalShadeBackdropBlur provides (shadeBlurPx > 0), LocalShadeBackdropImage provides shadeBackdrop.collectAsStateWithLifecycle().value, LocalWallpaperTone provides wallpaperTone,
                         LocalTintOptions provides (look?.let { tintOptionsFor(it, wide) } ?: TintOptions()),
                         LocalGlassLook provides (look?.let { GlassLook(it.widgetGlass, it.glassOutline) } ?: GlassLook())) {
                         TopPanels(current, { progress }, status, onClose = { closeShade() },
                             // "Android notifications" and the like ask for the phone's own shade: ours closes while it opens.
                             onSystemPanel = { p -> closeShade(); SystemShadeAccessibilityService.open(service, p) },
                             showClock = config.clock, grouped = config.grouped, sections = config.sections, ccControls = config.controls,
-                            ccSize = config.size, ccCentered = config.centered, ncLayout = config.layout, ccLook = config.look, ccOptions = config.options,
+                            ccSize = config.size, ccCentered = config.centered, ccLeft = config.left, ncLayout = config.layout, ccLook = config.look, ccOptions = config.options, ccLayout = config.ccLayout,
                             onSwitchPanel = { p -> shadePanel.value = p })
                     }
                 }
@@ -586,29 +594,31 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
     private fun openDock() {
         if (dock != null) return
         val s = settings.value
-        val apps = s.dock.mapNotNull { id -> resolveApp(id) }
+        val config = service.resources.configuration
+        val plan = overlayDockPlan(config.screenHeightDp.toFloat(), s.dock.size, if (config.screenWidthDp >= EXPANDED_HOME_MIN_WIDTH_DP) s.dockSizeExpanded else s.dockSizeCompact, FolioSpace.MEDIUM.toFloat())
+        val apps = s.dock.mapNotNull { id -> resolveApp(id) }.take(plan.shown)
         val view = ComposeView(service).apply {
             setViewTreeLifecycleOwner(owner); setViewTreeSavedStateRegistryOwner(owner)
             setContent {
-                val open by dockOpen.collectAsState()
+                val open by dockOpen.collectAsStateWithLifecycle()
                 LaunchedEffect(Unit) { dockOpen.value = true }
                 Box(Modifier.fillMaxSize().clickable(remember { MutableInteractionSource() }, null) { closeDock() },
                     contentAlignment = if (s.leftHanded) Alignment.CenterStart else Alignment.CenterEnd) {
                     AnimatedVisibility(open, enter = fadeIn() + slideInHorizontally(FolioMotion.spring(FolioMotion.Appear)) { if (s.leftHanded) -it else it },
                         exit = fadeOut() + slideOutHorizontally { if (s.leftHanded) -it else it }) {
-                        Column(Modifier.padding(horizontal = FolioSpace.MEDIUM.dp).width(72.dp).clip(RoundedCornerShape(FolioRadius.RAIL.dp))
+                        Column(Modifier.padding(horizontal = FolioSpace.MEDIUM.dp).width(plan.width.dp).clip(RoundedCornerShape(FolioRadius.RAIL.dp))
                             .background(FolioColors.SecondaryBackground.copy(alpha = .72f)).border(1.dp, Color.White.copy(alpha = .16f), RoundedCornerShape(FolioRadius.RAIL.dp))
                             .padding(vertical = FolioSpace.MEDIUM.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp)) {
                             apps.forEach { app ->
                                 val hostView = androidx.compose.ui.platform.LocalView.current
-                                Image(app.icon.asImageBitmap(), null, Modifier.size(50.dp).clip(RoundedCornerShape(13.dp))
+                                Image(app.icon.asImageBitmap(), null, Modifier.size(plan.icon.dp).clip(RoundedCornerShape(13.dp * plan.icon / 50f))
                                     .combinedClickable(onClick = { closeDock(); launch(app) }, onLongClick = {
                                         // Drag beside the current app for split screen.
                                         if (startSplitDrag(hostView, service, app.component, app.user, "", app.icon)) closeDock()
                                     }))
                             }
                             if (apps.isNotEmpty()) HorizontalDivider(Modifier.width(40.dp), color = Color.White.copy(alpha = .2f))
-                            Box(Modifier.size(50.dp).clip(RoundedCornerShape(13.dp)).background(Color.White.copy(alpha = .16f)).clickable {
+                            Box(Modifier.size(plan.icon.dp).clip(RoundedCornerShape(13.dp * plan.icon / 50f)).background(Color.White.copy(alpha = .16f)).clickable {
                                 closeDock(); service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME)
                             }, contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Home, stringResource(R.string.home_label), tint = Color.White) }
                         }
@@ -678,8 +688,8 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
             setViewTreeLifecycleOwner(owner); setViewTreeSavedStateRegistryOwner(owner)
             setContent {
                 val islandStrings = androidx.compose.ui.platform.LocalContext.current.strings()
-                val content = islandContent.collectAsState().value
-                val cardOpen = islandExpanded.collectAsState().value && content is IslandContent.Live
+                val content = islandContent.collectAsStateWithLifecycle().value
+                val cardOpen = islandExpanded.collectAsStateWithLifecycle().value && content is IslandContent.Live
                 // Folio's own Reduce Motion (saved with the rest) or Android's Remove animations, as on Home (I-9).
                 @Composable fun androidRemovesAnimations(): Boolean {
                     var removed by remember { mutableStateOf(reduceMotionEnabled(service)) }
@@ -695,9 +705,9 @@ internal class EverywhereOverlay(private val service: AccessibilityService) {
                     }
                     return removed
                 }
-                val reduceMotion = settings.collectAsState().value.reduceMotion || androidRemovesAnimations()
+                val reduceMotion = settings.collectAsStateWithLifecycle().value.reduceMotion || androidRemovesAnimations()
                 // Advanced island, read again whenever it is saved so the pill over an app follows at once.
-                val styleVersion by IslandLayoutChanges.version.collectAsState()
+                val styleVersion by IslandLayoutChanges.version.collectAsStateWithLifecycle()
                 val style = remember(styleVersion) { IslandStyle.active(service) }
                 val speed = IslandStyle.speedMultiplier(style.speed, MotionSpeed.current.factor)
                 val colored = IslandStyle.colorApplies(wraps)

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <defs>
+    <linearGradient id="t-duet" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5E5CE6"/><stop offset="1" stop-color="#3F3DB8"/></linearGradient>
+    <linearGradient id="h-duet" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".38"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <filter id="s-duet" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#000" flood-opacity=".28"/></filter>
+    <clipPath id="c-duet"><rect width="192" height="192" rx="44"/></clipPath>
+  </defs>
+  <rect width="192" height="192" rx="44" fill="url(#t-duet)"/>
+  <g clip-path="url(#c-duet)"><ellipse cx="96" cy="-30" rx="140" ry="92" fill="url(#h-duet)"/></g>
+  <g filter="url(#s-duet)"><g transform="translate(0.0 0.0) scale(1.0)">
+    <rect x="30" y="44" width="62" height="104" rx="12" fill="#fff"/>
+        <path d="M104 52 L152 40 Q162 38 162 48 L162 144 Q162 154 152 152 L104 140 Z" fill="#fff" opacity=".6"/>
+        <rect x="94" y="40" width="10" height="112" rx="5" fill="#fff" opacity=".9"/>
+  </g></g>
+  <rect x=".75" y=".75" width="190.5" height="190.5" rx="43.5" fill="none" stroke="#fff" stroke-opacity=".28" stroke-width="1.5"/>
+</svg>

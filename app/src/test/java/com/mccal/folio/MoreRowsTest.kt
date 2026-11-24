@@ -95,14 +95,14 @@ class MoreRowsTest {
         assertEquals(6, effectiveHomeRows(0, 6, 6, 0)) // not measured yet doesn't count
     }
 
-    @Test fun `the upright inner screen with its own layout uses the rows that fit it`() {
+    @Test fun `every screen is its own layout and uses the rows that fit it`() {
         val s = LauncherState(homeFitCompact = 4, homeFitExpanded = 5, homeFitUpright = 7, portrait = LayoutPreset())
         assertEquals(4, s.homeAppRows)
         assertEquals(7, s.homeAppRowsFor(LayoutScreen.INNER_UPRIGHT))
-        assertEquals(4, s.homeAppRowsFor(LayoutScreen.INNER))
+        assertEquals(5, s.homeAppRowsFor(LayoutScreen.INNER))
         assertEquals(4, s.homeAppRowsFor(LayoutScreen.COVER))
-        // Without its own layout, or with rows chosen by hand, every screen shares one count.
-        assertEquals(4, s.copy(portrait = null).homeAppRowsFor(LayoutScreen.INNER_UPRIGHT))
+        // Upright without a layout of its own shows the inner layout, so it takes the inner fit; rows chosen by hand are one count everywhere.
+        assertEquals(5, s.copy(portrait = null).homeAppRowsFor(LayoutScreen.INNER_UPRIGHT))
         assertEquals(4, s.copy(homeRows = 4).homeAppRowsFor(LayoutScreen.INNER_UPRIGHT))
     }
 
@@ -166,5 +166,10 @@ class MoreRowsTest {
         org.junit.Assert.assertFalse(labels(-1).keys.any { "Page" in it })
         // TalkBack says where it went in a sentence of its own, not "Move Left" with the verb cut off.
         org.junit.Assert.assertEquals("Moved left", EnglishStrings.get(homeMoveOffsets(0).first().moved))
+    }
+
+    @Test fun `a fresh install starts on Automatic rows, an older save keeps its four`() {
+        assertEquals(0, decodeLauncherState("{}", null).homeRows)
+        assertEquals(BASE_APP_ROWS, decodeLauncherState("{\"schema\":5}", null).homeRows)
     }
 }

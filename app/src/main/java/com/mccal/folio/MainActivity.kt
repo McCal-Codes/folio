@@ -3,6 +3,7 @@ package com.mccal.folio
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import androidx.lifecycle.repeatOnLifecycle
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.isImeVisible
 import android.app.WallpaperManager
 import android.content.ComponentName
 import android.content.Intent
+import android.net.Uri
 import android.content.pm.LauncherApps
 import android.os.Bundle
 import android.os.UserManager
@@ -170,7 +172,7 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null && takeMarketLink(intent)) settingsRequests.intValue++
         intent.removeExtra("duo_destination")
         // A recreated activity (rotation, fold, process restart) keeps the pending alert; the launch intent is used once.
-        if (savedInstanceState == null) takeSharedTheme(intent)
+        if (savedInstanceState == null) { takeSharedTheme(intent); takeSharedWallpaper(intent) }
         else sharedTheme.value = savedInstanceState.getString(PENDING_THEME)?.let(FolioTheme::fromJson)
         setContent {
             val savedState = model.state.collectAsStateWithLifecycle().value
@@ -341,7 +343,9 @@ class MainActivity : ComponentActivity() {
                     iconsMostlyDark(state.apps.filter { LiveIcons.kind(this@MainActivity, it.packageName) == null && it.shortcutId == null }.map { it.icon })
                 }
             }
-            val postedBadges = androidx.compose.runtime.remember(notificationItems, clearedBadges) { BadgeClears.counts(notificationItems, clearedBadges) }
+            val postedTallies = androidx.compose.runtime.remember(notificationItems, clearedBadges) { BadgeClears.tallies(notificationItems, clearedBadges) }
+            val postedBadges = androidx.compose.runtime.remember(postedTallies) { postedTallies.mapValues { it.value.count } }
+            val badgeDots = androidx.compose.runtime.remember(postedTallies) { postedTallies.filterValues { !it.exact }.keys }
             // Clear Badges When Opened: the counts already seen are hidden, and a seen count follows its app down when
             // notifications go away elsewhere. Nothing of this runs while the switch is off or the gate is shut.
             val clearsBadgesWhenOpened = clearsBadgesWhenOpened(state.badgesWhenOpened)
@@ -376,12 +380,12 @@ class MainActivity : ComponentActivity() {
                 LocalTintOptions provides tintOptionsFor(state, androidx.compose.ui.platform.LocalConfiguration.current.fitsRegularHomeLayout()),
                 androidx.compose.ui.platform.LocalHapticFeedback provides (if (state.haptics) androidx.compose.ui.platform.LocalHapticFeedback.current else NoHaptics),
                 LocalIconLook provides IconLook(state.iconStyle, androidx.compose.ui.graphics.Color(iconTint), state.iconShape, state.iconPack, privateBadgeStyle(state.badgeStyle, privateView), state.badgeColor, state.liveIcons, state.liveIconLook, state.badgeLook, state.badgeSize),
-                LocalFocusLock provides FocusPages.lockingFocus(savedState)?.let { FocusLock(it, savedState.layout.pageCount) },
+                LocalFocusLock provides FocusPages.lock(savedState),
                 LocalAppIconStyles provides state.appIconStyles,
                 LocalIconsAreDark provides iconsAreDark,
                 LocalRecentPackages provides recentPackages,
                 LocalSwappedApps provides androidx.compose.runtime.remember(state.apps) { swappedByPackage(state.apps) },
-                LocalBadgeCounts provides badgeCounts, LocalInstallProgress provides installProgress, LocalNewApps provides newApps, LocalFolderColors provides state.folderColors) { FoldTransitionHost(FeatureScopes.on(state.featureScopes, DUET_ID, state.foldEffect,
+                LocalBadgeCounts provides badgeCounts, LocalBadgeDots provides badgeDots, LocalInstallProgress provides installProgress, LocalNewApps provides newApps, LocalFolderColors provides state.folderColors) { FoldTransitionHost(FeatureScopes.on(state.featureScopes, DUET_ID, state.foldEffect,
                     screenFor(androidx.compose.ui.platform.LocalConfiguration.current.fitsRegularHomeLayout())), state.foldIntensity, state.stayAwakeOnFold,
                     // Reduce Motion: a plain shade, no frost, tilt, shrink or picture moving (DYN-11: motion becomes a fade).
                     state.foldSnapshot && !reduceMotion, state.haptics,
@@ -482,8 +486,8 @@ class MainActivity : ComponentActivity() {
                 androidx.compose.runtime.CompositionLocalProvider(LocalShadeBackdropImage provides panelBackdrop) {
                 TopPanels(topPanel.value, { OverlayBack.shown(overlayProgress, OverlayBack.swipe.value) }, deviceStatus, onClose = { topPanel.value = null },
                     onSystemPanel = { openAndroidShade(it) }, showClock = state.notificationClock, grouped = state.groupNotifications, sections = state.notificationSections,
-                    ccControls = state.ccControls, onCcControls = model::setCcControls,
-                    ccSize = state.ccSize, ccCentered = state.ccCentered, ncLayout = state.ncLayout, ccLook = state.ccLook, ccOptions = state.ccOptions,
+                    ccControls = state.ccControls, onCcControls = model::setCcControls, ccLayout = state.ccLayout, onCcLayout = model::setCcLayout,
+                    ccSize = state.ccSize, ccCentered = state.ccCentered, ccLeft = state.ccLeft, ncLayout = state.ncLayout, ccLook = state.ccLook, ccOptions = state.ccOptions,
                     focusModes = state.focusModes, activeFocus = state.activeFocus, onFocus = model::setFocus,
                     onSwitchPanel = { topPanel.value = it })
                 }
@@ -509,6 +513,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart(); widgets.host.startListening()
+        Diagnostics.event("Widgets listening") // english-only
         // A new build can also arrive while this activity is alive in a restored task, so look again each time it starts.
         if (!showDevBuild.value && DevBuild.shouldShow(this)) showDevBuild.value = true
         if (!timeReceiverRegistered) {
@@ -535,7 +540,7 @@ class MainActivity : ComponentActivity() {
         stoppedSinceHome = true
         closeOverlays() // never come back to a blurred Home
         if (timeReceiverRegistered) { unregisterReceiver(timeReceiver); timeReceiverRegistered = false }
-        widgets.host.stopListening(); model.flushPending(); super.onStop()
+        widgets.host.stopListening(); Diagnostics.event("Widgets stopped listening (Home stopped)"); model.flushPending(); super.onStop() // english-only
     }
     override fun onDestroy() {
         LauncherSheets.closeAllOf(this); LauncherPages.closeAllOf(this) // an entry left by a window that never closed cannot outlive its screen
@@ -560,6 +565,7 @@ class MainActivity : ComponentActivity() {
         SoftwareUpdate.startCheckIfDue(this)
         FolioForeground.visible.value = true
         Diagnostics.event("Home shown (${Diagnostics.screenSummary(this).substringBefore(',')})")
+        widgets.refreshReport()
         Diagnostics.checkpoint(this, visible = true)
         FolioActions.home = java.lang.ref.WeakReference(this)
         model.syncFocus()
@@ -719,12 +725,52 @@ class MainActivity : ComponentActivity() {
         sharedTheme.value = raw.takeIf { it.length <= ThemeImportActivity.MAX_BYTES }?.let(FolioTheme::fromJson)
     }
 
+    /**
+     * A photo shared to Folio (WallpaperShareActivity): shown in the Wallpaper page's preview, with one Set. Any app can start
+     * Home with this extra, so the link is checked again and nothing is applied until Set. Showing the preview needs Folio's own
+     * background, so it switches to that and puts Android's wallpaper back if the photo is cancelled or cannot be read.
+     */
+    private fun takeSharedWallpaper(intent: Intent?) {
+        val raw = intent?.getStringExtra(WallpaperShareActivity.EXTRA_PHOTO) ?: return
+        intent.removeExtra(WallpaperShareActivity.EXTRA_PHOTO)
+        val uri = raw.takeIf { it.length <= 2_048 }?.let(Uri::parse)?.takeIf { WallpaperShareActivity.acceptable(it, packageName) } ?: return
+        val wasSystem = showsWallpaper
+        // The saved state may still be loading on a cold start, and a change made before it lands would be lost, so the
+        // setting waits for Home to be ready. The window itself is switched at once.
+        fun choose(system: Boolean) {
+            applyWallpaperWindow(system)
+            lifecycleScope.launch { model.state.first { it.homeReady }; model.setSystemWallpaper(system) }
+        }
+        if (wasSystem) choose(false)
+        backgrounds.stageSharedPhoto(uri, if (wasSystem) ({ choose(true) }) else null)
+        // The framing screen opens over Home; only without it does the Wallpaper page's own preview need to be showing.
+        if (!FeatureGate.WALLPAPER_PREVIEW.isOpen(this)) {
+            SettingsLink.page = CustomizationPage.WALLPAPER
+            settingsRequests.intValue++
+        }
+    }
+
+    /**
+     * The Edit menu's Wallpaper Photo row: the photo picker straight away, then the framing screen over Home. Like a shared photo, it
+     * shows Folio's own background for the preview, and puts Android's wallpaper back if the picker or the framing is cancelled.
+     */
+    fun chooseWallpaperPhoto() {
+        val wasSystem = showsWallpaper
+        fun choose(system: Boolean) {
+            applyWallpaperWindow(system)
+            lifecycleScope.launch { model.state.first { it.homeReady }; model.setSystemWallpaper(system) }
+        }
+        if (wasSystem) choose(false)
+        backgrounds.choosePhotoWith(if (wasSystem) ({ choose(true) }) else null)
+    }
+
     override fun onNewIntent(intent: Intent) {
         intent.dropUnreadableExtras()
         super.onNewIntent(intent)
 
         setIntent(intent)
         takeSharedTheme(intent)
+        takeSharedWallpaper(intent)
         FoldRenderExperiment.onNewIntent(this, intent)
         updateDefaultHome()
         if (intent.getStringExtra("duo_destination") == "search") searchRequests.intValue++

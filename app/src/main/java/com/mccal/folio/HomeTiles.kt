@@ -227,6 +227,7 @@ internal fun DockAppColumn(
                     Box(Modifier.size(iconSize.dp).testTag("dock-icon-$id")
                         .onGloballyPositioned { if (savedIndex >= 0) { launchBounds[savedIndex].set(it.boundsInWindow().toAndroidBounds()); IconBounds.update(id, launchBounds[savedIndex]) } }
                         .jiggle(id).foldMotionIcon()) {
+                        val removedIcons = LocalRemovedIcons.current
                         val magnification by animateFloatAsState(touchY?.let { y ->
                             val center = (renderIndex + .5f) * rowHeightPx
                             1f + magnifyAmount * (1f - kotlin.math.abs(center - y) / (rowHeightPx * 1.5f)).coerceAtLeast(0f)
@@ -237,7 +238,10 @@ internal fun DockAppColumn(
                             transformOrigin = if (horizontal) androidx.compose.ui.graphics.TransformOrigin(.5f, 1f)
                                 else androidx.compose.ui.graphics.TransformOrigin(if (leftHanded) 0f else 1f, .5f)
                         }, shape = RoundedCornerShape(11.dp))
-                        if (edit.active && savedIndex >= 0) JiggleRemoveButton(stringResource(R.string.remove_from_dock, app.label), inset = 6.dp) { edit.onRemove(DropTarget.Dock(savedIndex)) }
+                        if (edit.active && savedIndex >= 0) JiggleRemoveButton(stringResource(R.string.remove_from_dock, app.label), inset = 6.dp) {
+                            removedIcons?.launch(app, launchBounds[savedIndex], iconSize.dp, 11.dp, false)
+                            edit.onRemove(DropTarget.Dock(savedIndex))
+                        }
                     }
                     // Recent-app dot (Beta): below the icon in a horizontal dock, on the screen side of a side dock.
                     if (!edit.active && app.iconFrom == null && app.packageName in LocalRecentPackages.current) Box(Modifier
@@ -257,6 +261,8 @@ internal fun <T> List<T>.slicePage(range: IntRange): List<T> =
 internal fun FolderTile(folder: FolderEntry, apps: Map<String, AppEntry>, size: Float, labels: Boolean,
     drag: HomeDragState, page: Int, modifier: Modifier = Modifier,
     onLaunchApp: ((AppEntry) -> Unit)? = null,
+    /** The minus in the corner while icons wiggle; null outside edit mode. */
+    onRemove: (() -> Unit)? = null,
     onClick: () -> Unit) {
     val counts0 = LocalBadgeCounts.current
     val unread = folder.appIds.mapNotNull { apps[it]?.let(BadgeKey::of) }.distinct().sumOf { counts0[it] ?: 0 }
@@ -311,8 +317,11 @@ internal fun FolderTile(folder: FolderEntry, apps: Map<String, AppEntry>, size: 
             // Like iOS: a folder's badge is the total of its apps' badges (each app counted once).
             val look = LocalIconLook.current
             val counts = LocalBadgeCounts.current
-            val total = if (look.badges == BadgeStyle.OFF) 0
-                else folder.appIds.mapNotNull { apps[it]?.let(BadgeKey::of) }.distinct().sumOf { counts[it] ?: 0 }
+            val dots = LocalBadgeDots.current
+            val keys = folder.appIds.mapNotNull { apps[it]?.let(BadgeKey::of) }.distinct()
+            val total = if (look.badges == BadgeStyle.OFF) 0 else keys.sumOf { counts[it] ?: 0 }
+            // One app with a count Folio cannot trust makes the folder's total just as unsure.
+            val folderBadge = badgeShape(look.badges, keys.any { it in dots && (counts[it] ?: 0) > 0 })
             Box(Modifier.fillMaxSize().clip(RoundedCornerShape((size * .24f).dp))
                 .background(tint?.copy(alpha = .78f) ?: Glass.copy(alpha = .72f)).border(1.dp, Color.White.copy(alpha = .55f), RoundedCornerShape((size * .24f).dp))
                 .testTag("folder-drop-${folder.id}")) {
@@ -325,14 +334,21 @@ internal fun FolderTile(folder: FolderEntry, apps: Map<String, AppEntry>, size: 
             }
             }
             val pop = rememberBadgeAppeared(total)
-            if (total > 0) IconBadge(total, look.badges, look.badgeColor.fixed?.let { Color(it) } ?: BadgeRed, look.badgeLook, look.badgeSize.scale, pop = pop)
+            if (total > 0) IconBadge(total, folderBadge, look.badgeColor.fixed?.let { Color(it) } ?: BadgeRed, look.badgeLook, look.badgeSize.scale, pop = pop)
+            // Removing leaves a copy of the tile behind to shrink away (RemovedIcons); the layout itself changes at once.
+            val removedIcons = LocalRemovedIcons.current
+            if (onRemove != null) JiggleRemoveButton(stringResource(R.string.remove_folder_from_home, folder.title), onRemove = {
+                removedIcons?.launchFolder(RemovedFolder(folder.title, tint, folder.appIds.take(4).mapNotNull { apps[it] }), bounds, size.dp, labels)
+                onRemove()
+            })
         }
         // The same line height as an app's label (AppTile), cap and all (A11Y-13): left to the theme's, the folder's name sat lower in its
         // cell the larger the font, under the Search pill at 200%.
         val labelFactor = glanceFontFactor(LocalDensity.current.fontScale)
         if (labels) Text(folder.title, color = LocalHomeInk.current.primary, fontSize = (LocalLabelSize.current.sp * labelFactor).sp,
             lineHeight = (LocalLabelSize.current.lineSp * labelFactor).sp, maxLines = 1,
-            overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = FolioSpace.TINY.dp))
+            overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = FolioSpace.TINY.dp),
+            style = TextStyle(shadow = LocalHomeInk.current.labelShadow))
     }
 }
 
@@ -354,6 +370,9 @@ internal fun AppTile(app: AppEntry, size: Float, labels: Boolean, modifier: Modi
     // No size animation: after folding, the cover's icons must appear at their own size on the first frame.
     val iconSize = size.dp
     val bounds = remember { android.graphics.Rect() }
+    // Removing leaves a copy of the icon behind to shrink away (RemovedIcons); the layout itself changes at once.
+    val removedIcons = LocalRemovedIcons.current
+    val removeIcon = onRemove?.let { remove -> { removedIcons?.launch(app, bounds, size.dp, (size * .24f).dp, labels); remove() } }
     val openPanel = LocalAppPanel.current
     // Icon Actions: an icon with saved actions gets swipes, a double tap and TalkBack actions for them; any other runs
     // exactly the code it always did (see rememberIconGestures).
@@ -364,7 +383,16 @@ internal fun AppTile(app: AppEntry, size: Float, labels: Boolean, modifier: Modi
         plain = Modifier.iconSwipes(openPanel?.let { { it(app) } }, stack?.let { { it(app) } })
             .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = tap))
     val a11yActions = gestures.customActions + rememberPanelActions(app, openPanel)
-    Column(modifier.fillMaxWidth().heightIn(min = 48.dp).semantics(mergeDescendants = true) { contentDescription = app.label }
+    // The drawn badge is not read on its own, so its count joins the icon's name: "Messages, 5 notifications" (or "has notifications" for a dot).
+    val badgeLook = LocalIconLook.current
+    val badgeKey = BadgeKey.of(app)
+    val badgeCount = if (badgeLook.badges == BadgeStyle.OFF || app.iconFrom != null) 0 else LocalBadgeCounts.current[badgeKey] ?: 0
+    val spokenLabel = when (badgeSpeech(badgeCount, badgeShape(badgeLook.badges, badgeKey in LocalBadgeDots.current))) {
+        BadgeSpeech.COUNT -> pluralStringResource(R.plurals.folder_unread, badgeCount, app.label, badgeCount)
+        BadgeSpeech.DOT -> stringResource(R.string.app_has_notifications, app.label)
+        BadgeSpeech.NONE -> app.label
+    }
+    Column(modifier.fillMaxWidth().heightIn(min = 48.dp).semantics(mergeDescendants = true) { contentDescription = spokenLabel }
         .then(gestures.modifier)
         .semantics {
             onLongClick(appOptionsLabel) { onLongClick(); true }
@@ -390,7 +418,7 @@ internal fun AppTile(app: AppEntry, size: Float, labels: Boolean, modifier: Modi
                     if (!app.available) alpha = UNAVAILABLE_APP_ALPHA
                 }
                 .pressFeedback(pressed || launching, lifted, size * .24f, kind = PressFeedback.Kind.APP), shape = RoundedCornerShape((size * .24f).dp))
-            if (onRemove != null) JiggleRemoveButton(stringResource(R.string.remove_from_home_2, app.label), onRemove = onRemove)
+            if (removeIcon != null) JiggleRemoveButton(stringResource(R.string.remove_from_home_2, app.label), onRemove = removeIcon)
         }
         val ink = LocalHomeInk.current
         if (labels) Row(Modifier.padding(top = FolioSpace.TINY.dp), verticalAlignment = Alignment.CenterVertically) {

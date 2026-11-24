@@ -31,6 +31,8 @@ class PackageAccessTest {
         assertEquals(PackageAccess.STANDARD, tier[TweakId.DOCK_MAGNIFY])
         assertEquals(PackageAccess.STANDARD, tier[TweakId.PAGE_EFFECTS])
         assertEquals(PackageAccess.STANDARD, tier[TweakId.DUET])
+        assertEquals(PackageAccess.STANDARD, tier[TweakId.STANDBY_2]) // StandBy 2's clock needs nothing...
+        assertEquals(PackageAccess.NOTIFICATIONS, packageBetterWith(setOf(TweakId.STANDBY_2.capability))) // ...Now Playing and the glow do
     }
 
     @Test fun betterWithIsAlwaysMoreThanNeeds() {

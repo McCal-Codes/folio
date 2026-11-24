@@ -49,7 +49,11 @@ internal fun AppLibrary(
     drag: HomeDragState? = null, page: Int? = null,
     onLaunchFrom: (AppEntry, android.graphics.Rect?) -> Unit = { app, _ -> onLaunch(app) },
     onTurnOnWork: (Long) -> Unit = {},
+    /** Held by Home so a fold or an unfold, which builds this again for the other layout, keeps the place (LibraryPlace). */
+    place: LibraryPlace? = null,
 ) {
+    val ownPlace = remember { LibraryPlace() }
+    val kept = place ?: ownPlace
     val appOptionsLabel = stringResource(R.string.app_options)
     val glass = !editing
     val palette = LocalDuoPalette.current
@@ -61,7 +65,7 @@ internal fun AppLibrary(
     val hasWork = state.profiles.any { it.isWork } || state.apps.any { it.kind == ProfileKind.WORK }
     // With Work turned off in Settings the switch goes away and only personal apps are listed.
     val workSwitch = hasWork && state.libraryWork
-    var showWork by remember { mutableStateOf(false) }
+    var showWork by kept::work
     val context = androidx.compose.ui.platform.LocalContext.current
     val searchFocus = remember { androidx.compose.ui.focus.FocusRequester() }
     val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
@@ -74,12 +78,14 @@ internal fun AppLibrary(
     }
     val listState = rememberLazyListState()
     val selectedProfile = if (showWork) state.profiles.firstOrNull { it.isWork } else state.profiles.firstOrNull { it.isPersonal }
-    LaunchedEffect(showWork, selectedProfile?.available, selectedProfile?.quiet) {
-        listState.requestScrollToItem(0)
-    }
     // The list keeps its place by item, so typing replaced the tiles and left the results scrolled past the web search row.
-    // A page resize can compose this during measurement; defer the reset to the next layout pass.
-    LaunchedEffect(query) { listState.requestScrollToItem(0) }
+    // A page resize can compose this during measurement; defer the reset to the next layout pass. The same list and words
+    // after a fold (this built again) are not a change, so the place is kept.
+    val scrollKey = listOf(showWork, selectedProfile?.available, selectedProfile?.quiet, query)
+    LaunchedEffect(scrollKey) {
+        if (kept.scrollKey != scrollKey) listState.requestScrollToItem(0)
+        kept.scrollKey = scrollKey
+    }
     // Leaving the library, for an app or the Home button, clears the search like iOS does; it used to wait there for the next visit.
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     val latestQuery by rememberUpdatedState(query)
@@ -99,7 +105,7 @@ internal fun AppLibrary(
             appMatches(it, text) && (editing || it.id !in state.hiddenApps) }
     }
     // iOS-style App Library: category tiles while browsing; the A–Z list for search, hidden and editing.
-    var openCategory by remember { mutableStateOf<LibraryCategory?>(null) }
+    var openCategory by kept::category
     val browsing = state.libraryCategories && !editing && query.isBlank()
     val cleared by SuggestionsHistory.generation.collectAsStateWithLifecycle()
     val categorized by produceState(emptyMap<LibraryCategory, List<AppEntry>>(), visibleApps, browsing, cleared) {
@@ -121,6 +127,15 @@ internal fun AppLibrary(
         visibleApps.groupBy {
             Pinyin.heading(it.label)
         }
+    }
+    // Keep where the list is scrolled, and put it back once there is a list to scroll (the category tiles load a moment
+    // after the library is built, and a place past the end of an empty list would be lost).
+    val listReady = !browsing || categorized.isNotEmpty()
+    LaunchedEffect(listReady) {
+        if (!listReady) return@LaunchedEffect
+        if (kept.index > 0 || kept.offset > 0) listState.scrollToItem(kept.index, kept.offset)
+        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
+            .collect { (index, offset) -> kept.index = index; kept.offset = offset }
     }
     // Like iOS, a category opens as an expanded folder over the library instead of replacing it.
     openCategory?.takeIf { browsing }?.let { category ->

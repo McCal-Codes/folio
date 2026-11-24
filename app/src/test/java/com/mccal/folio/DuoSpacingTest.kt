@@ -39,7 +39,7 @@ class DuoSpacingTest {
         forEachWindow { tag, w, h ->
             for (fill in listOf(false, true)) {
                 val off = geo(w, h, false, fill = fill)
-                assertEquals(tag, dockIconSize(off.iconSize), off.dockIcon, 0.001f)
+                assertEquals(tag, dockIconSize(off.iconSize, h < TIER_A_MIN_HEIGHT), off.dockIcon, 0.001f)
                 assertEquals(tag, off.copy(), geo(w, h, false, fill = fill))
             }
         }
@@ -106,15 +106,15 @@ class DuoSpacingTest {
                     val off = homeGeometry(w, h, pr, labels, statusHeight = 160f, dockSlots = slots)
                     val on = homeGeometry(w, h, pr, labels, statusHeight = 160f, dockSlots = slots, duoSpacing = true)
                     val t = "$tag icon=$icon dockW=$dockWidth slots=$slots $placement"
-                    assertTrue("$t never smaller", on.dockIcon >= dockIconSize(on.iconSize) - 0.001f)
+                    assertTrue("$t never smaller", on.dockIcon >= dockIconSize(on.iconSize, h < TIER_A_MIN_HEIGHT) - 0.001f)
                     assertTrue("$t at most 80%", on.dockIcon <= on.iconSize * DUO_DOCK_RATIO + 0.001f)
                     if (!on.horizontalDock) {
-                        assertTrue("$t fits its row", on.dockIcon <= maxOf(dockIconSize(on.iconSize), on.dockRowHeight - 4f) + 0.001f)
-                        assertTrue("$t fits its pill", on.dockIcon <= maxOf(dockIconSize(on.iconSize), dockWidth - 12f) + 0.001f)
+                        assertTrue("$t fits its row", on.dockIcon <= maxOf(dockIconSize(on.iconSize, h < TIER_A_MIN_HEIGHT), on.dockRowHeight - 4f) + 0.001f)
+                        assertTrue("$t fits its pill", on.dockIcon <= maxOf(dockIconSize(on.iconSize, h < TIER_A_MIN_HEIGHT), dockWidth - 12f) + 0.001f)
                     } else {
-                        assertTrue("$t fits its bar", on.dockIcon + 22f <= maxOf(dockIconSize(on.iconSize) + 22f, on.dockBarHeight - 0f) + 0.001f)
+                        assertTrue("$t fits its bar", on.dockIcon + 22f <= maxOf(dockIconSize(on.iconSize, h < TIER_A_MIN_HEIGHT) + 22f, on.dockBarHeight - 0f) + 0.001f)
                         // A bar that held its apps still holds them, and a bar that scrolled is no wider than before per app by more than the growth.
-                        if (slots * (dockIconSize(on.iconSize) + 22f) + 16f <= on.dockBarRoom - 32f)
+                        if (slots * (dockIconSize(on.iconSize, h < TIER_A_MIN_HEIGHT) + 22f) + 16f <= on.dockBarRoom - 32f)
                             assertTrue("$t still fits", slots * (on.dockIcon + 22f) + 16f <= on.dockBarRoom - 32f + 0.01f)
                     }
                     assertTrue("$t touch targets", on.dockRowHeight >= 48f)
@@ -201,7 +201,7 @@ class DuoSpacingTest {
                 assertTrue("$t dock inside", g.dockTop >= 8f)
                 if (h >= 400f) assertTrue("$t dock bottom ${g.dockTop + g.dockHeight} of $h", g.dockTop + g.dockHeight <= h)
                 assertTrue("$t row targets", g.dockRowHeight >= 48f)
-                if (!g.horizontalDock) assertTrue("$t icon in its row", g.dockIcon <= maxOf(g.dockRowHeight, dockIconSize(g.iconSize)) + .01f)
+                if (!g.horizontalDock) assertTrue("$t icon in its row", g.dockIcon <= maxOf(g.dockRowHeight, dockIconSize(g.iconSize, h < TIER_A_MIN_HEIGHT)) + .01f)
                 assertTrue("$t grid inside", g.gridWidth <= w && g.homeWidth <= w)
             }
         }

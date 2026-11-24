@@ -115,7 +115,7 @@ internal fun AppPanel(app: AppEntry, onDismiss: () -> Unit, onOpen: () -> Unit) 
         var origin by remember { mutableStateOf(Offset.Zero) }
         BoxWithConstraints(Modifier.fillMaxSize().onGloballyPositioned { origin = it.positionOnScreen() }
             .graphicsLayer { alpha = appear.value.coerceIn(0f, 1f) }.background(Color.Black.copy(alpha = .3f))
-            .clickable(remember { MutableInteractionSource() }, null, onClick = onDismiss)) {
+            .then(dismissScrim(onDismiss))) {
             val screenW = with(density) { maxWidth.toPx() }
             val icon = IconBounds.of(app.id)
             val panelW = with(density) { minOf(320.dp, maxWidth - 24.dp).toPx() }

@@ -92,6 +92,12 @@ widget", "pick up this icon" or "open Spotlight". This standard keeps those mean
   offered, and a drop that would overlap goes back where it was rather than pushing other items. INT-2 applies: a size
   menu or TalkBack action reaches every size too. (McCal 25 Oct 2026, from the iOS Control Center editor.)
 
+### Settings search
+
+- **INT-21 MUST** give every settings row an entry in `SettingsRows` (`CustomizationSheet.kt`) that names the page it lives
+  on, so a search result scrolls to it. A row added without one is invisible to search. `SettingsSearchCoverageTest` lists
+  the rows that are missing an entry and fails the build. (Found 11 Nov 2026, when a new row failed it.)
+
 ## Where Folio is today
 
 Good:

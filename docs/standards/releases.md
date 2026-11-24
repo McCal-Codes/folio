@@ -45,8 +45,14 @@ what they were testing. Every rule below is aimed at that shape of mistake.
   (REL-13). Nothing is ported, cherry-picked or rebuilt between the two. Docs, tools and tests may change in between,
   since nobody installs them. (Until 2 Oct 2026 this said "the same tree", which held a fix to a tool or a note back a
   whole release.)
-- **REL-4c** A `hotfix/x.y.z.n` branch from a tag is the last resort, only when a breaking migration is mid-flight on
-  `main`. It ships and merges back the same day.
+- **REL-4c** A `hotfix/x.y.z.n` branch from a tag is the last resort. It is allowed in two cases: a breaking migration
+  is mid-flight on `main`, or the bug is in the stable build's own update or supporter path, so only a new stable can
+  show the person what is wrong (0.6.9.1, 10 Nov 2026). The pull request says which, carries the `release-exception`
+  label, and the same fix goes on `main` for the next beta. It ships and merges back the same day.
+- **REL-4d MUST** merge a hotfix back through its own branch off `main` (`merge-back-x.y.z.n`), not by merging `main`
+  into the hotfix. The hotfix branch stays at the commit the tag names, and the merge-back gets CI, which GitHub does
+  not run on a pull request that conflicts. Keep `main`'s version. `CHANGELOG.md` has different line endings on `main`
+  and on a tag, so a hand merge conflicts on every line: take `main`'s file and insert the hotfix's section.
 - **REL-5 MUST** name branches after the change, never after the agent, the session or the tool. No AI attribution
   in branch names, commit messages, pull request text or code comments.
 - **REL-6 MUST** check [docs/in-flight.md](../in-flight.md), the other worktrees and the open pull requests before
@@ -70,8 +76,8 @@ what they were testing. Every rule below is aimed at that shape of mistake.
 - **REL-11 MUST** follow semver in `folioVersion`, and derive `versionCode` from it rather than writing it by hand,
   with REL-12's formula. Every new code must be larger than the last, whatever the formula was when the last one
   shipped.
-- **REL-12** A fix on top of a release is a four-part version, `x.y.z.n`, and `versionCode` leaves nine slots per
-  release for them: `(MAJOR * 10000 + MINOR * 100 + PATCH) * 10 + HOTFIX` ([ADR 0007](../adr/0007-release-trains.md)).
+- **REL-12** A fix on top of a release is a four-part version, `x.y.z.n`, and `versionCode` leaves eight slots per
+  release for them (digit 9 is a rollback build's, REL-34): `(MAJOR * 10000 + MINOR * 100 + PATCH) * 10 + HOTFIX` ([ADR 0007](../adr/0007-release-trains.md)).
   A fix release never has to consume the number a feature release wanted, which is what went wrong on 23 Sep 2026.
 - **REL-13 MUST** make the version bump its own commit, the last one before the tag, touching only the version, the
   changelog date, the roadmap's statuses for that release and its release doc.
@@ -98,8 +104,74 @@ what they were testing. Every rule below is aimed at that shape of mistake.
   version name, so `beta.1 < beta.2 < x.y.z`.
 - **REL-20 MUST** ship a beta first for anything that changes how Folio updates, installs or checks a supporter
   code, and let it sit with supporters for at least a day. Those paths cannot be tested any other way.
+- **REL-20a** A hotfix cannot wait a day in a beta, so for one that touches an update or supporter path REL-20 is met
+  by the same fix riding the next beta from `main`. Keep such a hotfix to what the person is told where it can be,
+  and name any change to what is checked or sent in the pull request.
 - **REL-21 SHOULD** say in the beta's notes what is worth trying, most-likely-broken first, and ask for the device,
   the screen and the version from Settings › What's New.
+
+### Updating
+
+- **REL-33 MUST** make an update or supporter check say why when it leaves something out. "Folio is up to date" is
+  only true when nothing was left out: an ended or unrecognized code, Early access or Beta Updates off, and a beta
+  server that refused or could not be reached each get their own line, and a test covers every outcome (0.6.9.1, where
+  all of them read as "up to date").
+- **REL-34** Going back to an older version is a roll-forward. Android refuses a lower `versionCode`, so the older
+  build is republished under a higher version (REL-16 still holds: the number means that one build), and the app
+  lists it under Software Update › Older versions, never as an update, after offering a backup. A rollback build takes the top `versionCode` of the
+  release family it is installed into (7009 in 0.7.x), so the hotfix digit runs 1 to 8 and 9 is reserved for it. It also
+  means a hotfix or the final release of that family cannot install over a rollback: Folio offers only a release with a
+  higher `versionCode`, which is the next family (`SoftwareUpdate.offerable`). The steps are in [the rollback runbook](../releases/rollback.md).
+- **REL-35 MUST** open each line under Added in the Unreleased changelog with a bold title of 40 characters or fewer: What's New
+  shows the title as the line. `WhatsNewTest` fails the build otherwise.
+- **REL-36 MUST** end every line in the Unreleased changelog with a hidden `<!-- beta N -->`, where N is the beta that first
+  ships it (the one being written, until its bump). A beta's What's New shows only the lines tagged with its own number and
+  keeps the earlier betas under Version History; the stable shows the whole release. Never retag a line when a later beta
+  edits it, and never edit the tag of a shipped one. `WhatsNewTest` fails the build when a line is untagged.
+
+### Building a signed beta on Windows
+
+Learned shipping 0.7.0-beta.4 on 14 Nov 2026, where several of these each cost a failed run or a rewritten page. The
+order is chosen so the release notes are written and checked once, before anything is tagged, and nothing after the
+tag edits a file in the repository:
+
+1. **Land the work.** The feature pull request keeps `folioVersion` at the previous beta (REL-13 fails a pull request
+   that moves it and changes code) and adds its changelog line (REL-7). `main` squashes every pull request.
+2. **Write and check the notes before the bump.** Open a docs pull request with `docs/releases/<version>.md` and its row
+   in `docs/releases/README.md` (REL-13 keeps the catalog out of the bump). Check every claim against
+   `git diff v<previous> origin/main -- CHANGELOG.md app/src/main/AndroidManifest.xml` and `FeatureGate.kt` for what is
+   early access. The notes carry no hash, no "draft" and no date that has not happened: they have the intro paragraph,
+   `## What's new`, `## Fixed`, `## Please try first`, `## About the betas` and `## Verify it`, which points at
+   `SHA256SUMS.txt` on the release. `scripts/publish-beta.ps1` adds the hashes, the version and the `versionCode` from
+   the build itself. Run `python tools/check-release-notes.py <version>` from `main`: it fails on a missing section, a
+   hash, DRAFT or a missing catalog row, and warns about changelog lines the notes never mention and about notes
+   whose lead words appear nowhere in the changelog, the signature of the invented claims in beta 4's first draft.
+3. **Bump in its own one-line pull request.** Run `tools/launch-check-fast.sh emulator-5554` from the merge commit
+   (REL-32), then tag that commit `vX.Y.Z-beta.N` (annotated) and push the tag.
+4. **Make the release checkout with `git worktree add --detach C:/Users/<you>/dev/folio-<version> v<version>`.** Do not
+   remove it with `git worktree remove --force` after a Gradle build: on Windows that can fail halfway, leave a
+   folder that is no longer a worktree, and every git command in it then runs against the repository above it (the
+   release script reads the wrong tag and the wrong tree). Check `git rev-parse --show-toplevel` before trusting any
+   git output there.
+5. **Build with `./scripts/release-signed.ps1`.** It runs Git Bash, not the `bash` PowerShell finds first, which is
+   WSL's and sees neither the repository nor the signing variables. It checks the tag, the clean tree and the
+   keystore, asks for the passwords as hidden input (they never go on a command line, in a file or in a chat), and
+   compares the APK's certificate with the one every release carries.
+6. **Publish with `./scripts/publish-beta.ps1`, dry run first.** It checks the APK against `SHA256SUMS.txt`, the
+   certificate and the `versionCode` it reads out of the APK, refuses notes that still say DRAFT, and writes
+   `dist/Folio-<version>/release-body.md`. Read that page, then run it again with `-Publish` and type `publish`: it
+   creates the pre-release on `McCal-Codes/folio-beta`, downloads the APK back and compares the hash, and prints the
+   catalog row. The date in the notes and the catalog was planned in step 2; if the release slips a day, fix the date
+   in a docs pull request.
+7. **The keystore is `~/folio-release.jks`, alias `folio`, certificate SHA-256
+   `bad8e099557b70c690e71a3fffe13561c8662c20612047ce1e2559a1c14d8441`.** `~/folio-release-2026.jks` was 0.6.5's wrong
+   signer; an APK signed with it does not install over Folio (REL-18).
+8. **`tools/launch-check-fast.sh` needs `MSYS_NO_PATHCONV` unset in Git Bash**, or adb and python receive `/c/...`
+   paths they cannot open.
+
+The signing key stays on this PC. Building signed releases in GitHub Actions would mean putting the keystore and its
+passwords into the repository's secrets, which puts the one key every install depends on on a server; it was
+considered on 14 Nov 2026 and not done.
 
 ### What goes out beside a build
 

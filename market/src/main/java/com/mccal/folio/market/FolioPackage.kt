@@ -61,7 +61,7 @@ object TweakOptions {
 
     /** Duet: the style, and multipliers on it (1 = as the style comes). Intensity is the fold's existing slider. */
     val DUET: Map<String, Spec> = linkedMapOf(
-        "style" to Choice(listOf("iphone", "duo", "classic", "deep", "subtle", "minimal")),
+        "style" to Choice(listOf("clip", "iphone", "duo", "classic", "deep", "subtle", "minimal")),
         "direction" to Choice(listOf("both", "opening", "closing")),
         "intensity" to Number(.3..1.5),
         "frost" to Number(0.0..2.0),
@@ -80,7 +80,8 @@ enum class TweakId(val id: String, val capability: Capability) {
     TINT_NOTIFICATIONS("tintNotifications", Capability.TINT_NOTIFICATIONS),
     TINT_MEDIA("tintMedia", Capability.TINT_MEDIA),
     PAGE_EFFECTS("pageEffects", Capability.PAGE_EFFECTS),
-    DUET("duet", Capability.FOLD_TRANSITION);
+    DUET("duet", Capability.FOLD_TRANSITION),
+    STANDBY_2("standby2", Capability.STANDBY_2);
 
     companion object {
         fun from(id: String) = entries.firstOrNull { it.id == id }

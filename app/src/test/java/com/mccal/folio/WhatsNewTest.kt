@@ -84,4 +84,77 @@ class WhatsNewTest {
         assertEquals(0, drawn.getLinkAnnotations(0, drawn.text.length).size)
     }
 
+    private val tagged = WhatsNew.parse("""
+        ## [0.7.0] - Unreleased
+        ### Added
+        - **Old one:** from the start. <!-- beta 1 -->
+        - **Middle:** came in beta 3. <!-- beta 3 -->
+        - **Newest:** beta 5 only. <!-- beta 5 -->
+        ### Fixed
+        - A fix from beta 3 <!-- beta 3 -->
+        - A fix from beta 5 <!--beta 5-->
+        ## [0.6.0] - 2026-10-01
+        ### Added
+        - **Plain:** no tag at all.
+    """.trimIndent())
+
+    @Test fun `a hidden beta tag is taken off the line and remembered`() {
+        val seven = tagged[0]
+        assertEquals(listOf("**Old one:** from the start.", "**Middle:** came in beta 3.", "**Newest:** beta 5 only."), seven.sections[0].second)
+        assertEquals(1, seven.betaOf["**Old one:** from the start."])
+        assertEquals(5, seven.betaOf["A fix from beta 5"])
+        assertEquals(listOf(1, 3, 5), seven.betas)
+        assertTrue(tagged[1].betaOf.isEmpty())
+        assertEquals(listOf("**Plain:** no tag at all."), tagged[1].sections[0].second)
+    }
+
+    @Test fun `forBeta keeps only that beta's lines and drops empty headings`() {
+        val five = tagged[0].forBeta(5)
+        assertEquals(listOf("Added" to listOf("**Newest:** beta 5 only."), "Fixed" to listOf("A fix from beta 5")), five.sections)
+        assertEquals(listOf("Fixed" to listOf("A fix from beta 3")), tagged[0].forBeta(3).sections.filter { it.first == "Fixed" })
+        assertTrue(tagged[0].forBeta(4).sections.isEmpty())
+    }
+
+    @Test fun `beta numbers come from the version name`() {
+        assertEquals(5, WhatsNew.betaNumber("0.7.0-beta.5"))
+        assertEquals(12, WhatsNew.betaNumber("0.7.0-beta.12"))
+        assertEquals(null, WhatsNew.betaNumber("0.7.0"))
+        assertEquals(null, WhatsNew.betaNumber("0.7.0-dev"))
+        assertEquals(null, WhatsNew.betaNumber(""))
+    }
+
+    @Test fun `a beta's sheet shows only that beta and earlier betas move to history`() {
+        val view = WhatsNew.sheetNotes(tagged, "0.7.0-beta.5")
+        assertEquals("0.7.0-beta.5", view.release?.version)
+        assertEquals(listOf("**Newest:** beta 5 only.", "A fix from beta 5"), view.release!!.sections.flatMap { it.second })
+        // Newest earlier beta first, then the older releases; the whole 0.7.0 is not listed twice.
+        assertEquals(listOf("0.7.0-beta.3", "0.7.0-beta.1", "0.6.0"), view.older.map { it.version })
+        assertEquals(listOf("**Middle:** came in beta 3.", "A fix from beta 3"), view.older[0].sections.flatMap { it.second })
+    }
+
+    @Test fun `the release a dev build or an untagged release shows everything`() {
+        val stable = WhatsNew.sheetNotes(tagged, "0.7.0")
+        assertEquals("0.7.0", stable.release?.version)
+        assertEquals(5, stable.release!!.sections.sumOf { it.second.size })
+        assertEquals(listOf("0.6.0"), stable.older.map { it.version })
+        assertEquals("0.7.0", WhatsNew.sheetNotes(tagged, "0.7.0-dev").release?.version)
+        // A beta with no lines of its own still shows the release rather than an empty sheet.
+        assertEquals("0.7.0", WhatsNew.sheetNotes(tagged, "0.7.0-beta.4").release?.version)
+        assertEquals("0.6.0", WhatsNew.sheetNotes(tagged, "0.6.0").release?.version)
+    }
+
+    @Test fun `every line still unreleased carries a beta tag no newer than the next beta`() {
+        val root = generateSequence(java.io.File("").absoluteFile) { it.parentFile }.first { java.io.File(it, "CHANGELOG.md").exists() }
+        val newest = WhatsNew.parse(java.io.File(root, "CHANGELOG.md").readText()).first()
+        if (!newest.date.equals("Unreleased", true)) return
+        val gradle = java.io.File(root, "app/build.gradle.kts").readText()
+        val version = Regex("""val folioVersion = "([^"]+)"""").find(gradle)!!.groupValues[1]
+        val shipped = WhatsNew.betaNumber(version) ?: Int.MAX_VALUE
+        val lines = newest.sections.flatMap { it.second }
+        val untagged = lines.filter { it !in newest.betaOf }
+        assertTrue("Add <!-- beta N --> to the end of: ${untagged.take(3)}", untagged.isEmpty())
+        // A line may name the beta being written (N + 1) but not a beta that never existed.
+        val tooNew = newest.betaOf.filterValues { it > shipped + 1 }
+        assertTrue("Tagged for a beta further ahead than the next one: ${tooNew.keys.take(3)}", tooNew.isEmpty())
+    }
 }

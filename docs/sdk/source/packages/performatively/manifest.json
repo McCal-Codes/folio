@@ -1,0 +1,29 @@
+{
+  "$schema": "https://folio.mccal.dev/schema/v1/manifest.schema.json",
+  "format": 1,
+  "id": "com.bunsoootchi.performatively",
+  "name": "Performatively",
+  "version": "1.0.0",
+  "author": {
+    "name": "bunsoootchi"
+  },
+  "minFolio": "0.7.0",
+  "section": "apps",
+  "icon": "assets/icons/performatively.png",
+  "kind": [
+    "externalApp"
+  ],
+  "permissions": [],
+  "screens": [
+    "cover",
+    "inner"
+  ],
+  "depiction": "depiction.json",
+  "description": "Read on the inner screen while your book's cover shows on the outer screen, decorated with stickers.",
+  "via": [
+    {
+      "store": "playStore",
+      "id": "com.bunsoootchi.performatively"
+    }
+  ]
+}

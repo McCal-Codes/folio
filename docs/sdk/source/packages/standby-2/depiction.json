@@ -1,0 +1,52 @@
+{
+  "$schema": "https://folio.mccal.dev/schema/v1/depiction.schema.json",
+  "format": 1,
+  "tint": "#FF3B30",
+  "blocks": [
+    {
+      "type": "hero",
+      "image": "assets/heroes/standby-2.webp"
+    },
+    {
+      "type": "markdown",
+      "text": "StandBy is what Folio shows when the phone is charging on its side, half open like a laptop or standing as a tent: a big clock and a few things worth a glance. StandBy 2 is how it looks and what it shows.\n\nPick one of twelve clock looks, Thin, Bold, Analog, Numerals, Flip, World, Solar, Words, Stack, Neon, Nixie or Minimal, and a color for it. Beside the clock sit Now Playing, as a card or a compact row, Up Next from your calendar, and your timers. When a notification arrives a soft glow takes the app's color, with a dot for each app waiting.\n\nAt night it can dim on a schedule or by the light in the room and turn the clock red, amber or blue so it does not wake you. As an alarm gets close, Sunrise before alarm warms the screen slowly instead of all at once. Night Brightness can go all the way to black, which on an OLED screen draws no power.\n\nIt stays calm: the colons, Neon glow and Nixie tubes hold still unless you switch Keep the clock steady off, and nothing in it flashes. Reduce Motion is always respected.\n\nTurn it on or off for the cover screen and the inner one separately, from its page in Settings › Tweaks. Inspired by StandBy by Apple. Re-created from scratch for Folio; no code from it is included."
+    },
+    {
+      "type": "featureList",
+      "items": [
+        "Twelve clock looks and seven clock colors",
+        "Now Playing as a card or a compact row",
+        "Up Next, timers and notification glow and dots",
+        "Night mode by schedule or room light, with Sunrise before alarm",
+        "Keep the clock steady, on by default"
+      ]
+    },
+    {
+      "type": "compatibility",
+      "screens": [
+        "cover",
+        "inner"
+      ],
+      "fallback": "The clock, Up Next, timers and night mode work as they are. Without notification access there is no Now Playing card and no notification glow or dots, because Folio can't see what is playing or arriving."
+    },
+    {
+      "type": "changelog",
+      "entries": [
+        {
+          "version": "1.0.0",
+          "date": "2026-11-22",
+          "notes": "StandBy 2 is a package in the Folio Market. The tweak itself ships with Folio 0.7.0."
+        }
+      ]
+    },
+    {
+      "type": "link",
+      "title": "Folio on GitHub",
+      "url": "https://github.com/McCal-Codes/folio"
+    },
+    {
+      "type": "donation",
+      "url": "https://ko-fi.com/mccal"
+    }
+  ]
+}

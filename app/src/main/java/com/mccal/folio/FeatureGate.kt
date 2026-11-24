@@ -155,6 +155,20 @@ internal enum class FeatureGate(
     MUSIC_WIDGET("musicWidget", closedSince = "2026-10-27", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
 
     /**
+     * The Photos widget (a Memories-style card of photos the person picks, with an optional slow slideshow) in the widget
+     * gallery. It adds a new widget to every Home, so supporters and Folio Dev try it first; everyone gets it in 0.7.0: flip
+     * [OPEN_IN_0_7_0] to open it. One already on Home (from a layout backup) keeps drawing either way.
+     */
+    PHOTO_WIDGET("photoWidget", closedSince = "2026-11-13", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
+
+    /**
+     * The Search widget (a Finder-style search box on Home, with shortcuts to a few phone settings) in the widget gallery. It
+     * adds a new widget to every Home, so supporters and Folio Dev try it first; everyone gets it in 0.7.0: flip
+     * [OPEN_IN_0_7_0] to open it. One already on Home (from a layout backup) keeps drawing either way.
+     */
+    SEARCH_WIDGET("searchWidget", closedSince = "2026-11-15", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
+
+    /**
      * Adjust island: pull a handle to make the island wider, nudge it, or fit it to the camera Android reports. A supporter on a
      * smaller minimum width found the pill narrower than the camera area; the automatic fit stays the default.
      */
@@ -200,6 +214,20 @@ internal enum class FeatureGate(
      * While shut the Settings card and its search entry are hidden and the saved switch is ignored, so nothing is hidden.
      */
     PRIVATE_RECORDING("privateRecording", closedSince = "2026-10-28", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
+
+    /**
+     * The Control Center editor: every control has a place on a grid and can be moved to any free place and resized from its corner,
+     * as in iOS's editor (McCal, 11 Nov 2026; PNL-18 to PNL-20). Supporters and Folio Dev try it in the betas and everyone gets it in
+     * 0.7.0: flip [OPEN_IN_0_7_0] to open it. While shut, Control Center keeps its ordered list and ignores any saved places.
+     */
+    CC_EDITOR("ccEditor", closedSince = "2026-11-11", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
+
+    /**
+     * The Control Center editor on a wide window as two panes: the layout on the left and "Add a Control" as a list with plus buttons docked beside
+     * it, the divider on the hinge where there is one (McCal, 22 Nov 2026), instead of a floating card over the panel. Supporters and Folio Dev try it
+     * in the betas and everyone gets it in 0.7.0: flip [OPEN_IN_0_7_0] to open it. While shut, the gallery is the sheet or the card as before.
+     */
+    CC_TWO_PANE("ccTwoPane", closedSince = "2026-11-22", opensIn = "0.7.0", { OPEN_IN_0_7_0 }),
 
     /**
      * Moving controls in Control Center: in edit mode, press and hold a control and drag it onto another to put it there, on the same

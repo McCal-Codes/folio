@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -10,7 +11,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,7 +26,7 @@ import androidx.compose.ui.semantics.semantics
 /** Advanced › Diagnostics: start and stop the Performance log (see [PerfLog]), then copy or share its report. */
 @Composable internal fun PerformanceCard() {
     val context = LocalContext.current
-    val status by PerfLog.status.collectAsState()
+    val status by PerfLog.status.collectAsStateWithLifecycle()
     SettingsCard(stringResource(R.string.performance_log)) {
         val minutes = (status.elapsedMs / 60_000).toInt()
         Text(when {

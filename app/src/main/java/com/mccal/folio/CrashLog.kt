@@ -31,8 +31,14 @@ internal object CrashLog {
 
     /** Folio version, phone and screen: the lines every report starts with. */
     internal fun environment(context: Context): String {
-        val version = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull()
-        return "Folio: $version\n" +
+        val info = runCatching { context.packageManager.getPackageInfo(context.packageName, 0) }.getOrNull()
+        val version = info?.versionName
+        // The version code and whether this is a release build name the exact build: a crash's obfuscated stack can only be read
+        // against that build's mapping, and the Folio Dev chip (build number, branch, commit) names a test build.
+        val kind = if (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) "debuggable" else "release"
+        // Every line here is read while Folio is crashing, so none may be the reason a report is lost: a failed read leaves its part out.
+        val dev = runCatching { DevBuild.load(context)?.let { " · ${DevBuild.chip(it)}" } }.getOrNull().orEmpty()
+        return "Folio: $version (code ${info?.longVersionCode ?: "?"}, $kind$dev)\n" +
             "Device: ${Build.MANUFACTURER} ${Build.MODEL} (Android ${Build.VERSION.RELEASE}, API ${Build.VERSION.SDK_INT})\n" +
             "Build: ${Diagnostics.buildDisplay()}\n" +
             "Screen: ${Diagnostics.screenSummary(context)}"
@@ -51,6 +57,8 @@ internal object CrashLog {
             appendLine("Time: ${now.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)}")
             appendLine(environment(context))
             appendLine("Thread: $threadName")
+            runCatching { Diagnostics.processReport() }.getOrNull()?.let { appendLine(it) }
+            runCatching { Diagnostics.widgetReport() }.getOrNull()?.let { appendLine(it) }
             appendLine()
             appendLine(error.stackTraceToString())
             Diagnostics.trailText().takeIf { it.isNotBlank() }?.let { appendLine("Before it:"); append(it) }

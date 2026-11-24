@@ -1,7 +1,14 @@
 package com.mccal.folio
 
-/** Jake's reference measures 76px dock artwork against 106px home artwork. */
-fun dockIconSize(homeIconSize: Float) = homeIconSize * (76f / 106f)
+/**
+ * Jake's reference measures 76px dock artwork against 106px home artwork. With [legible] (a Tier B window, which scrolls: see
+ * [TIER_A_MIN_HEIGHT]) a small Home icon does not drag the dock's down with it (23 dp under a 32 dp icon): it keeps [MIN_DOCK_ICON],
+ * never past [DUO_DOCK_RATIO] of Home's icon.
+ */
+fun dockIconSize(homeIconSize: Float, legible: Boolean = false): Float {
+    val ratio = homeIconSize * (76f / 106f)
+    return if (legible) maxOf(ratio, minOf(MIN_DOCK_ICON, homeIconSize * DUO_DOCK_RATIO)) else ratio
+}
 
 /**
  * DUO_SPACING (see FeatureGate): measured on the Fold8 against an iPhone Duo, the dock's apps are about 80% of Home's
@@ -64,18 +71,43 @@ data class LayoutPreset(
     val widgetScale: Float = 1f,
     /** Home Screen & Dock › Position › Apps › Top: the page starts at the top instead of centered in the free space. */
     val pageTop: Boolean = false,
+    /**
+     * Home Screen & Dock › Dock › Size: how big the dock's apps are, as a share of Folio's own for the screen (1 = as before).
+     * Larger sizes grow only as far as the dock's room allows, so a small window never overflows and a tablet gets the most.
+     */
+    val dockSize: Float = 1f,
+    /** Home Screen & Dock › Dock › Center on the side: the Side Bar dock sits in the middle of the free height beside the page. */
+    val dockCentered: Boolean = false,
+    /**
+     * Home Screen & Dock › Dock › Fit more dock apps. Off by default: a Side Bar dock place is never shorter than 48 dp, the
+     * smallest comfortable touch target, so a short screen shows fewer places. On, a place may shrink to [COMPACT_DOCK_PITCH] and
+     * the icons shrink with it, so more places fit.
+     */
+    val dockCompact: Boolean = false,
 ) {
     fun sanitized() = copy(
         iconSize = iconSize.coerceIn(40f, 68f),
         rowGap = rowGap.coerceIn(0f, 28f),
-        dockWidth = dockWidth.coerceIn(56f, 84f),
+        dockWidth = dockWidth.coerceIn(56f, MAX_DOCK_WIDTH),
         dockPosition = dockPosition.coerceIn(0f, 1f),
         statusPosition = statusPosition.coerceIn(0f, 1f),
         columnGap = columnGap.takeIf { it.isFinite() }?.coerceIn(8f, 40f) ?: DEFAULT_COLUMN_GAP,
         dockSpacing = dockSpacing.takeIf { it.isFinite() }?.coerceIn(0f, 24f) ?: 0f,
         widgetScale = widgetScale.takeIf { it.isFinite() }?.coerceIn(.8f, 1.25f) ?: 1f,
+        dockSize = dockSize.takeIf { it.isFinite() }?.coerceIn(MIN_DOCK_SIZE, MAX_DOCK_SIZE) ?: 1f,
     )
 }
+
+/** The Side Bar dock is 56 to this wide; the Size setting widens it with its apps (see [dockWidthForSize]). */
+/** The least a Side Bar dock place may measure: 48 dp is the comfortable touch target, 40 dp is what Fit more dock apps allows. */
+const val STANDARD_DOCK_PITCH = 48f
+const val COMPACT_DOCK_PITCH = 40f
+const val MAX_DOCK_WIDTH = 104f
+const val MIN_DOCK_SIZE = .8f
+const val MAX_DOCK_SIZE = 1.6f
+
+/** The dock's width for a Size: Folio's 68 dp at 100%, then as much wider or narrower as the dock's apps (about 47 dp) are. */
+fun dockWidthForSize(size: Float): Float = (68f + 47.3f * (size - 1f)).coerceIn(56f, MAX_DOCK_WIDTH)
 
 const val DEFAULT_COLUMN_GAP = 16f
 /** Narrowest column (dp) when app names show, so common names fit on one line. */
@@ -85,8 +117,18 @@ const val MIN_ROWS_ICON = 48f
 /** The smallest widget row, and the smallest icon Home shrinks to before it gives up and last-resorts to [LAST_RESORT_ICON]. */
 const val MIN_WIDGET_HEIGHT = 88f
 const val MIN_ROW_ICON = 40f
-/** Only when four rows cannot fit any other way (a short window under its page controls): rows stay at least 48 dp tall. */
+/** Only when four rows cannot fit any other way (a window of Tier A height under its page controls): rows stay at least 48 dp tall. */
 const val LAST_RESORT_ICON = 32f
+/**
+ * On a Tier B window the dock's icons keep at least this (see [dockIconSize]): 0.717 of a small Home icon is a speck
+ * (23 dp under a 32 dp icon), and the places they sit in are 48 dp or more anyway.
+ */
+const val MIN_DOCK_ICON = 35f
+/**
+ * A window shorter than this is Tier B (ADP-5): its page scrolls rather than fit. A stacked page there stops shrinking its icons at
+ * [MIN_ROW_ICON] (a flip's cover screen had 32 dp icons and a 23 dp dock) and lets the last row scroll. Tier A must fit without scrolling.
+ */
+const val TIER_A_MIN_HEIGHT = 480f
 /** Narrowest column of a short window's two-column Home: an icon at [MIN_ROW_ICON] with its 8 dp each side. */
 const val MIN_SPLIT_CELL = 56f
 
@@ -103,11 +145,28 @@ const val HOME_PREVIEW_RESERVE_DP = 126f
 fun homeControlsSpace(isDefaultHome: Boolean, measuredDp: Float): Float =
     if (isDefaultHome) maxOf(HOME_STRIP_RESERVE_DP, measuredDp) else maxOf(HOME_PREVIEW_RESERVE_DP, measuredDp + 12f)
 
+/** What Today View keeps clear under its last widget at least: the room that has always been enough above the page dots. */
+const val TODAY_BOTTOM_PADDING_DP = 96f
+/** The breathing room kept between Today View's last widget and the page controls when the controls need more than that. */
+const val TODAY_CONTROLS_GAP_DP = 16f
+
+/**
+ * How far above the window's bottom edge Today View's last widget stops when scrolled to the end. Today View scrolls under the page
+ * controls (its bottom edge fades), but its end must rest above them: a fixed 96 dp cleared the strip, not the Preview bar (126 dp,
+ * more at large text) that sits above it until Folio is the Home app, so at a short window and a large font the last widget ran
+ * under "Use as Home". Never less than 96 dp, so Home that is already the default looks exactly as before.
+ */
+fun todayBottomPadding(isDefaultHome: Boolean, measuredDp: Float): Float =
+    maxOf(TODAY_BOTTOM_PADDING_DP, homeControlsSpace(isDefaultHome, measuredDp) + TODAY_CONTROLS_GAP_DP)
+
 /**
  * How far the edit bar's + and Edit pills reach from the window's edge at the default text size, in dp (measured on the fold
  * AVD's inner display: the Edit pill ends 122 dp in). Grows with the text size, because the pills hold text.
  */
 const val JIGGLE_BAR_CLUSTER_DP = 124f
+
+/** How long the Undo pill stays after a change to Home, in ms. */
+const val UNDO_PILL_MS = 5000L
 
 /**
  * Whether the edit bar sits beside the page rather than above its first row: the upright unfolded window keeps its grid centered
@@ -119,11 +178,11 @@ fun jiggleBarBesideGrid(horizontalDock: Boolean, dockBesideRail: Boolean, window
 
 /**
  * The room Home keeps under the + / Edit / Done bar in edit mode: only what the bar needs above the first row, none when the bar
- * sits in the strip beside the page, or in the free strip of an expanded window. Pushing a grid down that has no spare height
+ * sits in the strip beside the page. The bar is at the top in every posture; an unfolded window passes the smaller JIGGLE_BAR_BOTTOM_UNFOLDED. Pushing a grid down that has no spare height
  * (F01, 27 Oct sweep) leaves its last row under the dock.
  */
-fun jiggleBarRoom(barBottom: Float, contentTop: Float, expanded: Boolean, besideGrid: Boolean): Float =
-    if (expanded || besideGrid) 0f else (barBottom - contentTop).coerceAtLeast(0f)
+fun jiggleBarRoom(barBottom: Float, contentTop: Float, besideGrid: Boolean): Float =
+    if (besideGrid) 0f else (barBottom - contentTop).coerceAtLeast(0f)
 
 enum class DockPlacement {
     /** Side Bar, or a bar along the bottom when a regular-size screen is upright (iPhone Duo). */
@@ -169,7 +228,27 @@ data class HomeGeometry(
     val dockBarRoom: Float = 0f,
     /** The size of the apps in the dock (and the bar). Equal to [dockIconSize] unless DUO_SPACING made them larger. */
     val dockIcon: Float = dockIconSize(iconSize),
+    /**
+     * How many of the dock's places the Side Bar shows whole: as many as stack at 48 dp in the room it has (never fewer than four).
+     * A dock holding more shows its first places and keeps the rest saved, like the iPhone's dock, which never shows half an icon.
+     */
+    val dockShownSlots: Int = MAX_DOCK_SLOTS,
+    /** The drawn size of the Discover and All Apps glyphs beside the page dots: see [pageControlGlyph]. */
+    val controlGlyph: Float = PAGE_CONTROL_GLYPH,
+    /** The page scrolls under the controls at its foot (Tier B), so they sit on a glass shelf instead of floating over its content. */
+    val controlShelf: Boolean = false,
 )
+
+/** The quiet glyph size beside the page dots on a window with room, as it has always been. */
+const val PAGE_CONTROL_GLYPH = 17f
+
+/**
+ * A window that scrolls (Tier B, a flip's cover) draws its small icons larger too, so the glyphs beside the page dots stay readable
+ * when the rest of Home is reflowed. The touch target stays [FolioTouch.MIN] either way; only the drawing grows, and never past it.
+ */
+const val PAGE_CONTROL_GLYPH_LEGIBLE = 22f
+
+fun pageControlGlyph(legible: Boolean): Float = if (legible) PAGE_CONTROL_GLYPH_LEGIBLE else PAGE_CONTROL_GLYPH
 
 /**
  * Where Home's cells (4 columns, [GRID_ROWS] rows) draw on a page. Stacked: one 4-column grid whose first two rows are the
@@ -282,13 +361,27 @@ fun classScale(densityDpi: Int, stableDpi: Int): Float =
  */
 fun railControlsReserve(count: Int, homeIconSize: Float): Float {
     if (count <= 0) return 28f
-    val stack = count * dockIconSize(homeIconSize) + (count - 1) * FolioSpace.SMALL
+    // Each circle is drawn at the dock icon's size but takes a whole touch target (CircleControl enlarges it to 48 dp), so the
+    // stack is that tall: reserving only the drawn size left the Today View's arrow over the dock's last app on a short window.
+    val stack = count * maxOf(dockIconSize(homeIconSize), FolioTouch.MIN.toFloat()) + (count - 1) * FolioSpace.SMALL
     return maxOf(28f, FolioSpace.SNUG + stack + 10f)
 }
 
-/** How many apps the dock holds: four, or more if the person asks (up to six). */
+/**
+ * How many apps the dock holds: four, or more if the person asks. Up to [STANDARD_DOCK_SLOTS] on any window; a tall one has
+ * room for more, up to [MAX_DOCK_SLOTS] (see [dockCapacity]). [MAX_DOCK_SLOTS] is also what is saved, restored and imported.
+ */
 const val MIN_DOCK_SLOTS = 4
-const val MAX_DOCK_SLOTS = 6
+const val STANDARD_DOCK_SLOTS = 6
+const val MAX_DOCK_SLOTS = 9
+
+/**
+ * How many places the dock may have in a window [heightDp] tall: what the Side Bar can stack under the status rail and above
+ * the page controls (about 250 dp together, and 16 dp of padding) at one dock app's pitch (its icon and 8 dp, never under the 48 dp a place needs), never fewer than [STANDARD_DOCK_SLOTS] so no window
+ * loses what it had, never more than [MAX_DOCK_SLOTS]. A 780 dp window takes nine, a 740 dp one eight, a 700 dp one seven.
+ */
+fun dockCapacity(heightDp: Float, homeIconSize: Float, dockSize: Float = 1f): Int =
+    ((heightDp - 266f) / (dockIconSize(homeIconSize) * dockSize + 8f).coerceAtLeast(STANDARD_DOCK_PITCH)).toInt().coerceIn(STANDARD_DOCK_SLOTS, MAX_DOCK_SLOTS)
 
 fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Boolean, statusHeight: Float = 0f, labelHeight: Float = 20f, inLibrary: Boolean = false, homeBottomSpace: Float = 44f,
     /** How many round controls (search, back to Home) sit at the bottom of the rail on the page shown now: 0, 1 or 2. */
@@ -355,7 +448,7 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
     val fullWidth = horizontalDock && !tallRegular && !statusRail
     val expanded = width * classScale >= 650f && height * classScale >= HOME_REGULAR_MIN_HEIGHT_DP && !tallRegular
     val homeWidth = if (expanded) minOf(460f, width * 0.56f, if (foldAtCenter) width / 2f else Float.MAX_VALUE) else width
-    val dockBarHeight = if (horizontalDock) dockIconSize(p.iconSize) + 28f else 0f
+    val dockBarHeight = if (horizontalDock) dockIconSize(p.iconSize) * p.dockSize + 28f else 0f
     val homeBottomSpace = bottomSpaceIn + if (horizontalDock) dockBarHeight + 16f else 0f
     // Columns about as wide as an icon and its breathing room, centered, instead of stretching across a big screen.
     // Status sits in the top-right corner, so the same margin is kept on both sides and the grid stays centered.
@@ -392,6 +485,9 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
     // More rows never tighten the space under labels below 4 dp.
     val tightGap = minOf(p.rowGap, 4f)
     var fitRows = BASE_APP_ROWS
+    // Tier B (under 480 dp high) scrolls its page (HomeWorkspace) rather than shrink its icons past [MIN_ROW_ICON] to fit; Tier A, which
+    // must fit, goes on to [LAST_RESORT_ICON]. Only the stacked page: the two-column page of a short, wide window keeps fitting.
+    val scrolls = height * classScale < TIER_A_MIN_HEIGHT
     // Short, wide windows (the cover in landscape): two 4-column halves side by side instead of one tall,
     // squashed grid, so icons stay full size (iPad likewise keeps widgets in a column beside its apps).
     val zoneGap = 28f
@@ -436,7 +532,7 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
         if (!widgetsFillRows && needed() > fitHeight) widget = minOf(widget, (fitHeight - 18f - 4f * rowFor(icon, gap)).coerceAtLeast(88f))
         // Four rows still do not fit (a short window too narrow to split): the same last resort as the two-column page.
         if (needed() > fitHeight) icon = minOf(icon, (if (widgetsFillRows) fitHeight / (BASE_APP_ROWS + 2f) - labelSpace - gap
-            else (fitHeight - widget - 18f) / 4f - labelSpace - gap).coerceAtLeast(LAST_RESORT_ICON))
+            else (fitHeight - widget - 18f) / 4f - labelSpace - gap).coerceAtLeast(if (scrolls) MIN_ROW_ICON else LAST_RESORT_ICON))
         // Laid out for the rows shown, so Rows › 4 looks exactly like before; switching the setting re-centers the page.
         layoutRows = rows
         // Extra rows tighten the spacing only when that's what makes them fit; otherwise the page scrolls.
@@ -510,9 +606,16 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
     // Never shorter than four 48dp dock targets, even when a short window has shrunk the rows.
     // Space between dock apps makes the dock taller; aligned with the rows, it grows evenly above and below them.
     val dockSpace = p.dockSpacing
-    val desiredHeight = maxOf(slots * 48f + 16f, (if (p.dockAlignToGrid) 2f * row + icon else 256f) + slots * dockSpace)
-    val dockHeight = minOf(desiredHeight, (height - topLimit - bottomReserve).coerceAtLeast(76f))
-    val dockRowHeight = ((dockHeight - 16f) / slots).coerceAtLeast(48f)
+    val dockRoom = (height - topLimit - bottomReserve).coerceAtLeast(76f)
+    val pitchFloor = if (p.dockCompact) COMPACT_DOCK_PITCH else STANDARD_DOCK_PITCH
+    // The Side Bar shows only the places that fit whole; the bottom bar scrolls sideways as before.
+    val shownSlots = if (horizontalDock) slots else minOf(slots, maxOf(MIN_DOCK_SLOTS.toFloat(), kotlin.math.floor((dockRoom - 16f) / pitchFloor)))
+    val desiredHeight = maxOf(shownSlots * pitchFloor + 16f, (if (p.dockAlignToGrid) 2f * row + icon else 256f) + shownSlots * dockSpace)
+    // A Side Bar too short for even the four places it always holds ends on a whole place and scrolls to the rest,
+    // instead of cutting the last icon in half at its edge (a landscape phone or a small window).
+    val wholePlaces = kotlin.math.floor((dockRoom - 16f) / pitchFloor + .001f).coerceAtLeast(1f)
+    val dockHeight = if (!horizontalDock && wholePlaces < shownSlots) wholePlaces * pitchFloor + 16f else minOf(desiredHeight, dockRoom)
+    val dockRowHeight = ((dockHeight - 16f) / shownSlots).coerceAtLeast(pitchFloor)
     // Use the home position as the anchor, so removing library buttons does not
     // move a low-positioned dock on ordinary page swipes. Move up only to fit.
     val homeDockHeight = minOf(desiredHeight, (height - topLimit - homeReserve).coerceAtLeast(76f))
@@ -520,6 +623,8 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
     // top, so the dock starts below the status rail instead of running into it.
     // Two columns (iPhone Duo): status pinned to the top of the rail, the dock to the bottom, open space between.
     val homeDockTop = (if (splitColumns) height - homeReserve - homeDockHeight
+        // Centered: the same space above the dock (under the status) as below it (over the page controls), whatever the screen's height.
+        else if (p.dockCentered) topLimit + (height - homeReserve - topLimit - homeDockHeight).coerceAtLeast(0f) / 2f
         else if (p.dockAlignToGrid) contentTop + widget + 18f - 2f * dockSpace else height * p.dockPosition - homeDockHeight / 2f)
         .coerceIn(topLimit, maxOf(topLimit, height - homeDockHeight - homeReserve))
     val dockTop = homeDockTop.coerceIn(topLimit, maxOf(topLimit, height - dockHeight - bottomReserve))
@@ -527,9 +632,17 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
     val barRoom = (if (dockBesideRail) width - p.dockWidth - 12f else width) - 32f
     // DUO_SPACING dock apps: never smaller than today's, larger only while the pill, the row (or the bar, and its room)
     // still holds them with margin, so every fit rule keeps working.
-    val oldDockIcon = dockIconSize(icon)
-    val dockIcon = if (!duoSpacing) oldDockIcon else maxOf(oldDockIcon, minOf(icon * DUO_DOCK_RATIO,
-        if (horizontalDock) minOf(dockBarHeight - 22f, (barRoom - 16f) / slots - 22f) else minOf(p.dockWidth - 12f, dockRowHeight - 4f)))
+    val oldDockIcon = dockIconSize(icon, legible = scrolls)
+    val dockIconRoom = if (horizontalDock) minOf(dockBarHeight - 22f, (barRoom - 16f) / slots - 22f) else minOf(p.dockWidth - 12f, dockRowHeight - 4f)
+    val roomyDockIcon = if (!duoSpacing) oldDockIcon else maxOf(oldDockIcon, minOf(icon * DUO_DOCK_RATIO, dockIconRoom))
+    // Dock › Size: smaller is smaller; larger grows only as far as the dock has room (never below what it had), so it always fits.
+    val sizedDockIcon = if (p.dockSize <= 1f) roomyDockIcon * p.dockSize
+        else minOf(roomyDockIcon * p.dockSize, maxOf(roomyDockIcon, dockIconRoom))
+    // Fit more dock apps: the icon gives way to the room a place has, so a tighter place never crowds it.
+    val fittedDockIcon = if (p.dockCompact) minOf(sizedDockIcon, maxOf(dockIconRoom, 24f)) else sizedDockIcon
+    // A Side Bar holding more than the standard six packs its places at the 48 dp a touch target needs, so its icons give way to leave
+    // 8 dp between them (never under 28 dp) instead of touching. Six or fewer keep the icon they always had.
+    val dockIcon = if (!horizontalDock && shownSlots > STANDARD_DOCK_SLOTS) minOf(fittedDockIcon, maxOf(dockRowHeight - 8f, 28f)) else fittedDockIcon
     val basePitch = dockIcon + 22f
     val dockPitch = if (dockSpace <= 0f) basePitch else minOf(basePitch + dockSpace, maxOf(basePitch, (barRoom - 16f) / slots))
     // With the dock at the bottom and no Side Bar beside the page (upright unfolded, or Full-width Home), the page is
@@ -540,7 +653,8 @@ fun homeGeometry(width: Float, height: Float, preset: LayoutPreset, labels: Bool
         horizontalDock = horizontalDock, dockBarHeight = dockBarHeight, dockBesideRail = dockBesideRail, statusTop = statusTop,
         appRows = rows, fitAppRows = if (splitColumns) BASE_APP_ROWS else fitRows, rowGap = gap, columnsInset = columnsInset, dockPitch = dockPitch,
         // barRoom keeps a 32 dp margin for spacing the apps out; the bar itself may use the whole room beside the Side Bar.
-        dockBarRoom = (barRoom + 32f).coerceAtLeast(0f), dockIcon = dockIcon)
+        dockBarRoom = (barRoom + 32f).coerceAtLeast(0f), dockIcon = dockIcon, dockShownSlots = shownSlots.toInt(),
+        controlGlyph = pageControlGlyph(legible = scrolls), controlShelf = scrolls)
     // The page controls take more than the space this was measured for, and the usual four rows would end under them:
     // lay the window out again for the real space (once), so no row of a short window is clipped.
     // The visible page ends before the last row's own space under its label.

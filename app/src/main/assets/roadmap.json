@@ -582,7 +582,8 @@
           "color": "#5E5CE6",
           "title": "Icon Actions",
           "detail": "Tap, long press, double tap and swipes on a Home icon, each set to an action you choose.",
-          "status": "planned"
+          "status": "building",
+          "beta": true
         },
         {
           "icon": "store",
@@ -617,7 +618,8 @@
           "color": "#FF9F0A",
           "title": "StandBy 2",
           "detail": "Folio's own StandBy for a phone charging on its side or half folded: a night clock, widgets, photos and Now Playing.",
-          "status": "planned"
+          "status": "building",
+          "beta": true
         },
         {
           "icon": "search",
@@ -631,7 +633,8 @@
           "color": "#FF9F0A",
           "title": "Music widget",
           "detail": "Now Playing as a widget in three looks: Strip, Card and Poster.",
-          "status": "planned"
+          "status": "building",
+          "beta": true
         },
         {
           "icon": "palette",
@@ -659,7 +662,8 @@
           "color": "#0A84FF",
           "title": "Control Center editor",
           "detail": "Move a control to any free slot and resize it from its corner, the way iOS's editor works.",
-          "status": "planned"
+          "status": "building",
+          "beta": true
         },
         {
           "icon": "notifications",
@@ -708,6 +712,21 @@
           "color": "#32ADE6",
           "title": "Hold cards",
           "detail": "Press and hold brightness, volume, Focus or Now Playing in Control Center for more controls, like iOS.",
+          "status": "building",
+          "beta": true
+        },
+        {
+          "icon": "pages",
+          "color": "#32ADE6",
+          "title": "Three Home panes on very wide screens",
+          "detail": "On a very wide window such as a trifold, Home can show a third page beside the other two.",
+          "status": "planned"
+        },
+        {
+          "icon": "extension",
+          "color": "#FF9F0A",
+          "title": "Root tools and a clearer System Bridge",
+          "detail": "Root, Shizuku and System integration get one clearer page that says what each needs. Root tools become an optional Market package.",
           "status": "planned"
         },
         {
@@ -887,6 +906,14 @@
           "title": "Page feel and fold clicks",
           "detail": "Home's pages stretch at the ends and catch on touch, and the fold clicks as it opens and closes.",
           "status": "planned"
+        },
+        {
+          "icon": "tap",
+          "color": "#0A84FF",
+          "title": "Widget menu like iOS",
+          "detail": "Hold a widget for a small menu beside it, like the one on app icons, instead of a large sheet.",
+          "status": "building",
+          "beta": true
         }
       ]
     },
@@ -926,6 +953,20 @@
           "color": "#8E8E93",
           "title": "Apple services",
           "detail": "Join FaceTime links and open Find Devices from Folio. Deeper options only as optional integrations.",
+          "status": "exploring"
+        },
+        {
+          "icon": "grid",
+          "color": "#FF9F0A",
+          "title": "Home Assistant in Control Center",
+          "detail": "A page in Control Center for your smart home, the way Apple's Home controls sit there: lights, switches and scenes from a Home Assistant server you run, as tiles you tap. Early thinking only. Nothing is built yet, and how Folio would sign in to your server safely is still open.",
+          "status": "exploring"
+        },
+        {
+          "icon": "clock",
+          "color": "#30B0C7",
+          "title": "Watch support",
+          "detail": "Folio on your wrist. Apple does not support pairing an Apple Watch with an Android phone, but community projects are trying it. They are early: they need a rooted phone and work on one phone model, and calls and health data do not work. So the realistic path is a Wear OS watch, such as a Galaxy Watch, with Folio's notifications and a few Control Center toggles on it, while Apple Watch is watched from a distance. Early thinking only. Nothing is built yet, and whether it is worth a separate watch app is still open.",
           "status": "exploring"
         },
         {

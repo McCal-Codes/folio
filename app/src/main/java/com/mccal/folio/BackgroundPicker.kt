@@ -313,7 +313,7 @@ private const val THUMB_WIDTH = 420
  * shows wallpaper thumbnails does (PRF).
  */
 internal fun backgroundThumbnail(context: Context, id: String): Bitmap? =
-    if (BackgroundLibrary.isBuiltIn(id)) {
+    tweakedArtBitmap(context, id, THUMB_WIDTH) ?: if (BackgroundLibrary.isBuiltIn(id)) {
         runCatching {
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             context.assets.open(BackgroundLibrary.assetPath(id)).use { BitmapFactory.decodeStream(it, null, bounds) }

@@ -223,31 +223,49 @@ internal data class CcGrid(val columns: Int, val cellDp: Float, val gapDp: Float
  * ([sidePaddingDp]) and the controls they have ([controls]).
  *  - Columns come in pairs (4, 6, 8 ...): the fewest whose cell is not bigger than [CC_FILL_MAX] times the chosen size, so a wide window
  *    gets more columns, not giant tiles, but never more than the controls can use.
- *  - A window too short for the rows takes the next pair while that makes the cell at least a gap bigger.
+ *  - The height is shared out over the rows the sliders and modules need, not over all the controls, so adding a control never shrinks a tile:
+ *    the same window and size give the same cells, and the controls that do not fit go to another page. A window too short for even those takes the
+ *    next pair of columns while that makes the cell at least a gap bigger.
  *  - The page strip is one touch target wide plus a gap. It stands at the edge when the panel is wide enough for that to cost little, and
  *    lies under the grid otherwise.
  * A null [heightDp] means no height limit.
  */
 internal fun controlCenterGrid(panelWidthDp: Float, heightDp: Float?, controls: Int, focus: Boolean, sizeCellDp: Float,
-    touchDp: Float = 48f, sidePaddingDp: Float = 32f): CcGrid {
+    touchDp: Float = 48f, sidePaddingDp: Float = 32f, rail: Boolean = true, minColumns: Int = 4): CcGrid {
     val gap = sizeCellDp * CC_GAP_RATIO
     val strip = touchDp + gap
-    val edge = panelWidthDp >= CC_EDGE_STRIP_PANEL_RATIO * strip
+    // [rail] off (the default in Settings, as on an iPhone): no strip beside the grid, the page dots lie under it or in the header.
+    val edge = rail && panelWidthDp >= CC_EDGE_STRIP_PANEL_RATIO * strip
     // Too short to spend a row of height on the page strip: it moves into the header, between the two buttons, as small dots.
     val inHeader = !edge && heightDp != null && heightDp < CC_STRIP_IN_HEADER_BELOW_DP
     val gridWidth = panelWidthDp - sidePaddingDp - if (edge) strip else 0f
     val maxCell = sizeCellDp * CC_FILL_MAX
     val maxColumns = (((controls + 1) / 2) * 2).coerceIn(4, 12)
     fun widthCell(c: Int) = (gridWidth - gap * (c - 1)) / c
+    // The cell does not depend on how many controls there are (McCal 17 Nov 2026: "the cc settings shouldn't get smaller", "a set amount per size of
+    // screen"): adding a control used to shrink every tile, because the height was shared out over all the rows. Now only what has to stand on the first page
+    // (the sliders and the modules) is fitted to the height, so the same window and size always give the same tiles and the controls that do not fit go to
+    // another page.
     fun heightCell(c: Int): Float {
-        val rows = controlCenterRows(c, controls, focus)
+        val rows = controlCenterRows(c, 0, focus)
         return heightDp?.let { (it - (touchDp + gap) - (if (edge || inHeader) 0f else strip) - gap * (rows - 1)) / rows } ?: Float.MAX_VALUE
     }
     fun cell(c: Int) = minOf(widthCell(c), heightCell(c), maxCell)
-    var columns = 4
+    // [minColumns] holds a count the window had when it was wider (the editor's two panes keep the columns Control Center has outside it, so the
+    // layout being edited is the layout that is saved); it counts in pairs like every other, and never past what the controls can use.
+    var columns = (minColumns + minColumns % 2).coerceIn(4, maxOf(4, maxColumns))
     while (columns < maxColumns && widthCell(columns) > maxCell) columns += 2
     while (columns < maxColumns && cell(columns) < sizeCellDp && cell(columns + 2) >= cell(columns) + gap) columns += 2
     return CcGrid(columns, maxOf(CC_MIN_CELL_DP, cell(columns)), gap, edge, strip, inHeader)
+}
+
+/**
+ * The narrowest panel that holds [columns] columns at the touch size: the cells, their gaps, the side padding and the page strip (counted whether or not the
+ * panel is wide enough to put it at the edge, so the answer is never too small). The editor's two panes use it to keep the columns the panel has outside it.
+ */
+internal fun controlCenterMinPanelDp(columns: Int, sizeCellDp: Float, touchDp: Float = 48f, sidePaddingDp: Float = 32f): Float {
+    val gap = sizeCellDp * CC_GAP_RATIO
+    return columns * touchDp + gap * (columns - 1) + sidePaddingDp + touchDp + gap
 }
 
 /**

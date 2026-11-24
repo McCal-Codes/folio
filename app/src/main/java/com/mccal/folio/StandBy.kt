@@ -849,7 +849,7 @@ private fun StandByFaceContent(
         else runCatching { android.provider.Settings.Secure.getInt(context.contentResolver, "lock_screen_show_notifications", 1) != 0 }.getOrDefault(true)
     }
     val wantNotifs = config.activePackage && config.notifMode != StandByNotifMode.OFF && (!locked || lockScreenShowNotifs)
-    val rawNotifs = if (wantNotifs) IslandListenerService.notifications.collectAsState().value else emptyList()
+    val rawNotifs = if (wantNotifs) IslandListenerService.notifications.collectAsStateWithLifecycle().value else emptyList()
     val notifSummary = remember(rawNotifs, sessionStartMs, config.notifMode, locked, lockScreenShowNotifs) {
         if (!wantNotifs || rawNotifs.isEmpty()) {
             StandByNotifSummary()
@@ -2197,9 +2197,9 @@ private fun StandByCards(
     val context = LocalContext.current
     val tick by rememberMinuteTick()
     val lockHide = locked && !lockScreenShowNotifs
-    val activity = IslandListenerService.activity.collectAsState().value
-    val media = IslandListenerService.media.collectAsState().value ?: (activity as? IslandActivity.Media)
-    val timer = IslandListenerService.timer.collectAsState().value ?: (activity as? IslandActivity.Timer)
+    val activity = IslandListenerService.activity.collectAsStateWithLifecycle().value
+    val media = IslandListenerService.media.collectAsStateWithLifecycle().value ?: (activity as? IslandActivity.Media)
+    val timer = IslandListenerService.timer.collectAsStateWithLifecycle().value ?: (activity as? IslandActivity.Timer)
     val showMedia = !lockHide && media != null && config.playerStyle != StandByPlayerStyle.OFF
 
     if (config.timersBesideMedia && timer != null && !lockHide) {

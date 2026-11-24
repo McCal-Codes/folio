@@ -4,6 +4,10 @@
   "tint": "#0A84FF",
   "blocks": [
     {
+      "type": "hero",
+      "image": "assets/heroes/cabinet.webp"
+    },
+    {
       "type": "screenshots",
       "images": [
         "assets/screenshots/cabinet-panel.webp"

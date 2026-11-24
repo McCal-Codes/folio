@@ -303,7 +303,34 @@ class WidgetController(
         reconcileHostIds()
     }
 
+    @Volatile private var reportText = ""
+
+    init { Diagnostics.widgetStatus = { reportText } }
+
+    /**
+     * Reads each widget on Home for the report: where it sits and how big, the app that provides it, the size the provider was last told, and
+     * whether Android still has it bound ("NOT BOUND" is what shows as "widget unavailable"). Kept as text and read from there, so making a report
+     * (or a crash report) never makes a call to the system. Called from the main thread when Home shows and when the widgets change.
+     */
+    fun refreshReport() {
+        reportText = runCatching {
+            val bound = host.appWidgetIds.toSet()
+            val state = model.state.value
+            val lines = state.widgetPlacements.map { p ->
+                val where = "  id ${p.id} · page ${p.page} cell ${p.column},${p.row} span ${p.spanX}×${p.spanY} · " // english-only
+                // Folio's own widgets have negative ids Android does not know; asking it about them only fills the log with errors.
+                if (p.id < 0) return@map where + "built in" // english-only
+                val info = manager.getAppWidgetInfo(p.id)
+                val options = runCatching { manager.getAppWidgetOptions(p.id) }.getOrNull()
+                val told = options?.let { "${it.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)}×${it.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT)} dp" } ?: "?"
+                where + (info?.provider?.packageName ?: "NOT BOUND") + (if (p.id !in bound) " (host does not list it)" else "") + " · told $told" // english-only
+            }
+            (lines + "  ${state.widgetStacks.size} stacks, ${state.todayWidgets.size} Today widgets, ${bound.size} ids held by the host").joinToString("\n") // english-only
+        }.getOrDefault("  (could not be read)") // english-only
+    }
+
     private fun reconcileHostIds() {
+        refreshReport()
         if (!model.canPruneWidgetIds) return
         val retained = model.retainedWidgetIds + pendingId + listOfNotNull(reconfigureWidgetId)
         host.appWidgetIds.filter { it !in retained }.forEach(host::deleteAppWidgetId)

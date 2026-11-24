@@ -46,7 +46,8 @@ class LayoutIsolationAuditTest {
     }
 
     @Test fun `the reserve is the controls' stack, not a fixed 124 dp`() {
-        val control = dockIconSize(66f)
+        // A circle is drawn at the dock icon's size but takes a whole touch target, so the stack is that tall.
+        val control = maxOf(dockIconSize(66f), FolioTouch.MIN.toFloat())
         assertEquals(28f, railControlsReserve(0, 66f), 0f)
         assertEquals(FolioSpace.SNUG + control + 10f, railControlsReserve(1, 66f), .01f)
         assertEquals(FolioSpace.SNUG + 2 * control + FolioSpace.SMALL + 10f, railControlsReserve(2, 66f), .01f)

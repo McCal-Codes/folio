@@ -17,6 +17,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.WindowInsets
@@ -32,6 +37,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Storefront
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Download
@@ -39,6 +45,11 @@ import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Public
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,9 +67,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -68,6 +82,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -93,12 +109,13 @@ import com.mccal.folio.market.Source
 import com.mccal.folio.market.Section
 
 /** The Market's tabs. Adding a source over the network comes in Phase 6; Sources shows what Folio has today. */
-internal enum class MarketTab(@androidx.annotation.StringRes val label: Int, val icon: ImageVector) {
-    FEATURED(R.string.featured, Icons.Rounded.AutoAwesome),
-    SOURCES(R.string.sources, Icons.Rounded.Public),
-    PACKAGES(R.string.packages, Icons.Rounded.Storefront),
-    INSTALLED(R.string.installed, Icons.Rounded.Download),
-    SETTINGS(R.string.settings, Icons.Rounded.Settings),
+internal enum class MarketTab(@androidx.annotation.StringRes val label: Int, val icon: ImageVector, val outline: ImageVector) {
+    // Filled when selected, outlined when not, the way Sileo's tab bar reads.
+    FEATURED(R.string.featured, Icons.Rounded.AutoAwesome, Icons.Outlined.AutoAwesome),
+    SOURCES(R.string.sources, Icons.Rounded.Public, Icons.Outlined.Public),
+    PACKAGES(R.string.packages, Icons.Rounded.Storefront, Icons.Outlined.Storefront),
+    INSTALLED(R.string.installed, Icons.Rounded.Download, Icons.Outlined.Download),
+    SETTINGS(R.string.settings, Icons.Rounded.Settings, Icons.Outlined.Settings),
 }
 
 /**
@@ -466,6 +483,11 @@ internal fun MarketScreen(
         // Kept here rather than in the list, so coming Back from a package lands where the list was, per tab.
         val listState = rememberSaveable(tab, saver = LazyListState.Saver) { LazyListState() }
         androidx.compose.runtime.SideEffect { listBeside = beside }
+        // Tapping the tab you are on takes you back to the top of its list, as it does in Sileo and the App Store.
+        val selectTab: (MarketTab) -> Unit = { picked ->
+            if (picked == tab && openId == null) scope.launch { listState.animateScrollToItem(0) }
+            tab = picked; openId = null; openSourceUrl = null
+        }
         val listPane: @Composable (Modifier, Boolean) -> Unit = { paneModifier, narrow ->
             BoxWithConstraints(paneModifier) {
                         MarketList(
@@ -636,9 +658,9 @@ internal fun MarketScreen(
                     onDismiss = { message = null; offer = null },
                 )
             }
-            if (tabs == TabPlacement.BOTTOM) MarketTabs(tab) { tab = it; openId = null; openSourceUrl = null }
+            if (tabs == TabPlacement.BOTTOM) MarketTabs(tab, selectTab)
         }
-        if (tabs == TabPlacement.RAIL) MarketRail(tab) { tab = it; openId = null; openSourceUrl = null }
+        if (tabs == TabPlacement.RAIL) MarketRail(tab, selectTab)
         }
         importing?.let { (bytes, pkg) ->
             Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .6f)).clickable { MarketImport.pending = null }) {
@@ -808,22 +830,15 @@ internal fun MarketScreen(
 
 @Composable
 private fun MarketTabs(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
-    val glide = rememberGlide(selected.ordinal)
-    Box(Modifier.fillMaxWidth().background(FolioColors.SecondaryBackground).padding(vertical = FolioSpace.SNUG.dp)
-        .height(androidx.compose.foundation.layout.IntrinsicSize.Min)) {
-        // The highlight glides from the old tab to the new one instead of jumping (motion pass, 0.6.9).
-        if (FolioMotion.v2) Box(
-            Modifier.fillMaxWidth(1f / MarketTab.entries.size).fillMaxHeight()
-                .graphicsLayer { translationX = glide.value * size.width }
-                .padding(horizontal = 6.dp, vertical = 2.dp)
-                .background(LocalAccent.current.fill.copy(alpha = .22f), RoundedCornerShape(FolioRadius.CONTROL.dp)),
-        )
+    // A flat bar under a hairline, with no pill: the selected tab is its filled icon and the accent, as in Sileo.
+    val line = Color.White.copy(alpha = .12f)
+    Box(Modifier.fillMaxWidth().background(FolioColors.SecondaryBackground)
+        .drawBehind { drawLine(line, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 1.dp.toPx()) }
+        .padding(vertical = FolioSpace.SNUG.dp)) {
         Row(Modifier.fillMaxWidth()) {
             for (tab in MarketTab.entries) {
                 Column(
-                    // The tap highlight takes the shape of the selected pill (inset the same way) instead of a square over the whole cell.
-                    Modifier.weight(1f).padding(horizontal = 6.dp, vertical = 2.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
-                        .marketTab(tab, onSelect).heightIn(min = FolioRow.ACTION.dp).padding(vertical = FolioSpace.TINY.dp),
+                    Modifier.weight(1f).marketTab(tab, onSelect).heightIn(min = FolioRow.ACTION.dp).padding(vertical = FolioSpace.TINY.dp),
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) { MarketTabIcon(tab, tab == selected); MarketTabLabel(tab, tab == selected) }
@@ -840,12 +855,19 @@ private fun MarketTabs(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
 private fun MarketRail(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
     val glide = rememberGlide(selected.ordinal)
     var itemHeight by remember { mutableIntStateOf(0) }
+    BoxWithConstraints(Modifier.width(76.dp).fillMaxHeight().background(FolioColors.SecondaryBackground)) {
+    // A short window (a flip's cover, a phone on its side) cannot hold five tabs at their usual height: the tabs share what the rail
+    // has and tighten their padding, so the pill stays inside the rail and every label shows. A tall window is unchanged.
+    // What is left of the rail after five icons, one line of label each (it grows with the font scale) and the rail's own padding,
+    // shared by the ten paddings above and below the tabs, never more than the usual.
+    val fontScale = LocalDensity.current.fontScale
+    val itemPad = ((maxHeight.value - 16f - 5f * (26f + 18f * fontScale)) / 10f).coerceIn(0f, FolioSpace.COMPACT.toFloat()).dp
     Column(
-        Modifier.width(76.dp).fillMaxHeight().background(FolioColors.SecondaryBackground).padding(vertical = FolioSpace.SMALL.dp),
+        Modifier.fillMaxSize().padding(vertical = FolioSpace.SMALL.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(Modifier.fillMaxWidth()) {
+        Box(Modifier.fillMaxWidth().weight(1f, fill = false)) {
             if (FolioMotion.v2 && itemHeight > 0) Box(
                 Modifier.fillMaxWidth().height(with(LocalDensity.current) { itemHeight.toDp() })
                     .graphicsLayer { translationY = glide.value * itemHeight }
@@ -855,14 +877,16 @@ private fun MarketRail(selected: MarketTab, onSelect: (MarketTab) -> Unit) {
             Column(Modifier.fillMaxWidth()) {
                 for ((index, tab) in MarketTab.entries.withIndex()) {
                     Column(
-                        Modifier.fillMaxWidth().then(if (index == 0) Modifier.onSizeChanged { itemHeight = it.height } else Modifier)
+                        Modifier.fillMaxWidth().weight(1f, fill = false).then(if (index == 0) Modifier.onSizeChanged { itemHeight = it.height } else Modifier)
                             .padding(horizontal = 6.dp, vertical = 2.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp))
-                            .marketTab(tab, onSelect).padding(vertical = FolioSpace.COMPACT.dp),
+                            .marketTab(tab, onSelect).padding(vertical = itemPad),
+                        verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) { MarketTabIcon(tab, tab == selected); MarketTabLabel(tab, tab == selected) }
                 }
             }
         }
+    }
     }
 }
 
@@ -928,7 +952,7 @@ private fun Modifier.marketTab(tab: MarketTab, onSelect: (MarketTab) -> Unit) =
 
 @Composable
 private fun MarketTabIcon(tab: MarketTab, on: Boolean) = Icon(
-    tab.icon, contentDescription = null, modifier = Modifier.size(22.dp),
+    if (on) tab.icon else tab.outline, contentDescription = null, modifier = Modifier.size(22.dp),
     tint = if (on) LocalAccent.current.ink else Color.White.copy(alpha = .55f),
 )
 
@@ -939,6 +963,74 @@ private fun MarketTabLabel(tab: MarketTab, on: Boolean) = Text(
     fontSize = cappedSp(FolioType.CAPTION),
     maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
 )
+
+/**
+ * A section's name over its rows: plain words in the muted ink, not the small capitals of an inset group. Sileo and the
+ * App Store put rows straight on the page with a hairline between them.
+ */
+@Composable
+private fun MarketSectionLabel(text: String) {
+    Text(text, color = Color.White.copy(alpha = .55f), fontSize = FolioType.SUBHEAD.sp,
+        modifier = Modifier.padding(top = FolioSpace.COMPACT.dp, bottom = FolioSpace.TINY.dp))
+}
+
+/** Rows on the page with no card behind them. Each row draws its own hairline ([marketRowDivider]). */
+@Composable
+private fun MarketFlatGroup(modifier: Modifier = Modifier, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    Column(modifier.fillMaxWidth(), content = content)
+}
+
+/**
+ * Version, where it is listed and which screens it works on, as three cells between two hairlines, as in Sileo's
+ * package header. Each value can wrap to two lines, so large text and a long source name never cut one off.
+ */
+@Composable
+private fun MarketStats(
+    version: String, source: String, screens: Set<com.mccal.folio.market.Screen>, modifier: Modifier = Modifier,
+    /** An app of its own has no version of ours to show: its first cell says where to get it instead. */
+    versionLabel: String = stringResource(R.string.market_stat_version),
+) {
+    val line = Color.White.copy(alpha = .12f)
+    val works = when {
+        screens.size > 1 -> stringResource(R.string.market_cover_and_inner)
+        com.mccal.folio.market.Screen.COVER in screens -> stringResource(R.string.cover)
+        else -> stringResource(R.string.inner)
+    }
+    Row(
+        modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min).drawBehind {
+            drawLine(line, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 1.dp.toPx())
+            drawLine(line, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 1.dp.toPx())
+        },
+    ) {
+        val cells = listOf(
+            versionLabel to version,
+            stringResource(R.string.market_stat_source) to source,
+            stringResource(R.string.market_stat_works_on) to works,
+        )
+        cells.forEachIndexed { i, (label, value) ->
+            if (i > 0) Box(Modifier.fillMaxHeight().padding(vertical = FolioSpace.COMPACT.dp).width(1.dp).background(line))
+            // One node per cell, so TalkBack reads "Version, 1.0.0" together.
+            Column(
+                Modifier.weight(1f).padding(horizontal = FolioSpace.SMALL.dp, vertical = FolioSpace.COMFY.dp).semantics(mergeDescendants = true) {},
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(label, color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
+                Text(value, color = Color.White, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+/** The hairline under a row, starting where its text does ([inset]) so the icon column reads as one. */
+private fun Modifier.marketRowDivider(inset: androidx.compose.ui.unit.Dp) = drawBehind {
+    val y = size.height - .5.dp.toPx()
+    drawLine(Color.White.copy(alpha = .10f), Offset(inset.toPx(), y), Offset(size.width, y), strokeWidth = 1.dp.toPx())
+}
+
+/** A full-width hairline along the bottom edge: what separates the package page's top bar from the page. */
+private fun Modifier.marketBottomHairline() = marketRowDivider(0.dp)
 
 @Composable
 private fun MarketList(
@@ -979,8 +1071,11 @@ private fun MarketList(
     val updates = entries.filter { entry ->
         installed[entry.id]?.let { entry.entry.version > it.version } == true
     } + appUpdates
+    // Browse (Packages) can be searched; the other tabs show what they always did.
+    var query by rememberSaveable { mutableStateOf("") }
     val shown = when (tab) {
-        MarketTab.FEATURED, MarketTab.PACKAGES -> entries
+        MarketTab.FEATURED -> entries
+        MarketTab.PACKAGES -> entries.filter { marketMatches(it.name, it.id, it.entry.manifest?.author?.name?.english, it.entry.manifest?.section?.id, query) }
         MarketTab.INSTALLED -> entries.filter { it.id in installed } - updates.toSet()
         MarketTab.SOURCES, MarketTab.SETTINGS -> emptyList()
     }
@@ -995,6 +1090,13 @@ private fun MarketList(
                 Text(stringResource(tab.label), color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold)
             }
         }
+        if (tab == MarketTab.PACKAGES) item(key = "search") {
+            MarketSearchField(query, { query = it }, Modifier.padding(bottom = FolioSpace.COMPACT.dp))
+        }
+        if (tab == MarketTab.PACKAGES && shown.isEmpty() && entries.isNotEmpty()) item(key = "no-match") {
+            Text(stringResource(R.string.market_no_packages_match), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp,
+                modifier = Modifier.padding(vertical = FolioSpace.LARGE.dp).semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite })
+        }
         if (tab == MarketTab.FEATURED && index != null) {
             item(key = "featured") {
                 MarketFeatured(
@@ -1004,6 +1106,7 @@ private fun MarketList(
                     packages = index.packages,
                     calm = style == FeaturedStyle.CALM,
                     onOpen = onOpen,
+                    picture = { path, modifier -> MarketImage(session, session.builtIn, path, modifier, framed = false) },
                 )
             }
         }
@@ -1026,9 +1129,9 @@ private fun MarketList(
             item(key = "settings") { MarketOwnSettings(style = style, onStyle = onStyle, onIntroduce = onIntroduce) }
         }
         if (tab == MarketTab.INSTALLED && updates.isNotEmpty()) {
-            item(key = "updates-label") { SheetGroupLabel("Updates") }
+            item(key = "updates-label") { MarketSectionLabel("Updates") }
             item(key = "updates") {
-                SheetGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
+                MarketFlatGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
                     for (entry in updates) {
                         MarketRow(
                             session = session,
@@ -1047,9 +1150,9 @@ private fun MarketList(
             }
         }
         if (tab == MarketTab.INSTALLED && autoUpdated.isNotEmpty()) {
-            item(key = "recent-label") { SheetGroupLabel(stringResource(R.string.updated_recently)) }
+            item(key = "recent-label") { MarketSectionLabel(stringResource(R.string.updated_recently)) }
             item(key = "recent") {
-                SheetGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
+                MarketFlatGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
                     autoUpdated.forEach { u ->
                         // Undo only on a package's newest update, and only while the version it made is still the one installed.
                         val canUndo = autoUpdated.first { it.id == u.id } == u && installed[u.id]?.let { it.version == u.to && it.enabled } == true
@@ -1083,9 +1186,9 @@ private fun MarketList(
         for (section in Section.entries) {
             val inSection = shown.filter { it.entry.manifest?.section == section }
             if (inSection.isEmpty()) continue
-            item(key = "label-${section.id}") { SheetGroupLabel(section.id.replaceFirstChar(Char::uppercase)) }
+            item(key = "label-${section.id}") { MarketSectionLabel(section.id.replaceFirstChar(Char::uppercase)) }
             item(key = "group-${section.id}") {
-                SheetGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
+                MarketFlatGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
                     // Row by row, left to right, so reading order and TalkBack's order stay the list's order.
                     for (pair in inSection.chunked(columns)) {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -1112,9 +1215,9 @@ private fun MarketList(
             }
         }
         if (fromFiles.isNotEmpty()) {
-            item(key = "label-files") { SheetGroupLabel(stringResource(R.string.opened_from_files)) }
+            item(key = "label-files") { MarketSectionLabel(stringResource(R.string.opened_from_files)) }
             item(key = "group-files") {
-                SheetGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
+                MarketFlatGroup(Modifier.padding(bottom = FolioSpace.COMPACT.dp)) {
                     for (pkg in fromFiles) {
                         Row(
                             Modifier.fillMaxWidth().padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.COMPACT.dp),
@@ -1176,10 +1279,21 @@ private fun MarketRow(
         Modifier.fillMaxWidth()
             .background(if (selected) Color.White.copy(alpha = .06f) else Color.Transparent)
             .clickable(onClickLabel = openLabel, onClick = onOpen)
-            .padding(horizontal = FolioSpace.COMFY.dp, vertical = FolioSpace.COMPACT.dp),
+            // The icon lines up with the page title, and the hairline starts under the text (icon 44 dp plus its 12 dp gap).
+            .marketRowDivider(44.dp + 12.dp)
+            .padding(vertical = FolioSpace.COMPACT.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        PackageIcon(session, entry, 44.dp)
+        Box {
+            PackageIcon(session, entry, 44.dp)
+            // Sileo's trick: what you have of this shows on its icon, so the row reads at a glance.
+            val badge = when {
+                update || appUpdate != null -> MarketBadge.UPDATE
+                installed != null && !entry.unavailable && !external -> MarketBadge.INSTALLED
+                else -> null
+            }
+            if (badge != null) MarketStateBadge(badge, Modifier.align(Alignment.BottomEnd).offset(x = 4.dp, y = 4.dp))
+        }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(name, color = Color.White, fontSize = FolioType.CALLOUT.sp)
@@ -1193,7 +1307,8 @@ private fun MarketRow(
                     update -> "${installed?.version} → ${entry.entry.version}"
                     // A package from somewhere other than Folio says where it came from.
                     entry.source.kind != Source.Kind.BUILT_IN -> "$author · ${entry.source.label}"
-                    else -> author
+                    // Who made it and what kind of thing it is, as Sileo's rows read ("Folio · Themes").
+                    else -> listOfNotNull(author.takeIf { it.isNotEmpty() }, entry.entry.manifest?.section?.id?.replaceFirstChar(Char::uppercase)).joinToString(" · ")
                 },
                 color = when {
                     installed?.enabled == false || entry.unavailable -> FolioColors.Warning
@@ -1240,6 +1355,26 @@ private fun MarketRow(
             installed != null -> MarketActionButton(R.string.remove, name, onRemove)
             else -> MarketActionButton(R.string.get, name, onGet)
         }
+    }
+}
+
+/** What a row says about a package you have: Sileo's round badge on the icon's corner. */
+private enum class MarketBadge(val color: Color, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    INSTALLED(FolioColors.Green, Icons.Rounded.Check),
+    UPDATE(FolioColors.Blue, Icons.Rounded.ArrowUpward),
+}
+
+/**
+ * The badge only repeats what the row's button already says in words (Remove, Update), so it is hidden from
+ * TalkBack. It is a still circle: nothing in it moves.
+ */
+@Composable
+private fun MarketStateBadge(badge: MarketBadge, modifier: Modifier = Modifier) {
+    Box(
+        modifier.size(18.dp).border(2.dp, Color.Black, CircleShape).padding(2.dp).clip(CircleShape).background(badge.color),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(badge.icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(10.dp))
     }
 }
 
@@ -1378,7 +1513,7 @@ private fun MarketPackagePage(
     // set of blocks as Folio's own; what the safety sheet says still comes from the signed index alone.
     val sourcePage by produceState<com.mccal.folio.market.Depiction?>(null, source.url, entry.id, entry.version) {
         val path = entry.manifest?.depiction
-        value = if (source.kind == Source.Kind.BUILT_IN || path == null) null else withContext(session.io) {
+        value = if (path == null) null else if (source.kind == Source.Kind.BUILT_IN) withContext(session.io) { session.depictionOf(entry.id) } else withContext(session.io) {
             session.sources.fetch(source, path, com.mccal.folio.market.Depiction.MAX_CHARS) { _, _ -> }
                 ?.decodeToString()
                 ?.let { (com.mccal.folio.market.Depiction.parse(it) as? com.mccal.folio.market.ParseResult.Ok)?.value }
@@ -1396,7 +1531,41 @@ private fun MarketPackagePage(
     val compat = remember(checks) { compatLines(checks) }
     // The same verdict the installer refuses on, and the install sheet and package row read.
     val verdict = remember(checks) { com.mccal.folio.market.PackageCompatibility.verdict(checks) }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = FolioSpace.LARGE.dp)) {
+    // The color the author gave the page (its `tint`) colors the band, as a Sileo page opens on its package's color; a page without one keeps its section's.
+    val pageTint = (pkg?.depiction ?: sourcePage)?.tint?.let { Color(it) }
+    // Get, Update, Remove or the ring: one answer, shown in the page's row and again in the top bar once that row scrolls away.
+    val getAction: @Composable () -> Unit = {
+        val justInstalled = rememberJustInstalled(MarketWork.busyId == entry.id, installed != null)
+        when {
+            // Pulled by its source. Removing what's already on is still allowed; getting it is not.
+            revoked != null && installed == null -> Column(Modifier.testTag("package-unavailable")) {
+                Text(stringResource(R.string.unavailable), color = FolioColors.Warning, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.its_source_pulled_it_1_s, revoked), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
+            }
+            // Known not to work with this Folio: the same place and weight as a pulled one, with its own words.
+            incompatible != null && installed == null -> Column(Modifier.testTag("package-incompatible")) {
+                Text(stringResource(R.string.unavailable), color = FolioColors.Warning, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.doesn_t_work_with_this_folio_1_s, incompatible), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
+            }
+            MarketWork.busyId == entry.id -> InstallProgress(MarketWork.progress, words = true, name = name)
+            justInstalled -> InstallDonePop()
+            appUpdate != null -> MarketActionButton(R.string.update, name, onGet)
+            external -> MarketActionButton(if (onPhone != null) R.string.open else R.string.get, name, onGet)
+            // A listing this Folio could not read has no page of its own to install from: it says so, as its row does.
+            entry.needs.isNotEmpty() && installed == null ->
+                Text(stringResource(R.string.needs_a_newer_folio), color = Color.White.copy(alpha = .55f), fontSize = FolioType.SUBHEAD.sp)
+            updateAvailable && entry.needs.isEmpty() && !verdict.stopsGet && revoked == null && incompatible == null ->
+                MarketActionButton(R.string.update, name, onGet)
+            installed != null -> MarketActionButton(R.string.remove, name, onRemove)
+            // Off while the tweak it adds to is missing; the note below says why and offers the tweak.
+            else -> MarketActionButton(R.string.get, name, onGet, enabled = host?.onPhone != false && !verdict.stopsGet)
+        }
+    }
+    val scroll = rememberScrollState()
+    // Where the Get row ends, inside the scrolling column; past that the row is out of sight and the top bar takes over.
+    var getBottom by remember { mutableIntStateOf(Int.MAX_VALUE) }
+    Box(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(horizontal = FolioSpace.LARGE.dp)) {
         if (showBack) {
             Row(Modifier.fillMaxWidth().clickable(onClickLabel = backLabel, onClick = onBack).padding(vertical = FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.ChevronLeft, contentDescription = null, tint = LocalAccent.current.ink, modifier = Modifier.mirroredForRtl().size(18.dp))
@@ -1404,7 +1573,12 @@ private fun MarketPackagePage(
                 Text(backTitle ?: backLabel, color = LocalAccent.current.ink, fontSize = FolioType.CALLOUT.sp)
             }
         }
-        Row(Modifier.padding(top = FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically) {
+        // A band in the section's color behind the icon and name, the way Sileo's page opens on the package's tint.
+        Row(
+            Modifier.padding(top = FolioSpace.COMPACT.dp).fillMaxWidth().clip(RoundedCornerShape(FolioRadius.GROUP.dp))
+                .background((pageTint ?: sectionColor(entry.manifest?.section)).copy(alpha = .16f)).padding(FolioSpace.MEDIUM.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             PackageIcon(session, MarketEntry(entry, source), 64.dp)
             Spacer(Modifier.width(14.dp))
             Column {
@@ -1436,32 +1610,11 @@ private fun MarketPackagePage(
             }
         }
 
-        Row(Modifier.padding(vertical = FolioSpace.MEDIUM.dp), verticalAlignment = Alignment.CenterVertically) {
-            val justInstalled = rememberJustInstalled(MarketWork.busyId == entry.id, installed != null)
-            when {
-                // Pulled by its source. Removing what's already on is still allowed; getting it is not.
-                revoked != null && installed == null -> Column(Modifier.testTag("package-unavailable")) {
-                    Text(stringResource(R.string.unavailable), color = FolioColors.Warning, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
-                    Text(stringResource(R.string.its_source_pulled_it_1_s, revoked), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
-                }
-                // Known not to work with this Folio: the same place and weight as a pulled one, with its own words.
-                incompatible != null && installed == null -> Column(Modifier.testTag("package-incompatible")) {
-                    Text(stringResource(R.string.unavailable), color = FolioColors.Warning, fontSize = FolioType.SUBHEAD.sp, fontWeight = FontWeight.SemiBold)
-                    Text(stringResource(R.string.doesn_t_work_with_this_folio_1_s, incompatible), color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp)
-                }
-                MarketWork.busyId == entry.id -> InstallProgress(MarketWork.progress, words = true, name = name)
-                justInstalled -> InstallDonePop()
-                appUpdate != null -> MarketActionButton(R.string.update, name, onGet)
-                external -> MarketActionButton(if (onPhone != null) R.string.open else R.string.get, name, onGet)
-                // A listing this Folio could not read has no page of its own to install from: it says so, as its row does.
-                entry.needs.isNotEmpty() && installed == null ->
-                    Text(stringResource(R.string.needs_a_newer_folio), color = Color.White.copy(alpha = .55f), fontSize = FolioType.SUBHEAD.sp)
-                updateAvailable && entry.needs.isEmpty() && !verdict.stopsGet && revoked == null && incompatible == null ->
-                    MarketActionButton(R.string.update, name, onGet)
-                installed != null -> MarketActionButton(R.string.remove, name, onRemove)
-                // Off while the tweak it adds to is missing; the note below says why and offers the tweak.
-                else -> MarketActionButton(R.string.get, name, onGet, enabled = host?.onPhone != false && !verdict.stopsGet)
-            }
+        Row(
+            Modifier.padding(vertical = FolioSpace.MEDIUM.dp).onGloballyPositioned { getBottom = (it.positionInParent().y + it.size.height).toInt() },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            getAction()
             Spacer(Modifier.width(8.dp))
             // The version beside the button. "Built in" belongs to Folio's own packages; a listing from a source
             // that isn't installed yet was being called built in too, which is the one thing it certainly isn't.
@@ -1470,12 +1623,22 @@ private fun MarketPackagePage(
                     appUpdate != null -> "${appUpdate.versionName} → ${entry.version}"
                     updateAvailable -> "${installed?.version} → ${entry.version}"
                     installed != null -> stringResource(R.string.version_1, installed.version)
+                    // An app of its own is not built into Folio; the strip below says where it comes from.
+                    external -> ""
                     source.kind == Source.Kind.BUILT_IN -> stringResource(R.string.built_in)
                     else -> stringResource(R.string.version_1, entry.version.text)
                 },
                 color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp,
             )
         }
+        MarketStats(
+            version = if (external) entry.manifest?.via.orEmpty().map { stringResource(MarketExternalApp.label(it.store)) }.joinToString()
+                else (installed?.version ?: entry.version).text,
+            versionLabel = stringResource(if (external) R.string.market_stat_get_on else R.string.market_stat_version),
+            source = source.label,
+            screens = entry.manifest?.screens ?: com.mccal.folio.market.Screen.entries.toSet(),
+            modifier = Modifier.padding(bottom = FolioSpace.COMPACT.dp),
+        )
         // A package from a source can opt out of automatic updates on its own page; it follows the global switch until then.
         // A built-in package has no source address to be updated from, so there is nothing for the switch to do.
         if (installed != null && installed.origin == InstalledPackage.Origin.FOLIO_SOURCE && installed.sourceUrl != null && source.kind != Source.Kind.BUILT_IN &&
@@ -1500,10 +1663,23 @@ private fun MarketPackagePage(
 
         // The page the author wrote: Folio draws each block itself, and skips any it doesn't know.
         val blocks = (pkg?.depiction ?: sourcePage)?.blocks.orEmpty()
+        // The newest line of the changelog, said up top the way a Sileo page opens on what changed; the full list stays below.
+        val newest = blocks.filterIsInstance<DepictionBlock.Changelog>().flatMap { it.entries }.maxByOrNull { it.version }
         if (blocks.none { it is DepictionBlock.Hero || it is DepictionBlock.Screenshots }) NoScreenshots()
+        if (newest != null && blocks.none { it is DepictionBlock.Hero }) WhatsNewLine(newest.version.text, newest.notes.english)
         blocks.forEach { block ->
             when (block) {
-                is DepictionBlock.Hero -> MarketImage(session, source, block.image, Modifier.fillMaxWidth().height(160.dp))
+                is DepictionBlock.Hero -> {
+                    // A real capture is shown whole, at its own shape, never cropped. How tall it may be follows the pane
+                    // it is in: about half the width, between a small and a large limit, so the cover, a phone, a
+                    // half-open screen and the inner screen each get a picture sized for them. A shape that does not
+                    // fill the pane sits centered with room either side.
+                    BoxWithConstraints(Modifier.fillMaxWidth()) {
+                        val tallest = (maxWidth * 0.5f).coerceIn(140.dp, 340.dp)
+                        MarketImage(session, source, block.image, Modifier.fillMaxWidth().heightIn(min = 100.dp, max = tallest), fit = true)
+                    }
+                    if (newest != null) WhatsNewLine(newest.version.text, newest.notes.english)
+                }
                 is DepictionBlock.Screenshots -> Row(
                     Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = FolioSpace.COMPACT.dp),
                     horizontalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp),
@@ -1628,6 +1804,26 @@ private fun MarketPackagePage(
             }
         }
     }
+    // The small Get, as Sileo's page does once the big one has scrolled away. A still bar: it appears, it does not slide.
+    if (scroll.value > getBottom) {
+        Row(
+            Modifier.align(Alignment.TopCenter).fillMaxWidth().background(Color.Black)
+                .marketBottomHairline().padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.COMPACT.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (showBack) {
+                Icon(
+                    Icons.Rounded.ChevronLeft, contentDescription = backLabel, tint = LocalAccent.current.ink,
+                    modifier = Modifier.mirroredForRtl().size(28.dp).clickable(onClick = onBack).padding(end = FolioSpace.TINY.dp),
+                )
+            }
+            PackageIcon(session, MarketEntry(entry, source), 30.dp)
+            Spacer(Modifier.width(10.dp))
+            Text(name, color = Color.White, fontSize = FolioType.CALLOUT.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            getAction()
+        }
+    }
+    }
 }
 
 /** "AI-assisted", beside the developer on a package page. */
@@ -1702,26 +1898,33 @@ internal fun sheetForAppIcon(linkedPage: CustomizationPage?, currentPage: Custom
  * package from a source names a path on that source's host, which [MarketImages] fetches through Folio's own client.
  */
 @Composable
-private fun MarketImage(session: MarketSession, source: Source, path: String, modifier: Modifier) {
+private fun MarketImage(session: MarketSession, source: Source, path: String, modifier: Modifier, framed: Boolean = true, fit: Boolean = false) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val url = remember(source.url, path) { MarketImages.urlFor(source, path) }
     val bundled = remember(path, url) {
         if (url != null) null else MarketImages.bundled(session.source::asset, path)
     }
-    Box(modifier.padding(bottom = FolioSpace.COMPACT.dp).clip(RoundedCornerShape(FolioRadius.ROW.dp)).background(Color.White.copy(alpha = .06f))) {
+    // Framed on a package's page (rounded, with room below); a banner is clipped and colored by the card it fills.
+    // [fit] shows the whole picture at its own shape, centered, and never crops it; the default fills the frame.
+    val scale = if (fit) androidx.compose.ui.layout.ContentScale.Fit else androidx.compose.ui.layout.ContentScale.Crop
+    val imageModifier = if (fit) Modifier.fillMaxWidth() else Modifier.fillMaxSize()
+    Box(
+        if (framed) modifier.padding(bottom = FolioSpace.COMPACT.dp).clip(RoundedCornerShape(FolioRadius.ROW.dp)).background(Color.White.copy(alpha = .06f)) else modifier,
+        contentAlignment = androidx.compose.ui.Alignment.Center,
+    ) {
         when {
             bundled != null -> androidx.compose.foundation.Image(
                 bitmap = bundled,
                 contentDescription = null, // the page's text says what it is; the picture repeats it
-                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
+                contentScale = scale,
+                modifier = imageModifier,
             )
             url != null -> coil3.compose.AsyncImage(
                 model = url,
                 imageLoader = MarketImages.loader(context),
                 contentDescription = null,
-                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
+                contentScale = scale,
+                modifier = imageModifier,
             )
         }
     }
@@ -1920,6 +2123,7 @@ private fun sectionColor(section: com.mccal.folio.market.Section?): Color = when
     com.mccal.folio.market.Section.LAYOUTS -> FolioColors.Green
     com.mccal.folio.market.Section.WALLPAPERS -> FolioColors.Orange
     com.mccal.folio.market.Section.SCRIPTS -> FolioColors.Pink
+    com.mccal.folio.market.Section.APPS -> FolioColors.Teal
     null -> FolioColors.Gray
 }
 
@@ -1927,6 +2131,21 @@ private fun sectionColor(section: com.mccal.folio.market.Section?): Color = when
  * What a package page shows where its pictures would be. A gap reads as something that failed to load, so Folio says
  * it plainly - and the line is aimed at whoever published the package as much as at the person reading it.
  */
+/** "New in 1.0.0" and what changed, in the page's accent, under the picture. One look at it says whether the package moved. */
+@Composable
+private fun WhatsNewLine(version: String, notes: String) {
+    Column(Modifier.fillMaxWidth().padding(top = FolioSpace.SMALL.dp, bottom = FolioSpace.MEDIUM.dp)) {
+        Text(
+            stringResource(R.string.whats_new_in_1_s, version),
+            color = LocalAccent.current.ink, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            notes, color = Color.White.copy(alpha = .7f), fontSize = FolioType.FOOTNOTE.sp, maxLines = 2,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+        )
+    }
+}
+
 @Composable
 private fun NoScreenshots() {
     Row(
@@ -2048,4 +2267,29 @@ internal sealed interface MarketLink {
 internal object MarketBack {
     const val SHIFT = .08f
     const val SHRINK = .1f
+}
+
+/** Whether a package belongs in Browse for [query]: every word typed appears in its name, id, author or section, ignoring case. A blank query matches all. */
+internal fun marketMatches(name: String, id: String, author: String?, section: String?, query: String): Boolean {
+    val words = query.trim().lowercase().split(" ").filter { it.isNotEmpty() }
+    if (words.isEmpty()) return true
+    val haystack = listOfNotNull(name, id, author, section).joinToString(" ").lowercase()
+    return words.all { it in haystack }
+}
+
+/** The search box at the top of Browse, drawn like the Add a Control search so the two read as one kind of field. */
+@Composable
+private fun MarketSearchField(query: String, onQuery: (String) -> Unit, modifier: Modifier = Modifier) {
+    val hint = stringResource(R.string.market_search_packages)
+    Row(modifier.fillMaxWidth().heightIn(min = FolioTouch.MIN.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp)).background(Color.White.copy(alpha = .1f))
+        .padding(horizontal = FolioSpace.COMPACT.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(FolioSpace.SNUG.dp)) {
+        Icon(Icons.Rounded.Search, null, tint = FolioGlass.secondary, modifier = Modifier.size(20.dp))
+        Box(Modifier.weight(1f)) {
+            if (query.isEmpty()) Text(hint, color = FolioGlass.secondary, fontSize = FolioType.BODY.sp, modifier = Modifier.clearAndSetSemantics {})
+            androidx.compose.foundation.text.BasicTextField(query, onQuery, singleLine = true, cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.White),
+                textStyle = androidx.compose.ui.text.TextStyle(color = Color.White, fontSize = FolioType.BODY.sp),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
+                modifier = Modifier.fillMaxWidth().testTag("market-search").semantics { contentDescription = hint })
+        }
+    }
 }

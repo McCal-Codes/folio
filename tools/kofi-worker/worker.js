@@ -14,6 +14,7 @@
 import { admin } from './admin.js'
 import { betaAsset, betaReleases, sameSecret } from './beta.js'
 import { supporterEmail } from './email.js'
+import { payerKey, renew } from './renew.js'
 
 // Ko-fi's "Send test" buttons post a made-up payment with this transaction id. It proves the webhook reaches the
 // worker, so it's written down for the health check, but it never takes a real code out of a pool.
@@ -29,6 +30,7 @@ export default {
     const url = new URL(request.url)
     if (request.method === 'GET' && url.pathname === '/beta/releases') return betaReleases(request, env, url)
     if (request.method === 'GET' && url.pathname.startsWith('/beta/asset/')) return betaAsset(request, env, url)
+    if (request.method === 'GET' && url.pathname === '/renew') return renew(request, env)
     if (url.pathname.startsWith('/admin/')) return admin(request, env, url, { poolFor, claimCode, email })
     if (request.method !== 'POST') return new Response('Folio supporter codes', { status: 200 })
 
@@ -179,7 +181,23 @@ async function claimCode(env, pool, data) {
     await env.DB.prepare('UPDATE codes SET used_at = NULL WHERE code = ?').bind(taken.code).run()
     throw problem
   }
+  await rememberPayer(env, data)
   return taken.code
+}
+
+/**
+ * Written down apart from the claim, on purpose: it is a convenience for the member's phone, so a database that has
+ * not had the `payer` column added yet (see schema.sql) must never stop a code reaching somebody who paid.
+ * Only membership payments are renewable, so only they get a payer.
+ */
+async function rememberPayer(env, data) {
+  if (data.type !== 'Subscription') return
+  try {
+    const payer = await payerKey(env, data.email)
+    if (payer) await env.DB.prepare('UPDATE handled SET payer = ? WHERE message_id = ?').bind(payer, data.message_id).run()
+  } catch {
+    // No column, or no secret: the code is claimed and will be emailed, which is all this payment needed.
+  }
 }
 
 /**

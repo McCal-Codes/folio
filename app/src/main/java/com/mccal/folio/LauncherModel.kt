@@ -133,6 +133,8 @@ data class LauncherState(
     /** Top pulls open Folio's iOS-style panels instead of the Android system shade. */
     val folioPanels: Boolean = true,
     val minPages: Int = 1,
+    /** Home pages the person hid in the Page overview, by real page number. They keep their apps; see [HomePages]. */
+    val hiddenPages: Set<Int> = emptySet(),
     val statusStyle: StatusStyle = StatusStyle(),
     val foldEffect: Boolean = true,
     val foldIntensity: Float = 1f,
@@ -201,9 +203,13 @@ data class LauncherState(
     val islandAlertAppsOff: Set<String> = emptySet(),
     /** Control Center's small controls, in order (names of [CcControl]). */
     val ccControls: List<String> = CcControl.DEFAULTS,
+    /** Places made in the Control Center editor (FeatureGate.CC_EDITOR); null until the person moves something. */
+    internal val ccLayout: CcSavedLayout? = null,
     val ccSize: PanelSize = PanelSize.STANDARD,
     /** Unfolded: Control Center in the middle instead of under the right-hand pull. */
     val ccCentered: Boolean = false,
+    /** Control Center sits under the top left corner on a wide window (left handed); [ccCentered] wins when both are set. */
+    val ccLeft: Boolean = false,
     /** How Control Center's tiles are drawn: Clear glass, Frosted or Solid. */
     val ccLook: CcLook = CcLook.CLEAR,
     /** Control Center's pages, sliders and tap behavior (FeatureGate.CC_SETTINGS_V2); the defaults are what it always did. */
@@ -353,16 +359,19 @@ data class LauncherState(
     val widgets: List<Int> get() = layout.widgets
     val layout: HomeLayout get() = HomeLayout(homeSlots, dock, widgetPlacements, folders, widgetRestores, leadingSlots, minPages)
     val homePages get() = layout.pageCount
-    /** App rows every Home page shows, the same on both screens so pages don't change when you fold. */
+    /** App rows a fixed Rows setting gives every screen, or the fewest any measured screen fits when Automatic and the screen is not measured yet. */
     val homeAppRows: Int get() = effectiveHomeRows(homeRows, homeFitCompact, homeFitExpanded, homeFitUpright)
     /**
-     * App rows for the screen Home is on now. The open screen held upright with its own layout (Layout › Inner) gets
-     * the rows that fit it, instead of the fewest rows any screen fits, so the separate layout can use its height (#13).
-     * Pages with apps in those extra rows draw taller on the other screens (see shownHomeRows), so nothing is lost.
+     * App rows for the screen Home is on now. Automatic gives each screen the rows that fit it, so a tall phone fills its
+     * height and a foldable's screens are separate layouts, each using its own room (#13). A screen not measured yet
+     * uses the fewest rows another screen fits. Pages with apps in rows a smaller screen lacks draw taller there (see
+     * shownHomeRows), so nothing is lost. A fixed Rows setting is the same on every screen.
      */
-    fun homeAppRowsFor(screen: LayoutScreen): Int =
-        if (screen == LayoutScreen.INNER_UPRIGHT && portrait != null && homeRows <= 0 && homeFitUpright > 0)
-            homeFitUpright.coerceIn(BASE_APP_ROWS, MAX_APP_ROWS) else homeAppRows
+    fun homeAppRowsFor(screen: LayoutScreen): Int = if (homeRows > 0) homeAppRows else automaticHomeRowsFor(screen)
+    /** What Automatic gives [screen]: its own measured rows, else [automaticHomeRows]. */
+    fun automaticHomeRowsFor(screen: LayoutScreen): Int =
+        // The open screen held upright without a layout of its own shows the inner screen's layout, so it takes that fit.
+        homeFitFor(if (screen == LayoutScreen.INNER_UPRIGHT && portrait == null) LayoutScreen.INNER else screen).takeIf { it > 0 }?.coerceIn(BASE_APP_ROWS, MAX_APP_ROWS) ?: automaticHomeRows
     /** What Automatic would give, whatever fixed Rows value is chosen, so the menu can name it honestly. */
     val automaticHomeRows: Int get() = effectiveHomeRows(0, homeFitCompact, homeFitExpanded, homeFitUpright)
     /** Home can be drawn complete: its apps are in, or loading has ended (or failed). */
@@ -520,7 +529,15 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     private val mutable = MutableStateFlow(load())
     val state = mutable.asStateFlow()
     private var undoLayout: Pair<HomeLayout, HomeLayout>? = null
+    /** What Undo just took back, as (the layout now, the layout it undid): Redo puts the second back while the first is still what Home shows. */
+    private var redoPair: Pair<HomeLayout, HomeLayout>? = null
     private var undoImportSettings: UndoImportSettings? = null
+    /**
+     * What a page move or hide changed besides the layout (page looks, hidden pages, Focus page sets), as (before, after, the
+     * layout that edit left). Undo puts it back only while it is still the edit being undone, so the one Undo covers all of it.
+     */
+    private var pageSideUndo: Triple<PageSide, PageSide, HomeLayout>? = null
+    private var lastMoveOrder: List<Int>? = null
     /**
      * Smart Stacks a restored backup took off Home because an old overflow widget in it kept their slot number, with the
      * layout that restore made. They count only while that restore is still the one Undo would take back.
@@ -738,10 +755,8 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
                     pendingShortcuts.removeAll { p -> newShortcuts.any { it.packageName == p.first && it.shortcutId == p.second } }
                     addedPackages.removeAll(arrivals.map { it.packageName }.toSet())
                     val homeArrivals = (if (old.addNewAppsToHome) arrivals else emptyList()) + newShortcuts
-                    // While a Focus hides Home pages, new arrivals go to a page that's showing, not one you can't see.
-                    val hiddenCells = FocusPages.lockingFocus(old)?.pages?.let { shown ->
-                        (0 until old.layout.pageCount).filter { it !in shown }.flatMap { page -> (0 until HOME_CELLS).map { homeCellIndex(page, it) } }
-                    }.orEmpty()
+                    // While a Focus limits Home pages, or pages are hidden, new arrivals go to a page that's showing, not one you can't see.
+                    val hiddenCells = FocusPages.hiddenCells(old)
                     val blockedForArrivals = (old.widgetPlacements.filter { it.page >= 0 }.flatMap { it.coveredIndices() } + hiddenCells).toSet()
                     val withArrivals = homeArrivals.fold(pins) { slots, app ->
                         if (app.id in old.dock || app.id in old.leadingSlots || old.folders.any { app.id in it.appIds }) slots
@@ -952,7 +967,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         mutable.update { old ->
             val enable = pinned && old.apps.any { it.id == id }
             old.copy(homeSlots = if (enable && id in old.leadingSlots) old.homeSlots else pinHomeApp(old.homeSlots, id,
-                enable, old.widgetPlacements.flatMapTo(mutableSetOf()) { it.coveredIndices() }.filterTo(mutableSetOf()) { it >= 0 }, old.homeAppRows),
+                enable, old.widgetPlacements.flatMapTo(mutableSetOf()) { it.coveredIndices() }.filterTo(mutableSetOf()) { it >= 0 } + FocusPages.hiddenCells(old), old.homeAppRows),
                 leadingSlots = if (enable) old.leadingSlots else old.leadingSlots.map { it?.takeUnless(id::equals) },
                 canUndoEdit = false)
         }
@@ -1003,13 +1018,16 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         applyDrop(id, DropTarget.Home(target.coerceIn(range)))
     }
 
+    /** How many dock places the window now shown has (see [com.mccal.folio.dockCapacity]); set by the Home screen, not saved. */
+    @Volatile var dockCapacity: Int = STANDARD_DOCK_SLOTS
+
     fun applyDrop(id: String, target: DropTarget): Boolean {
         val old = mutable.value
         val folder = old.layout.folder(id)
         if (old.apps.none { it.id == id } && folder == null) return false
         if (target is DropTarget.Folder) return folder == null && addAppToFolder(target.id, id)
         if (folder != null && target !is DropTarget.Home) return false
-        return commitLayout(dropApp(old.layout, id, target, old.homeAppRows))
+        return commitLayout(dropApp(old.layout, id, target, old.homeAppRows, dockCapacity))
     }
 
     fun createFolder(firstAppId: String, secondAppId: String, targetIndex: Int, title: String = "Folder"): String? {
@@ -1071,6 +1089,8 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         val names = old.appNames + preview.appNames
         mutable.value = old.copy(appNames = names, appIconStyles = old.appIconStyles + preview.appIconStyles, iconActions = old.iconActions + preview.iconActions, apps = old.apps.withAppNames(names),
             homeSlots = restored.slots, leadingSlots = restored.leadingSlots, dock = trimmedDock(restored.dock),
+            // The hidden pages were numbers in the old layout; in a restored one they would hide other pages, so every page shows.
+            hiddenPages = emptySet(),
             widgetPlacements = restored.widgetPlacements, folders = restored.folders,
             widgetRestores = restored.widgetRestores, compact = preview.compact, expanded = preview.expanded, portrait = preview.portrait,
             // Kept for Undo, except on a number a restored widget still uses (only an old overflow widget keeps its number).
@@ -1181,7 +1201,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
      * widgets Android no longer has are left out, and Undo is offered like any other layout change.
      */
     fun restoreLayoutSnapshot(snapshot: LayoutSnapshot): Boolean {
-        if (mutable.value.loading || FocusPages.lockingFocus(mutable.value) != null) return false
+        if (mutable.value.loading || FocusPages.isLocked(mutable.value)) return false
         // Over a damaged layout this is the way back, like a restored backup (see applyImportedLayout).
         val recovering = statePayloadInvalid
         saveLayoutSnapshot("Before restoring", force = true)
@@ -1403,12 +1423,14 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         if (statePayloadInvalid) return false
         // The dock is as big as what is in it (four at least), so a place left empty at its end closes.
         val next = requested.copy(dock = trimmedDock(requested.dock))
-        // A Focus hiding Home pages locks editing: Home shows a filtered copy, so its positions aren't the real ones.
-        if (FocusPages.lockingFocus(mutable.value) != null) return false
+        // A Focus limiting Home pages, or a page the person hid, locks editing: Home shows a filtered copy, so its positions aren't the real ones.
+        if (FocusPages.isLocked(mutable.value)) return false
         val old = mutable.value
         if (old.layout == next) return false
         undoLayout = old.layout to next
+        redoPair = null
         undoImportSettings = null
+        pageSideUndo = null
         mutable.value = old.copy(homeSlots = next.slots, leadingSlots = next.leadingSlots, dock = next.dock,
             widgetPlacements = next.widgetPlacements, folders = next.folders,
             widgetRestores = next.widgetRestores,
@@ -1426,7 +1448,9 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         if (!old.canUndoEdit || old.layout != after) return false
         val installed = (old.apps.map { it.id } + before.folders.map { it.id }).toSet()
         val settings = undoImportSettings
+        val side = pageSideUndo?.takeIf { it.third == after }?.first
         mutable.value = old.copy(homeSlots = reconcileHomeSlots(before.slots, installed),
+            pageStyles = side?.pageStyles ?: old.pageStyles, hiddenPages = side?.hiddenPages ?: old.hiddenPages, focusModes = side?.focusModes ?: old.focusModes,
             leadingSlots = before.leadingSlots.map { it?.takeIf(installed::contains) },
             dock = trimmedDock(before.dock.map { it?.takeIf(installed::contains) }), widgetPlacements = before.widgetPlacements, folders = before.folders,
             widgetStacks = WidgetStacks.prune(old.widgetStacks + stacksForUndo(), before.widgetPlacements.map { it.slot }.toSet()),
@@ -1439,17 +1463,75 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         undoLayout = null
         undoImportSettings = null
         setAsideStacks = null
+        // A page edit has no Redo: putting it back would need the page data again, and a hide changes no cell at all.
+        redoPair = if (side == null) mutable.value.layout to after else null
+        pageSideUndo = null
         persist()
         return true
     }
+
+    /** Whether Redo has something to put back: only while Home still shows the layout Undo left, so any later edit ends it. */
+    fun canRedoEdit(layout: HomeLayout): Boolean = redoPair?.first == layout
+
+    /** Puts back what Undo just took away, as one more edit (so Undo works on it again). */
+    fun redoEdit(): Boolean {
+        val (now, undone) = redoPair ?: return false
+        if (mutable.value.layout != now) return false
+        return commitLayout(undone)
+    }
     fun setLabels(value: Boolean) { if (statePayloadInvalid) return; undoLayout = null; undoImportSettings = null; mutable.update { it.copy(labels = value, canUndoEdit = false) }; persist() }
     /** Adds an empty Home page after the last one; returns its index. */
-    fun addPage(): Int { if (statePayloadInvalid || FocusPages.lockingFocus(state.value) != null) return -1; val next = state.value.homePages
+    fun addPage(): Int { if (statePayloadInvalid || FocusPages.isLocked(state.value)) return -1; val next = state.value.homePages
         undoLayout = null; mutable.update { it.copy(minPages = (next + 1).coerceAtMost(20), canUndoEdit = false) }; persist(); return next }
     /** Removes the last page when it has no apps or widgets. */
-    fun removeLastEmptyPage(): Boolean { if (statePayloadInvalid || FocusPages.lockingFocus(state.value) != null) return false; val s = state.value
+    fun removeLastEmptyPage(): Boolean { if (statePayloadInvalid || FocusPages.isLocked(state.value)) return false; val s = state.value
         if (s.homePages <= 1 || s.layout.contentPageCount >= s.homePages) return false
         undoLayout = null; mutable.update { it.copy(minPages = maxOf(1, it.homePages - 1), canUndoEdit = false) }; persist(); return true }
+
+    /**
+     * Moves Home page [from] to place [to] (the Page overview's drag, or a TalkBack move). Every holder of a page number follows the
+     * page: widgets, page looks, the hidden set and each Focus's pages. Returns the order (`order[new] = old`) so the screen can
+     * carry the page each display rested on, or null when nothing moved. One Undo puts all of it back.
+     */
+    fun movePage(from: Int, to: Int): List<Int>? {
+        val old = mutable.value
+        if (FocusPages.lockingFocus(old) != null) return null
+        val order = HomePages.moveOrder(old.layout.pageCount, from, to)
+        if (HomePages.isIdentity(order)) return null
+        val side = PageSide(HomePages.remapPageMap(old.pageStyles, order), HomePages.remapPages(old.hiddenPages, order),
+            old.focusModes.map { HomePages.remapFocus(it, order) })
+        return order.takeIf { commitPages(HomePages.reorder(old.layout, order), side) }?.also { lastMoveOrder = it }
+    }
+
+    /** The page order that [undoEdit] is about to apply when the last step was a page move, so the screen can follow the page it was on. */
+    fun undoPageOrder(): List<Int>? = lastMoveOrder?.takeIf { pageSideUndo?.third == mutable.value.layout }?.let(HomePages::inverse)
+
+    /** Hides or shows Home page [page]. Its apps stay where they are. The last page showing cannot be hidden. */
+    fun setPageHidden(page: Int, hide: Boolean): Boolean {
+        val old = mutable.value
+        if (FocusPages.lockingFocus(old) != null) return false
+        val hidden = HomePages.withHidden(old.hiddenPages, old.layout.pageCount, page, hide) ?: return false
+        return commitPages(old.layout, PageSide(old.pageStyles, hidden, old.focusModes))
+    }
+
+    /** One page-overview edit as an undoable step. Unlike [commitLayout] it allows a hide, which changes no cell. */
+    private fun commitPages(layout: HomeLayout, side: PageSide): Boolean {
+        if (statePayloadInvalid) return false
+        val old = mutable.value
+        val before = PageSide(old.pageStyles, old.hiddenPages, old.focusModes)
+        if (old.layout == layout && before == side) return false
+        undoLayout = old.layout to layout
+        redoPair = null
+        undoImportSettings = null
+        pageSideUndo = Triple(before, side, layout)
+        lastMoveOrder = null
+        mutable.value = old.copy(homeSlots = layout.slots, widgetPlacements = layout.widgetPlacements,
+            minPages = layout.minPages, pageStyles = side.pageStyles, hiddenPages = side.hiddenPages, focusModes = side.focusModes,
+            editRevision = old.editRevision + 1, canUndoEdit = true)
+        persist()
+        return true
+    }
+
     fun setSpotlightSection(section: String, visible: Boolean) = updateSettings(soon = false) {
         it.copy(spotlightHidden = if (visible) it.spotlightHidden - section else it.spotlightHidden + section) }
     fun setSearchEngine(engine: String) = updateSettings(soon = false) { it.copy(searchEngine = engine) }
@@ -1490,14 +1572,16 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     fun setIslandAlerts(value: Boolean) = updateSettings(soon = false) { it.copy(islandAlerts = value) }
     fun setIslandAlertApp(packageName: String, enabled: Boolean) = updateSettings(soon = false) {
         it.copy(islandAlertAppsOff = if (enabled) it.islandAlertAppsOff - packageName else it.islandAlertAppsOff + packageName) }
+    internal fun setCcLayout(layout: CcSavedLayout?) = updateSettings(soon = false) { it.copy(ccLayout = layout) }
     fun setCcControls(controls: List<String>) = updateSettings(soon = false) { it.copy(ccControls = controls.distinct()) }
     fun setCcSize(size: PanelSize) = updateSettings(soon = false) { it.copy(ccSize = size) }
     fun setCcCentered(value: Boolean) = updateSettings(soon = false) { it.copy(ccCentered = value) }
+    internal fun setCcSide(side: CcSide) = updateSettings(soon = false) { it.copy(ccCentered = side == CcSide.MIDDLE, ccLeft = side == CcSide.LEFT) }
     fun setCcLook(look: CcLook) = updateSettings(soon = false) { it.copy(ccLook = look) }
     fun setCcOptions(options: CcOptions) = updateSettings(soon = false) { it.copy(ccOptions = options) }
     /** Reset Control Center, and its Undo: size, look, the middle and the options, in one write. The chosen controls are not touched. */
-    fun restoreControlCenter(size: PanelSize, centered: Boolean, look: CcLook, options: CcOptions) =
-        updateSettings(soon = false) { it.copy(ccSize = size, ccCentered = centered, ccLook = look, ccOptions = options) }
+    internal fun restoreControlCenter(size: PanelSize, centered: Boolean, look: CcLook, options: CcOptions, layout: CcSavedLayout? = null, left: Boolean = false) =
+        updateSettings(soon = false) { it.copy(ccSize = size, ccCentered = centered, ccLeft = left, ccLook = look, ccOptions = options, ccLayout = layout) }
     fun setNcLayout(value: NcLayout) = updateSettings(soon = false) { it.copy(ncLayout = value) }
     fun setShadeOverApps(value: Boolean) = updateSettings(soon = false) { it.copy(shadeOverApps = value) }
     fun setShadePull(value: Boolean) = updateSettings(soon = false) { it.copy(shadePull = value) }
@@ -1712,7 +1796,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         fun preset(p: LayoutPreset) = JSONObject().put("iconSize", p.iconSize).put("rowGap", p.rowGap)
             .put("dockWidth", p.dockWidth).put("dockPosition", p.dockPosition).put("dockAlignToGrid", p.dockAlignToGrid)
             .put("dockPlacement", p.dockPlacement.name).put("statusAlignToGrid", p.statusAlignToGrid).put("statusPosition", p.statusPosition)
-            .put("columnGap", p.columnGap).put("dockSpacing", p.dockSpacing).put("widgetScale", p.widgetScale).put("pageTop", p.pageTop)
+            .put("columnGap", p.columnGap).put("dockSpacing", p.dockSpacing).put("widgetScale", p.widgetScale).put("pageTop", p.pageTop).put("dockSize", p.dockSize).put("dockCentered", p.dockCentered).put("dockCompact", p.dockCompact)
         val widgets = JSONArray().also { array -> s.widgetPlacements.forEach { w -> array.put(JSONObject()
             .put("slot", w.slot).put("id", w.id).put("page", w.page).put("column", w.column).put("row", w.row)
             .put("spanX", w.spanX).put("spanY", w.spanY)
@@ -1724,7 +1808,7 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
             .put("title", restore.title).put("profileLabel", restore.profileLabel).put("work", restore.isWork)
             .put("sourceScope", restore.sourceScope)) } }
         val data = JSONObject().put("schema", stateSchemaFor(s)).put("pinned", JSONArray(s.order)).put("homeSlots", JSONArray(s.homeSlots))
-            .put("leadingSlots", JSONArray(s.leadingSlots)).put("dock", JSONArray(s.dock))
+            .put("leadingSlots", JSONArray(s.leadingSlots)).put("dock", JSONArray(s.dock.take(STANDARD_DOCK_SLOTS)))
             .put("widgets", widgets).put("labels", s.labels)
             .put("folders", folders)
             .put("restores", restores)
@@ -1736,6 +1820,8 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
             .put("island", s.island)
             .put("folioPanels", s.folioPanels)
             .put("minPages", s.minPages)
+            // Only when a page is hidden, so a save from before the Page overview keeps its shape (and an older Folio simply shows every page).
+            .also { o -> if (s.hiddenPages.isNotEmpty()) o.put("hiddenPages", JSONArray(s.hiddenPages.sorted())) }
             .put("statusStyle", s.statusStyle.toJson())
             .put("foldEffect", s.foldEffect).put("foldSnapshot", s.foldSnapshot).put("foldIntensity", s.foldIntensity.toDouble()).put("duet", s.duet.toJson()).put("stayAwakeOnFold", s.stayAwakeOnFold)
             .put("panelBlur", s.panelBlur.toDouble()).put("notificationClock", s.notificationClock).put("groupNotifications", s.groupNotifications).put("notificationSections", s.notificationSections)
@@ -1743,8 +1829,8 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
             .put(SettingKeys.ISLAND_EVENTS_OFF, JSONArray(s.islandEventsOff.toList())).put("libraryCategories", s.libraryCategories).put("libraryWork", s.libraryWork).put("iconStyle", s.iconStyle.name).put("iconTint", s.iconTint)
             .put("iconShape", s.iconShape.name).put("iconPack", s.iconPack ?: JSONObject.NULL).put("badgeStyle", s.badgeStyle.name).put("badgeColor", s.badgeColor.name).put("badgeLook", s.badgeLook.name).put("badgeSize", s.badgeSize.name).put("badgesWhenOpened", s.badgesWhenOpened)
             .put("badgesSeen", JSONObject().apply { s.badgesSeen.forEach { (pkg, count) -> put(pkg, count) } }).put("searchPill", s.searchPill).put("homeStrip", s.homeStrip.key).put("swipeDownHome", s.swipeDownHome).put("messagesApp", s.messagesApp ?: JSONObject.NULL).put(SettingKeys.MESSAGES_AVOID_DOUBLE, s.messagesAvoidDouble)
-            .put(SettingKeys.ISLAND_ALERTS, s.islandAlerts).put(SettingKeys.ISLAND_ALERT_APPS_OFF, JSONArray(s.islandAlertAppsOff.toList())).put("ccControls", JSONArray(s.ccControls))
-            .put("ccSize", s.ccSize.name).put("ccCentered", s.ccCentered).put("ccLook", s.ccLook.name).also { s.ccOptions.writeTo(it) }.put("ncLayout", s.ncLayout.name)
+            .put(SettingKeys.ISLAND_ALERTS, s.islandAlerts).put(SettingKeys.ISLAND_ALERT_APPS_OFF, JSONArray(s.islandAlertAppsOff.toList())).put("ccControls", JSONArray(s.ccControls)).also { j -> s.ccLayout?.let { j.put("ccLayout", ccLayoutToJson(it)) } }
+            .put("ccSize", s.ccSize.name).put("ccCentered", s.ccCentered).put("ccLeft", s.ccLeft).put("ccLook", s.ccLook.name).also { s.ccOptions.writeTo(it) }.put("ncLayout", s.ncLayout.name)
             // The old switch is kept, so a backup restored in an earlier Folio still opens the same way.
             .put("ncSplit", s.ncLayout == NcLayout.FULL_SCREEN).put("shadeOverApps", s.shadeOverApps).put("shadePull", s.shadePull).put("shadePullTab", s.shadePullTab).put("pullTarget", s.pullTarget.name)
             .put("widgetStacks", JSONObject().apply { s.widgetStacks.forEach { (slot, ids) -> put(slot.toString(), JSONArray(ids)) } })
@@ -1811,13 +1897,14 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
             editor.putString("state_v9_backup", legacyRaw)
         if (legacyRaw != null && v10BackupNeeded(sourceSchema, stateSchemaFor(s), prefs.contains("state_v10_backup")))
             editor.putString("state_v10_backup", legacyRaw)
+        dockMirrorJson(s.dock).let { if (it != null) editor.putString(DOCK_MIRROR_KEY, it) else editor.remove(DOCK_MIRROR_KEY) }
         editor.putString("state", data.toString()).putBoolean("initialized", true)
             // Kept beside the state so a restore or theme import that changes it chooses the right window next time.
             .putBoolean(SettingKeys.SYSTEM_WALLPAPER, s.systemWallpaper).apply()
     }
 
     private fun load(): LauncherState = traced("Folio.decodeState") { runCatching {
-        decodeLauncherState(prefs.getString("state", "{}") ?: "{}", legacyRaw)
+        decodeLauncherState(prefs.getString("state", "{}") ?: "{}", legacyRaw, prefs.getString(DOCK_MIRROR_KEY, null))
     }.getOrElse {
         statePayloadInvalid = legacyRaw != null
         LauncherState(loading = false, error = getApplication<Application>().getString(
@@ -1851,7 +1938,7 @@ private fun launcherIcon(drawable: Drawable): Bitmap {
  * Reads Folio's saved state (any schema it knows), upgrading older layouts. Throws when the saved text is damaged, so
  * the caller can keep it untouched and tell the user. [legacyRaw] is the pre-schema-2 payload, when there was one.
  */
-internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState {
+internal fun decodeLauncherState(raw: String, legacyRaw: String?, dockMirror: String? = null): LauncherState {
     val j = JSONObject(raw)
     fun preset(key: String, default: LayoutPreset): LayoutPreset {
         val p = j.optJSONObject(key) ?: return default
@@ -1864,7 +1951,8 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
             p.optBoolean("statusAlignToGrid", !p.optBoolean("statusTop", false)),
             p.optDouble("statusPosition", 0.0).toFloat(),
             p.optDouble("columnGap", DEFAULT_COLUMN_GAP.toDouble()).toFloat(), p.optDouble("dockSpacing", 0.0).toFloat(),
-            p.optDouble("widgetScale", 1.0).toFloat(), p.optBoolean("pageTop", false)).sanitized()
+            p.optDouble("widgetScale", 1.0).toFloat(), p.optBoolean("pageTop", false),
+            p.optDouble("dockSize", 1.0).toFloat(), p.optBoolean("dockCentered", false), p.optBoolean("dockCompact", false)).sanitized()
         return upgradePreset(loaded, j.optInt("schema", 1), key == "expanded")
     }
     val order = j.optJSONArray(if (j.optInt("schema", 1) >= 2) "pinned" else "order") ?: JSONArray()
@@ -1884,7 +1972,8 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
     } else List(HOME_CELLS) { null }
     val dockArray = j.optJSONArray("dock")
     // Four slots, or as many as were saved up to the most the dock holds; a damaged length can never be fewer than four.
-    val loadedDock = trimmedDock(List((dockArray?.length() ?: MIN_DOCK_SLOTS).coerceIn(MIN_DOCK_SLOTS, MAX_DOCK_SLOTS)) { dockArray?.optString(it)?.takeIf { it.isNotBlank() && it != "null" } })
+    val savedDock = List((dockArray?.length() ?: MIN_DOCK_SLOTS).coerceIn(MIN_DOCK_SLOTS, MAX_DOCK_SLOTS)) { dockArray?.optString(it)?.takeIf { it.isNotBlank() && it != "null" } }
+    val loadedDock = trimmedDock(mergeDockMirror(savedDock, dockMirror, (legacySlots + rawLeadingSlots).filterNotNull().toSet()))
     val widgetArray = j.optJSONArray("widgets")
     val placements = if (schema >= 6) {
         require(widgetArray != null) { "Schema $schema requires a widget placement array" }
@@ -1991,6 +2080,7 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         island = j.optBoolean("island", true),
         folioPanels = j.optBoolean("folioPanels", true),
         minPages = j.optInt("minPages", 1).coerceIn(1, 20),
+        hiddenPages = j.optJSONArray("hiddenPages")?.let { a -> (0 until a.length()).map { a.optInt(it, -1) }.filter { it >= 0 }.toSet() } ?: emptySet(),
         statusStyle = StatusStyle.fromJson(j.optJSONObject("statusStyle")),
         foldEffect = j.optBoolean("foldEffect", true), foldSnapshot = j.optBoolean("foldSnapshot", false), foldIntensity = j.optDouble("foldIntensity", 1.0).toFloat().coerceIn(.3f, 1.5f), // A save from before Duet had today's fold, which is the Duo style; only a new save carries a choice.
         duet = if (j.has("duet") || j.length() == 0) com.mccal.folio.duet.DuetOptions.fromJson(j.optJSONObject("duet")) else com.mccal.folio.duet.DuetOptions(style = com.mccal.folio.duet.DuetStyles.DUO.id),
@@ -2027,8 +2117,10 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         islandAlertAppsOff = j.optJSONArray(SettingKeys.ISLAND_ALERT_APPS_OFF)?.let { a -> (0 until a.length()).map(a::getString).toSet() } ?: emptySet(),
         ccControls = j.optJSONArray("ccControls")?.let { a -> (0 until a.length()).map(a::getString).filter { name -> CcControl.entries.any { it.name == name } } }
             ?: CcControl.DEFAULTS,
+        ccLayout = ccLayoutFromJson(j.optJSONObject("ccLayout")),
         ccSize = runCatching { PanelSize.valueOf(j.optString("ccSize")) }.getOrDefault(PanelSize.STANDARD),
         ccCentered = j.optBoolean("ccCentered", false),
+        ccLeft = j.optBoolean("ccLeft", false),
         ccLook = runCatching { CcLook.valueOf(j.optString("ccLook")) }.getOrDefault(CcLook.CLEAR),
         ccOptions = CcOptions.read(j),
         ncLayout = ncLayoutFrom(j.optString("ncLayout").ifEmpty { null }, if (j.has("ncSplit")) j.optBoolean("ncSplit") else null),
@@ -2129,8 +2221,9 @@ internal fun decodeLauncherState(raw: String, legacyRaw: String?): LauncherState
         buttonBarFade = j.optBoolean(SettingKeys.BUTTON_BAR_FADE, true),
         // Automatic is the new default, but it must not rearrange a Home that already exists: a save written before
         // this release comes back fixed at the four rows it was drawn with, and Settings › Home Screen & Dock offers
-        // Automatic to anyone who wants the taller screens filled.
-        homeRows = j.optInt("homeRows", if (j.optInt("schema", 1) in 1 until MORE_ROWS_SCHEMA) BASE_APP_ROWS else 0)
+        // Automatic to anyone who wants the taller screens filled. A fresh install has no save at all (no schema), so it
+        // starts on Automatic rather than on the four rows of a save it never had.
+        homeRows = j.optInt("homeRows", if (j.has("schema") && j.optInt("schema", 1) in 1 until MORE_ROWS_SCHEMA) BASE_APP_ROWS else 0)
             .takeIf { it == BASE_APP_ROWS } ?: 0,
         homeFitCompact = j.optInt("homeFitCompact", 0).takeIf { it in BASE_APP_ROWS..MAX_APP_ROWS } ?: 0,
         homeFitExpanded = j.optInt("homeFitExpanded", 0).takeIf { it in BASE_APP_ROWS..MAX_APP_ROWS } ?: 0,

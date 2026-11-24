@@ -15,10 +15,14 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Android gives a Wi-Fi network's name only to apps with precise location. Folio reads just the name, and only after the person taps Show Wi-Fi network name in Settings. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.WRITE_SETTINGS" tools:ignore="ProtectedPermissions" />
     <!-- Granted only by the owner, from a computer (adb shell pm grant). Nothing uses it yet; see PERMISSIONS.md. -->
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+    <!-- Android lets only an app with All files access read the phone's own wallpaper image. Duet uses it to blur that image with the fold. Optional: asked for only from Duet's settings. -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
@@ -239,6 +243,17 @@
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="application/json" />
+            </intent-filter>
+        </activity>
+        <!-- Share a photo to Folio to try it as Home's background. SEND only, so Folio does not show up under "Open with"
+             for every picture; Home shows the preview and nothing changes until Set. -->
+        <activity android:name=".WallpaperShareActivity" android:exported="true" android:excludeFromRecents="true"
+            android:theme="@style/Theme.Folio.FoldBridge" android:taskAffinity="com.mccal.folio.wallpaper" android:noHistory="true"
+            android:label="@string/label_wallpaper_import">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
             </intent-filter>
         </activity>
         <!-- A .foliopkg file opened or shared with Folio. It's unsigned, so the Market says so before anything runs. -->

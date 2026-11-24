@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -19,7 +20,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -108,7 +108,7 @@ class StandByScreenSaver : DreamService(), LifecycleOwner, SavedStateRegistryOwn
         val sysReduce = reduceMotionEnabled(this)
         content.setContent {
             val liveModel = FolioSettingsBridge.liveModel?.get()
-            val liveState = liveModel?.state?.collectAsState()?.value
+            val liveState = liveModel?.state?.collectAsStateWithLifecycle()?.value
             val reduce = sysReduce || (liveState?.reduceMotion == true)
             androidx.compose.runtime.CompositionLocalProvider(LocalReduceMotion provides reduce) {
                 DuoTheme(dark = true) {
@@ -171,12 +171,12 @@ private fun ScreenSaverFace(
     onLeave: () -> Unit,
 ) {
     val context = LocalContext.current
-    val status by monitor.state.collectAsState()
+    val status by monitor.state.collectAsStateWithLifecycle()
     val tick by rememberMinuteTick()
     val gateOpen = rememberGateOpen(FeatureGate.STANDBY_2)
     val cfg = androidx.compose.ui.platform.LocalConfiguration.current
     val liveModel = FolioSettingsBridge.liveModel?.get()
-    val liveState = liveModel?.state?.collectAsState()?.value
+    val liveState = liveModel?.state?.collectAsStateWithLifecycle()?.value
     // Android can start the screen saver after Home's process was reclaimed or its model cleared. Then the saved
     // settings are the truth, the same file Home writes; only if they can't be read does StandBy look like 0.6.9.
     val savedState = remember(liveModel == null) {

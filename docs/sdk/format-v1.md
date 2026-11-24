@@ -40,7 +40,7 @@ Limits:
 | `version` | string | dpkg ordering: `[epoch:]upstream[-revision]`; `~` sorts before release (`1.0~beta1` < `1.0`). |
 | `author` | object | `{ "name": text, "url"?: https URL }`. |
 | `minFolio` | string | Oldest Folio version it supports, e.g. `0.7.0`. |
-| `section` | enum | `themes`, `tweaks`, `layouts`, `wallpapers`, `scripts`. |
+| `section` | enum | `themes`, `tweaks`, `layouts`, `wallpapers`, `scripts`, `apps` *(0.7.0)*: an app of its own that the Market lists and points to a store for. |
 | `kind` | array of enum | One or more of the kinds below. |
 | `permissions` | array of enum | See [Permissions](#permissions). Empty means "appearance only". |
 | `screens` | array of enum | `cover`, `inner`. Both if omitted. |
@@ -325,6 +325,11 @@ different things wearing one name. Folio never picks between them quietly.
   Which one they meant is theirs to decide.
 - **Folio's own Featured banners only ever resolve to Folio's own packages**, so a source can't put itself in
   Folio's window by reusing an id.
+- **A Featured banner with an `image` is that picture and nothing else**: Folio draws it across the card and writes
+  no text over it, so the picture carries its own words (Folio reads the `label` and the package's name aloud for
+  TalkBack). Make it about twice as wide as it is tall, 1024 x 500 for example, with what matters near the middle,
+  because the card crops to the window's width. A banner without an `image` is a color card with the label, name and
+  description.
 
 ### Who wrote it, and who is handing it over
 
@@ -547,6 +552,7 @@ A package never adds behavior Folio doesn't already have. When you remove a pack
 | `tweaks.pageEffects` | Flipbook: Home pages turn in 3D as you swipe (supporters in 0.6.7, everyone in 0.6.8) | 0.6.7 |
 | `tweaks.pageEffects.channels` | Page effect channels: curves, drops, turns in the page's plane and outer-edge hinges in `effect.json` | 0.7.0 |
 | `tweaks.foldTransition` | Duet, the fold animation, and its `options` in `tweaks.json` | 0.6.8 |
+| `tweaks.standby2` | StandBy 2: clock looks, Now Playing, Up Next, notification glow and dots, and night mode on top of StandBy | 0.7.0 |
 | `island.messages` | Messages in the Dynamic Island | 0.7.x |
 | `focus.modes` | Switching Home Modes / Focus | 0.7.x |
 | `settings.pages` | Settings pages drawn from `settings.json` | 0.7.x |

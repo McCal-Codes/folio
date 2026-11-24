@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.content.Context
 import android.content.Intent
 import android.provider.AlarmClock
@@ -23,7 +24,6 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -138,6 +138,8 @@ internal data class IconLook(val style: IconStyle = IconStyle.DEFAULT, val tint:
 
 /** Unread notification counts per package, for icon badges. */
 internal val LocalBadgeCounts = androidx.compose.runtime.compositionLocalOf { emptyMap<String, Int>() }
+/** Badge keys whose count is not reliable, drawn as a dot even when the badge style is a number ([BadgeClears.dots]). */
+internal val LocalBadgeDots = androidx.compose.runtime.compositionLocalOf { emptySet<String>() }
 
 private val SquircleShape = androidx.compose.foundation.shape.GenericShape { size, _ ->
     // Superellipse (n = 4), the iOS-style continuous-corner icon shape.
@@ -231,12 +233,14 @@ internal fun AppIcon(app: AppEntry, contentDescription: String?, modifier: Modif
     val darkSource = iconsAreDark ?: remember(src.icon) { kind != null && isDarkIcon(src.icon) }
     val palette = when {
         look.style == IconStyle.TINTED -> LivePalette.of(IconStyle.TINTED, accent)
-        look.style == IconStyle.CLEAR -> LivePalette.of(IconStyle.CLEAR, null)
+        look.style == IconStyle.CLEAR -> LivePalette.of(IconStyle.CLEAR, null, onLight = LocalWallpaperTone.current.prefersDarkText)
         look.liveLook == "LIGHT" -> LivePalette.of(IconStyle.DEFAULT, null)
         look.liveLook == "DARK" -> LivePalette.of(IconStyle.DARK, null)
         else -> LivePalette.of(if (look.style == IconStyle.DEFAULT && darkSource) IconStyle.DARK else look.style, accent)
     }
-    val badgeCount = if (!badge || look.badges == BadgeStyle.OFF || app.iconFrom != null) 0 else LocalBadgeCounts.current[BadgeKey.of(src.component.packageName, app.user)] ?: 0
+    val badgeKey = BadgeKey.of(src.component.packageName, app.user)
+    val badgeCount = if (!badge || look.badges == BadgeStyle.OFF || app.iconFrom != null) 0 else LocalBadgeCounts.current[badgeKey] ?: 0
+    val badgeStyle = badgeShape(look.badges, badgeKey in LocalBadgeDots.current)
     Box(modifier.semantics { contentDescription?.let { this.contentDescription = it } }) {
         val fill = Modifier.fillMaxSize().then(if (clipShape != null) Modifier.clip(clipShape) else Modifier)
         // App icon bitmaps carry a small transparent margin; inset the drawn live icons to the same visual size.
@@ -270,7 +274,7 @@ internal fun AppIcon(app: AppEntry, contentDescription: String?, modifier: Modif
                     accent?.let { Color(it) } ?: if (soft) SoftNeutral else BadgeRed
                 }
             }
-            IconBadge(badgeCount, look.badges, color, look.badgeLook, look.badgeSize.scale, badgePlacement, pop)
+            IconBadge(badgeCount, badgeStyle, color, look.badgeLook, look.badgeSize.scale, badgePlacement, pop)
         }
         // Updating: the icon dims under an iOS-style progress ring until the installer finishes.
         if (app.iconFrom == null) installProgressFor(app.component.packageName)?.let { progress -> InstallRing(progress, fill) }
@@ -288,16 +292,26 @@ private fun ClearIcon(app: AppEntry, packIcon: android.graphics.Bitmap?, modifie
         if (packIcon == null && value == null)
             value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { ClearGlyphs.load(context, app) }
     }
-    Box(modifier.background(ClearTile).border(1.dp, Color.White.copy(alpha = .3f), RoundedCornerShape(22)), contentAlignment = Alignment.Center) {
+    val onLight = LocalWallpaperTone.current.prefersDarkText
+    Box(modifier.background(if (onLight) ClearTileOnLight else ClearTile)
+        .border(1.dp, (if (onLight) Color.Black else Color.White).copy(alpha = .3f), RoundedCornerShape(22)), contentAlignment = Alignment.Center) {
         val symbol = glyph
-        if (symbol != null) Image(remember(symbol) { symbol.asImageBitmap() }, null, Modifier.fillMaxSize())
+        if (symbol != null) Image(remember(symbol) { symbol.asImageBitmap() }, null, Modifier.fillMaxSize(),
+            colorFilter = if (onLight) androidx.compose.ui.graphics.ColorFilter.tint(ClearInkOnLight) else null)
         else {
             val source = packIcon ?: app.icon
             val bitmap = remember(source) { source.asImageBitmap() }
-            Image(bitmap, null, Modifier.fillMaxSize(.78f), colorFilter = remember { filterFor(IconLook(style = IconStyle.CLEAR)) })
+            Image(bitmap, null, Modifier.fillMaxSize(.78f), colorFilter = remember(onLight) { if (onLight) clearOnLightFilter else filterFor(IconLook(style = IconStyle.CLEAR)) })
         }
     }
 }
+
+/** Clear for apps without their own symbol, on a light Home: the icon as a dark, colorless version of itself. */
+private val clearOnLightFilter = androidx.compose.ui.graphics.ColorFilter.colorMatrix(androidx.compose.ui.graphics.ColorMatrix(floatArrayOf(
+    -.17f, -.34f, -.07f, 0f, 175f,
+    -.17f, -.34f, -.07f, 0f, 175f,
+    -.17f, -.34f, -.07f, 0f, 175f,
+    0f, 0f, 0f, .88f, 0f)))
 
 /** White symbols for Clear icons, from the monochrome layer of adaptive icons (Android 13+), cached per app. */
 internal object ClearGlyphs {
@@ -360,7 +374,7 @@ private fun CalendarIcon(modifier: Modifier, palette: LivePalette) {
 private fun ClockIcon(modifier: Modifier, palette: LivePalette) {
     // The tick is read while drawing, so a second redraws the hands without recomposing the icon.
     val tick = rememberSecondTick()
-    val screenshot by ScreenshotMode.on.collectAsState()
+    val screenshot by ScreenshotMode.on.collectAsStateWithLifecycle()
     Box(modifier.clip(RoundedCornerShape(22)).background(palette.clockBackground)) {
         Canvas(Modifier.fillMaxSize()) {
             tick.value // subscribes this draw to the second tick
@@ -413,9 +427,12 @@ internal fun isDarkIcon(bitmap: android.graphics.Bitmap): Boolean = runCatching 
 internal data class LivePalette(val calendarBackground: Color, val calendarNumber: Color, val accent: Color,
     val clockBackground: Color, val clockFace: Color, val clockHands: Color, val secondHand: Color) {
     companion object {
-        fun of(style: IconStyle, tint: Color?): LivePalette = when {
+        /** [onLight]: Home's background is light, so Clear draws dark on a dark-tinted tile instead of white on a white one. */
+        fun of(style: IconStyle, tint: Color?, onLight: Boolean = false): LivePalette = when {
             style == IconStyle.TINTED && tint != null -> LivePalette(IconDark, tint, tint, IconDark, IconFace, tint, tint.copy(alpha = .7f))
             style == IconStyle.DARK -> LivePalette(IconDark, Color.White, IconRed, IconDark, IconFace, Color.White, IconOrange)
+            style == IconStyle.CLEAR && onLight -> LivePalette(ClearTileOnLight, ClearInkOnLight, ClearInkOnLight.copy(alpha = .85f), ClearTileOnLight,
+                Color.Black.copy(alpha = .06f), ClearInkOnLight, ClearInkOnLight.copy(alpha = .7f))
             style == IconStyle.CLEAR -> LivePalette(ClearTile, Color.White, Color.White.copy(alpha = .85f), ClearTile,
                 Color.White.copy(alpha = .1f), Color.White, Color.White.copy(alpha = .7f))
             else -> LivePalette(Color.White, Color.Black, IconRedLight, Color.Black, Color.White, Color.Black, IconOrange)
@@ -426,6 +443,9 @@ internal data class LivePalette(val calendarBackground: Color, val calendarNumbe
 private val IconRedLight = FolioColors.RedLight
 /** The frosted tile behind Clear icons. */
 internal val ClearTile = Color.White.copy(alpha = .2f)
+/** The same tile and symbol color on a light Home, where white on white would vanish (iOS adapts Clear the same way). */
+internal val ClearTileOnLight = Color.Black.copy(alpha = .1f)
+internal val ClearInkOnLight = Color.Black.copy(alpha = .72f)
 private val IconDark = FolioColors.SecondaryBackground
 private val IconFace = FolioColors.SheetSurface
 private val IconRed = FolioColors.Red
@@ -632,8 +652,16 @@ internal object BadgeClears {
         if (keys.isNotEmpty()) cleared.value = cleared.value + keys
     }
 
+    /** Per badge key: the number, and whether it is reliable ([BadgeTally]). */
+    fun tallies(items: List<NotificationItem>, cleared: Set<String>): Map<String, BadgeTally> =
+        items.filter { it.key !in cleared }.groupBy { BadgeKey.of(it.packageName, it.user) }.mapValues { BadgeTally.of(it.value) }
+
     fun counts(items: List<NotificationItem>, cleared: Set<String>): Map<String, Int> =
-        items.filter { it.key !in cleared }.groupingBy { BadgeKey.of(it.packageName, it.user) }.eachCount()
+        tallies(items, cleared).mapValues { it.value.count }
+
+    /** The badge keys that show a dot instead of a number, because Folio only knows a notification exists. */
+    fun dots(items: List<NotificationItem>, cleared: Set<String>): Set<String> =
+        tallies(items, cleared).filterValues { !it.exact }.keys
 }
 
 /**

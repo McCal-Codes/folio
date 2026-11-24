@@ -43,7 +43,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 internal fun TodayView(state: LauncherState, widgets: WidgetController, modifier: Modifier = Modifier,
     onSearch: () -> Unit, onLaunch: (AppEntry) -> Unit, onAddWidget: () -> Unit,
-    onRemove: (Int) -> Unit, onMove: (Int, Int) -> Unit) {
+    onRemove: (Int) -> Unit, onMove: (Int, Int) -> Unit, bottomPadding: Dp = TODAY_BOTTOM_PADDING_DP.dp) {
     val context = LocalContext.current
     val edit = remember { HomeEditMode() }
     androidx.activity.compose.BackHandler(edit.active) { edit.stop() }
@@ -65,7 +65,9 @@ internal fun TodayView(state: LauncherState, widgets: WidgetController, modifier
             val columnsWidth = minOf(maxWidth - 32.dp, 390.dp)
             val gap = 14.dp
             val cell = (columnsWidth - gap) / 2
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = FolioSpace.LARGE.dp).padding(top = FolioSpace.MEDIUM.dp, bottom = 96.dp), // clear of Home's page dots
+            val todayScroll = rememberScrollState()
+            // Widgets scroll under Home's page controls, so the bottom edge fades toward them rather than running through the icons.
+            Column(Modifier.fillMaxSize().edgeFade(todayScroll).verticalScroll(todayScroll).padding(horizontal = FolioSpace.LARGE.dp).padding(top = FolioSpace.MEDIUM.dp, bottom = bottomPadding), // clear of Home's page controls, and of the Preview bar before Folio is Home
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(gap)) {
                 Column(Modifier.width(columnsWidth), verticalArrangement = Arrangement.spacedBy(gap)) {
                     // Search capsule
@@ -172,7 +174,7 @@ private fun TodayWidgetTile(widget: TodayWidget, widgets: WidgetController, widt
             }
         }
         if (edit.active) {
-            JiggleRemoveButton(stringResource(R.string.remove_widget), onRemove = onRemove)
+            JiggleRemoveButton(stringResource(R.string.remove_widget), inset = (-6).dp, onRemove = onRemove)
             Row(Modifier.align(Alignment.BottomEnd).padding(FolioSpace.SMALL.dp).clip(CircleShape).background(Color.Black.copy(alpha = .45f))) {
                 if (canMoveUp) TodayArrow(Icons.Rounded.KeyboardArrowUp, stringResource(R.string.move_up)) { onMove(-1) }
                 if (canMoveDown) TodayArrow(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.move_down)) { onMove(1) }

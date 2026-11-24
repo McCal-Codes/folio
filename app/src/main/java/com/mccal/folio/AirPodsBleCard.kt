@@ -1,5 +1,6 @@
 package com.mccal.folio
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -11,7 +12,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -69,7 +69,7 @@ private fun AirPodsRow(label: String, value: String, tag: String) {
 @Composable
 internal fun AirPodsBleSettingsCard() {
     val context = LocalContext.current
-    val read by AirPodsBle.state.collectAsState()
+    val read by AirPodsBle.state.collectAsStateWithLifecycle()
     var on by remember { mutableStateOf(AirPodsBle.switchOn(context)) }
     var permitted by remember { mutableStateOf(AirPodsBle.hasPermission(context)) }
     var asked by remember { mutableStateOf(false) }

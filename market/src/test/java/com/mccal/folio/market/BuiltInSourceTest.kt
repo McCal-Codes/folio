@@ -24,17 +24,18 @@ class BuiltInSourceTest {
     @Test fun `the bundled index lists every package Folio ships`() {
         val index = requireNotNull(source.index()) { "the bundled index is missing" }
         assertEquals("Folio", index.name.english)
-        assertEquals(10, index.packages.size)
+        assertEquals(13, index.packages.size)
         assertTrue("every package can be read", index.packages.all { it.manifest != null && it.needs.isEmpty() })
-        assertEquals(6, index.packages.count { it.manifest?.section == Section.TWEAKS })
+        assertEquals(8, index.packages.count { it.manifest?.section == Section.TWEAKS })
         assertEquals(4, index.packages.count { it.manifest?.section == Section.THEMES })
+        assertEquals(1, index.packages.count { it.manifest?.section == Section.APPS })
         // Built-in packages have nothing to download.
         assertTrue(index.packages.none { it.installable })
     }
 
     @Test fun `every package's files are there, and its id matches its manifest`() {
         val packages = source.packages()
-        assertEquals(10, packages.size)
+        assertEquals(13, packages.size)
         assertEquals(source.index()!!.packages.map { it.id }.toSet(), packages.keys)
         for ((id, files) in packages) {
             assertTrue("$id has a manifest", PackageArchive.MANIFEST in files)
@@ -51,6 +52,7 @@ class BuiltInSourceTest {
         val wanted = buildList {
             index.icon?.let(::add)
             index.featured.mapNotNull { it.image }.forEach(::add)
+            index.packages.mapNotNull { it.manifest?.icon }.forEach(::add)
             for (files in source.packages().values) {
                 val page = files["depiction.json"]?.decodeToString()?.let { Depiction.parse(it) as? ParseResult.Ok }?.value ?: continue
                 for (block in page.blocks) when (block) {
@@ -62,6 +64,42 @@ class BuiltInSourceTest {
         }
         assertTrue("the source points at some images", wanted.isNotEmpty())
         for (path in wanted) assertNotNull("missing image: $path", source.asset(path))
+    }
+
+    @Test fun `a featured app is an apps listing that only points at its store`() {
+        val index = requireNotNull(source.index())
+        val manifest = requireNotNull(index.packages.single { it.id == "com.bunsoootchi.performatively" }.manifest)
+        assertEquals(Section.APPS, manifest.section)
+        assertEquals(setOf(PackageKind.EXTERNAL_APP), manifest.kinds)
+        // Nothing to apply, and the one place it installs from is Google Play, under its own package name.
+        assertTrue(manifest.permissions.isEmpty())
+        assertEquals(
+            listOf(ExternalSource(ExternalSource.Store.PLAY_STORE, "com.bunsoootchi.performatively", null)),
+            manifest.via,
+        )
+    }
+
+    @Test fun `a featured banner with a picture points at one that exists, and only packages Folio ships`() {
+        val index = requireNotNull(source.index())
+        val shipped = index.packages.map { it.id }.toSet()
+        assertTrue("every banner is for a package in this index", index.featured.all { it.packageId in shipped })
+        val perf = index.featured.single { it.packageId == "com.bunsoootchi.performatively" }
+        assertEquals("assets/performatively-banner.webp", perf.image)
+        assertNotNull(source.asset(perf.image!!))
+        // A themed banner keeps its colors and words: only the app's own banner is a picture.
+        assertEquals(listOf("com.bunsoootchi.performatively"), index.featured.filter { it.image != null }.map { it.packageId })
+    }
+
+    @Test fun `every tweak's page opens on a picture, and no page says colour`() {
+        for ((id, files) in source.packages()) {
+            val manifest = (PackageManifest.parse(files.getValue(PackageArchive.MANIFEST).decodeToString()) as ParseResult.Ok).value
+            val text = files.getValue("depiction.json").decodeToString()
+            val page = (Depiction.parse(text) as ParseResult.Ok).value
+            if (manifest.section == Section.TWEAKS) {
+                assertTrue("$id opens on a hero", page.blocks.first() is DepictionBlock.Hero)
+            }
+            assertTrue("$id says colour", !text.contains("colour", ignoreCase = true))
+        }
     }
 
     @Test fun `a built-in package installs without a download`() {

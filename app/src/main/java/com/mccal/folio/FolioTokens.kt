@@ -298,6 +298,8 @@ internal object FolioMotion {
     val Settle = .86f to 420f
     /** Quick responses to a touch (buttons, toggles, closing). */
     val Quick = .8f to 700f
+    /** A level moving to a new reading (the battery ring): no bounce, unhurried, and it retargets smoothly when readings arrive close together. */
+    val Glide = 1f to 170f
     /** Firm, no-bounce snaps (dismissals). */
     val Firm = 1f to 700f
     /** A panel, island or overlay appearing or resizing: a little overshoot, unhurried. */

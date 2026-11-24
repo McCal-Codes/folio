@@ -36,7 +36,7 @@ val releaseStoreFile = releaseSigningValues["FOLIO_RELEASE_STORE_FILE"]?.let { c
     }
 }
 
-val folioVersion = "0.7.0-beta.2"
+val folioVersion = "0.7.0-beta.5"
 
 // Bundle the changelog so Folio can show What's New after an update.
 val bundleChangelog = tasks.register<Copy>("bundleChangelog") {
@@ -99,7 +99,8 @@ abstract class DevBuildInfoTask @Inject constructor(private val exec: ExecOperat
             append("{")
             append("\"branch\":").append(q(git("rev-parse", "--abbrev-ref", "HEAD").ifEmpty { "unknown" })).append(",")
             append("\"sha\":").append(q(git("rev-parse", "--short=8", "HEAD").ifEmpty { "unknown" })).append(",")
-            append("\"dirty\":").append(git("status", "--porcelain").isNotEmpty()).append(",")
+            append("\"build\":").append(git("rev-list", "--count", "HEAD").toIntOrNull() ?: 0).append(",")
+            append("\"dirty\":").append(git("status", "--porcelain", "--untracked-files=no").isNotEmpty()).append(",")
             append("\"builtAt\":").append(q(OffsetDateTime.now().toString())).append(",")
             append("\"commits\":[").append(commits.joinToString(",") { "{\"sha\":${q(it.first)},\"subject\":${q(it.second)}}" }).append("],")
             append("\"notes\":[").append(notes.joinToString(",") { q(it) }).append("]")
@@ -158,7 +159,8 @@ android {
         versionCode = folioVersion.substringBefore('-').split('.').map(String::toInt).let { parts ->
             require(parts.size in 3..4) { "folioVersion needs MAJOR.MINOR.PATCH, and may add .HOTFIX: was $folioVersion" }
             val hotfix = parts.getOrElse(3) { 0 }
-            require(hotfix in 1..9 || parts.size == 3) { "the hotfix digit runs 1 to 9: was $folioVersion" }
+            // 9 is reserved for a rollback build (REL-34), so a hotfix runs 1 to 8.
+            require(hotfix in 1..8 || parts.size == 3) { "the hotfix digit runs 1 to 8: was $folioVersion" }
             (parts[0] * 10000 + parts[1] * 100 + parts[2]) * 10 + hotfix
         }
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

@@ -43,9 +43,12 @@ internal fun idsWithSharedLabel(apps: List<Pair<String, String>>): Set<String> {
  * suggestions (up to 16 apps), which nobody chose, so the starter set is offered instead. On a replay from Settings Home is
  * the person's own, so what is on it is what is ticked, or the starter set when it is empty.
  */
-internal fun initialHomePicks(state: LauncherState, apps: List<AppEntry>, firstRun: Boolean = false): Set<String> =
+internal fun initialHomePicks(state: LauncherState, apps: List<AppEntry>, firstRun: Boolean = false, rows: Int = 0): Set<String> =
     homePicksFor(firstRun, state.homeSlots.filterNotNull().filter { id -> apps.any { it.id == id } }) {
-        starterAppIds(apps.map { it.id to it.component.packageName })
+        // The starters are one app per everyday job; the rest of the rows the screen fits are filled with the phone's other apps.
+        // Not Folio's own entries (its settings, shortcuts and test copies), and not what the dock already holds.
+        val fill = apps.filter { !it.component.packageName.startsWith("com.mccal.") && it.id !in state.dock }
+        fillHomePicks(starterAppIds(apps.map { it.id to it.component.packageName }), fill.map { it.id }, rows * GRID_COLUMNS)
     }.toSet()
 
 internal fun homePicksFor(firstRun: Boolean, onHome: List<String>, starters: () -> List<String>): List<String> =

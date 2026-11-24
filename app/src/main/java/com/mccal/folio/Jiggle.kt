@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
@@ -55,8 +56,18 @@ internal class HomeEditMode {
     var onRemove: (DropTarget) -> Unit = {}
     /** Home cell that was long-pressed to start editing, for "Edit" and "+". */
     var lastEmptyIndex: Int? = null
+    /**
+     * How far the unfolded bar is really lifted: [JIGGLE_BAR_LIFT] where the window has that much empty strip above the page, less where it
+     * has not (a short, wide window), so the pills are never pushed off the top edge. Home gives way for whatever the lift falls short by.
+     */
+    var barLift by mutableStateOf(JIGGLE_BAR_LIFT)
+    /**
+     * How much taller the bar is than one row of pills: nothing where they all fit, one more row where a narrow window (a flip's cover
+     * screen) wraps Done under the rest. Measured, so Home gives way for exactly what the bar takes.
+     */
+    var barExtra by mutableStateOf(0.dp)
     fun start() { active = true }
-    fun stop() { active = false }
+    fun stop() { active = false; barExtra = 0.dp }
 }
 
 internal val LocalHomeEdit = staticCompositionLocalOf { HomeEditMode() }
@@ -89,11 +100,11 @@ internal fun Modifier.jiggle(key: Any, amount: Float = 1f): Modifier {
 
 /** The gray "–" in an icon's corner while jiggling. */
 @Composable
-internal fun BoxScope.JiggleRemoveButton(label: String, inset: Dp = 0.dp, onRemove: () -> Unit) {
+internal fun BoxScope.JiggleRemoveButton(label: String, inset: Dp = 0.dp, insetX: Dp = inset, onRemove: () -> Unit) {
     val haptic = LocalHapticFeedback.current
     // 44dp touch target (accessibility minimum) around a 22dp visual, centered on the corner; [inset] pulls it in so it
     // stays inside a tight container like the side dock, as iPhone keeps it inside the dock.
-    Box(Modifier.align(Alignment.TopStart).offset((-11).dp + inset, (-11).dp + inset).size(44.dp)
+    Box(Modifier.align(Alignment.TopStart).offset((-11).dp + insetX, (-11).dp + inset).size(44.dp)
         .clickable(role = Role.Button, onClickLabel = label, interactionSource = null, indication = null) {
             haptic.perform(FolioHaptic.Refuse); onRemove()
         }.semantics { contentDescription = label }, contentAlignment = Alignment.Center) {
@@ -106,14 +117,14 @@ internal fun BoxScope.JiggleRemoveButton(label: String, inset: Dp = 0.dp, onRemo
 /** Glass capsule button for the jiggle-mode bar ("+", "Edit", "Done"). */
 @Composable
 internal fun JigglePill(label: String, icon: ImageVector? = null, description: String = label, emphasized: Boolean = false,
-    modifier: Modifier = Modifier, onClick: () -> Unit) {
+    modifier: Modifier = Modifier, enabled: Boolean = true, onClick: () -> Unit) {
     // The bar sits on the wallpaper, so it follows Home's ink like the Search pill does: white text on a light surface vanished (27 Oct sweep, F03 follow-up).
     val homeInk = LocalHomeInk.current
-    Box(modifier.minimumInteractiveComponentSize(), contentAlignment = Alignment.Center) {
+    Box(modifier.minimumInteractiveComponentSize().alpha(if (enabled) 1f else .4f), contentAlignment = Alignment.Center) {
         Row(Modifier.heightIn(min = 34.dp).clip(CircleShape)
             .background(if (emphasized) (if (homeInk.dark) homeInk.primary.copy(alpha = .92f) else Color.White.copy(alpha = .92f))
                 else if (homeInk.dark) Color.White.copy(alpha = .45f) else Color.White.copy(alpha = .22f))
-            .clickable(role = Role.Button, onClick = onClick).semantics { contentDescription = description }
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick).semantics { contentDescription = description }
             .padding(horizontal = if (label.isEmpty()) 7.dp else FolioSpace.LARGE.dp), verticalAlignment = Alignment.CenterVertically) {
             val ink = if (emphasized) (if (homeInk.dark) Color.White else Color.Black) else homeInk.primary
             icon?.let { Icon(it, null, tint = ink, modifier = Modifier.size(20.dp)) }
@@ -138,4 +149,32 @@ internal fun HomeSearchPill(onClick: () -> Unit) {
 /** Extra top inset for the jiggle bar when the Dynamic Island is on, so its pills don't sit under the island. */
 internal val JIGGLE_BAR_ISLAND_GAP = 8.dp
 /** Where the jiggle bar's bottom edge falls (top inset + 48dp touch height + a little air), for Home's first-row clearance. */
-internal val JIGGLE_BAR_BOTTOM = JIGGLE_BAR_ISLAND_GAP + 48.dp + 4.dp
+internal val JIGGLE_BAR_ROW = 48.dp
+internal val JIGGLE_BAR_BOTTOM = JIGGLE_BAR_ISLAND_GAP + JIGGLE_BAR_ROW + 4.dp
+/** The air between the unfolded bar's pills and the first row (a 12 dp gap). */
+internal val JIGGLE_BAR_GRID_GAP = 12.dp
+/**
+ * How far the unfolded bar is lifted into the empty strip at the very top of the window, so Home gives way by almost nothing for it:
+ * the 26 dp that put the pills' bottom on the first row, and [JIGGLE_BAR_GRID_GAP] more so they clear it.
+ */
+internal val JIGGLE_BAR_LIFT = 26.dp + JIGGLE_BAR_GRID_GAP
+/**
+ * The same for the unfolded window, where the bar sits at the pager's far end with no island gap and only its pills' drawn bottom (the
+ * 48 dp touch box is 16 dp taller than the pill) has to clear the first row: 2 dp top + 48 dp box - 8 dp of unused touch height + 2 dp air.
+ */
+internal val JIGGLE_BAR_BOTTOM_UNFOLDED = 44.dp - 26.dp
+
+/**
+ * How wide the unfolded edit bar's pills run from the pager's far end, in dp at the default text size (+, Edit, Undo, Redo, Done): the span
+ * the island pill is tested against to see whether it sits over them (see [IslandFootprint]).
+ */
+internal val JIGGLE_BAR_SPAN = 300.dp
+/** The air between the island pill and the bar's pills on either side of it. */
+internal val JIGGLE_BAR_ISLAND_SIDE_GAP = 8.dp
+/** How far Home's bottom controls drop in edit mode on the unfolded screen, so the last row's labels keep clear of them. */
+internal val JIGGLE_BAR_CONTROLS_DROP = 22.dp
+/**
+ * The same on the folded screen, where a full last row also ended under the page controls (the cover screen, 14 Nov 2026: the library
+ * button sat over the last row's labels by about 11 dp). A little less than unfolded, so the controls stay clear of the gesture bar.
+ */
+internal val JIGGLE_BAR_CONTROLS_DROP_FOLDED = 18.dp

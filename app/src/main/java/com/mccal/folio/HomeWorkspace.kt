@@ -2,6 +2,7 @@
 
 package com.mccal.folio
 
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.stringResource
 import android.appwidget.AppWidgetProviderInfo
 import android.os.UserManager
@@ -135,6 +136,8 @@ internal fun ExpandedWorkspace(
     onMove: (String, Int) -> Unit = { _, _ -> },
     /** Back swipe progress over the App Library (predictive back), 0–1. */
     libraryBack: () -> Float = { 0f },
+    /** Where the App Library was left, kept by Home across a fold or an unfold. */
+    libraryPlace: LibraryPlace? = null,
     /** A tap on the message Home shows when apps or the layout couldn't be loaded. */
     onProblem: () -> Unit,
 ) {
@@ -165,6 +168,20 @@ internal fun ExpandedWorkspace(
         offset {
             val physicalPosition = nativePager.currentPage + nativePager.currentPageOffsetFraction
             IntOffset((x - motion.offset(physicalPosition)).roundToInt(), 0)
+        }
+    }
+    // A pane that has slid off to the left leaves its last stretch in the margin before the first grid column (the panes
+    // start 259 px in, so the one before is not gone when the next arrives). That edge is not a page to look at: it fades out
+    // as it reaches the margin and, once only the margin holds it, is moved out of reach so a touch there cannot land on it.
+    val marginPx = (initialHomeOrigin - stride).coerceAtLeast(0f)
+    val marginFadePx = with(density) { 96.dp.toPx() }
+    val clearOfMargin: Modifier.(Float) -> Modifier = { x ->
+        graphicsLayer {
+            val physicalPosition = nativePager.currentPage + nativePager.currentPageOffsetFraction
+            val right = x - motion.offset(physicalPosition) + homePaneWidth
+            val hidden = right <= marginPx
+            translationX = if (hidden) -2f * homePaneWidth else 0f
+            alpha = ((right - marginPx) / marginFadePx).coerceIn(0f, 1f)
         }
     }
     val showDiscover by remember(nativePager, firstHome) {
@@ -198,7 +215,7 @@ internal fun ExpandedWorkspace(
         if (showLeading) {
             key("expanded-leading-home") {
                 stateHolder.SaveableStateProvider("expanded-leading-home") {
-                    Box(Modifier.place(leadingX).width((geometry.gridWidth + 16f).dp).fillMaxHeight()
+                    Box(Modifier.place(leadingX).clearOfMargin(leadingX).width((geometry.gridWidth + 16f).dp).fillMaxHeight()
                         .testTag("expanded-leading-home")) {
                         if (besideContent != null) besideContent(Modifier.fillMaxSize()) else HomePagePane(
                             -1, state, previewSlots, previewLeadingSlots, previewWidgetPlacements, appsById, geometry, contentHeight, bottomSpace,
@@ -215,7 +232,7 @@ internal fun ExpandedWorkspace(
         visibleHomes.forEach { page ->
             key("expanded-home-$page") {
                 stateHolder.SaveableStateProvider("expanded-home-$page") {
-                    Box(Modifier.place(initialHomeOrigin + page * stride)
+                    Box(Modifier.place(initialHomeOrigin + page * stride).clearOfMargin(initialHomeOrigin + page * stride)
                         .width((geometry.gridWidth + 16f).dp).fillMaxHeight()) {
                         HomePagePane(
                             page, state, previewSlots, previewLeadingSlots, previewWidgetPlacements, appsById, geometry, contentHeight, bottomSpace,
@@ -240,7 +257,7 @@ internal fun ExpandedWorkspace(
                             .graphicsLayer { val b = libraryBack(); scaleX = 1f - .14f * b; scaleY = scaleX; alpha = 1f - .35f * b; translationX = size.width * .08f * b }
                             .padding(start = FolioSpace.LARGE.dp, top = FolioSpace.LARGE.dp, bottom = bottomSpace)
                             .testTag("library-page"),
-                        drag = drag, page = visibleHomePages, onLaunchFrom = onLaunchFrom, onTurnOnWork = onTurnOnWork)
+                        drag = drag, page = visibleHomePages, onLaunchFrom = onLaunchFrom, onTurnOnWork = onTurnOnWork, place = libraryPlace)
                 }
             }
         }
@@ -332,12 +349,21 @@ internal fun HomePagePane(
         if (!drag.active) roomWanted = edit.active
         // Only as much room as the Edit bar actually needs above this page's first row; pushing the whole grid down by a
         // fixed amount cut off the bottom row's labels on screens that already had space at the top.
-        // Unfolded, the bar sits in the space above the widget row, so the grid doesn't move at all (like iPad).
+        // Unfolded, the bar is at the top too and the grid gives way by the little the pills need beyond the free strip.
         // The upright unfolded window keeps its grid clear of the bar's corners, so there the bar needs no room at all.
         val besideGrid = jiggleBarBesideGrid(geometry.horizontalDock, geometry.dockBesideRail, geometry.homeWidth, geometry.gridWidth, LocalDensity.current.fontScale)
-        val editRoom by animateDpAsState(if (roomWanted) jiggleBarRoom(JIGGLE_BAR_BOTTOM.value, geometry.contentTop, geometry.expanded, besideGrid).dp else 0.dp, label = "jiggle room")
-        Column(Modifier.offset(x = 16.dp).width(geometry.gridWidth.dp).fillMaxHeight()
-            .verticalScroll(homeScroll).padding(top = geometry.contentTop.dp + editRoom, bottom = FolioSpace.SMALL.dp)) {
+        val editRoom by animateDpAsState(if (roomWanted) jiggleBarRoom(((if (geometry.expanded) JIGGLE_BAR_BOTTOM_UNFOLDED + (JIGGLE_BAR_LIFT - edit.barLift) else JIGGLE_BAR_BOTTOM) + edit.barExtra).value, geometry.contentTop, besideGrid).dp else 0.dp, label = "jiggle room")
+        // The page was pushed down by the edit room, so its last row would sit under the page controls at rest. The page gets that much
+        // more height (the controls below are small in edit mode), instead of a bottom row cut off until you scroll.
+        Column(Modifier.layout { measurable, constraints ->
+                val extra = if (constraints.hasBoundedHeight) editRoom.roundToPx() else 0
+                val placeable = measurable.measure(constraints.copy(minHeight = constraints.minHeight + extra, maxHeight = if (constraints.hasBoundedHeight) constraints.maxHeight + extra else constraints.maxHeight))
+                // Report the size the parent allows: a taller one is clamped, and Compose then re-centers the content on the clamp, which
+                // lifted the whole grid by half the room (the edit bar kept overlapping the first row). The page still draws its extra height.
+                layout(placeable.width, placeable.height.coerceIn(constraints.minHeight, constraints.maxHeight)) { placeable.placeRelative(0, 0) }
+            }.offset(x = 16.dp).width(geometry.gridWidth.dp).fillMaxHeight()
+            // A page taller than its window (a flip's cover) fades at the edge it scrolls toward, instead of ending in a hard cut.
+            .edgeFade(homeScroll).verticalScroll(homeScroll).padding(top = geometry.contentTop.dp + editRoom, bottom = FolioSpace.SMALL.dp)) {
             val (pageIcon, pageLabels) = (state.pageStyles[page] ?: PageStyle()).apply(geometry, state.labels)
             SharedHomeGrid(page, state.homeSlots, state.leadingSlots, previewSlots, previewLeadingSlots, previewWidgetPlacements,
                 appsById, geometry.copy(iconSize = pageIcon), pageLabels, widgets, drag, target,
@@ -547,6 +573,7 @@ internal fun SharedHomeGrid(
                     Modifier.offset { placed }.width(cellWidth).height(rowHeight.dp)
                         .moveActions(folder.id, page, onMove).testTag("home-folder-${folder.id}"),
                     onLaunchApp = { onLaunch(it, null) },
+                    onRemove = if (edit.active && savedIndex != null) {{ edit.onRemove(DropTarget.Home(savedIndex)) }} else null,
                     onClick = { onFolder(folder.id) })
             }
         }

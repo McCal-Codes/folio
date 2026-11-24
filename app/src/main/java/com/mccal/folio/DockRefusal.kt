@@ -13,9 +13,9 @@ sealed interface DockRefusal {
     data object Full : DockRefusal
 }
 
-fun dockRefusal(layout: HomeLayout, id: String): DockRefusal? {
+fun dockRefusal(layout: HomeLayout, id: String, capacity: Int = STANDARD_DOCK_SLOTS): DockRefusal? {
     if (id.isBlank() || isReservedFolderId(id)) return DockRefusal.NotAnApp
     layout.folders.firstOrNull { id in it.appIds }?.let { return DockRefusal.InFolder(it.id) }
-    val room = id in layout.dock || layout.dock.any { it == null } || layout.dock.size < MAX_DOCK_SLOTS
+    val room = id in layout.dock || layout.dock.any { it == null } || layout.dock.size < capacity
     return if (room) null else DockRefusal.Full
 }

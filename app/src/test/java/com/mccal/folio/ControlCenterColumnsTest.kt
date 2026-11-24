@@ -43,8 +43,19 @@ class ControlCenterColumnsTest {
     @Test fun `a phone on its side is wide and short, so it takes eight columns and fits`() {
         val g = grid(880f, 327f)
         assertEquals(8, g.columns)
-        val rows = controlCenterRows(8, 8, false)
+        // What has to stand on the first page (the sliders and the modules) fits; the other controls go to another page.
+        val rows = controlCenterRows(8, 0, false)
         assertTrue("the rows fit: ${g.cellDp}", g.cellDp * rows + g.gapDp * (rows - 1) + 48f + g.gapDp <= 327f + 0.5f)
+    }
+
+    @Test fun `adding controls never makes a tile smaller`() {
+        // McCal, 17 Nov 2026: "the cc settings shouldn't get smaller". The same window and size give the same cell for any number of controls
+        // (the controls that do not fit go to another page), and only the columns a window can use depend on how many there are.
+        for ((w, h) in listOf(379f to 700f, 379f to 520f, 672f to 848f, 880f to 620f)) for (focus in listOf(false, true)) {
+            val few = grid(w, h, controls = 4, focus = focus); val many = grid(w, h, controls = 15, focus = focus)
+            if (few.columns == many.columns) assertEquals("${w}x$h focus $focus", few.cellDp, many.cellDp, 0.01f)
+        }
+        for (n in 0..16) assertEquals("$n controls", grid(379f, 700f, controls = 4).cellDp, grid(379f, 700f, controls = n).cellDp, 0.01f)
     }
 
     @Test fun `a panel with no height limit is as wide as its width allows`() {
@@ -72,5 +83,25 @@ class ControlCenterColumnsTest {
         assertEquals(5, controlCenterRows(8, 8, true))
         assertEquals(3, controlCenterRows(8, 0, false))
         assertEquals(5, controlCenterRows(4, 0, false))
+    }
+    @Test fun `a narrower pane can keep the columns a wider window had, and the cells follow the width`() {
+        val wide = grid(672f, 848f)
+        val kept = controlCenterGrid(422f, 848f, 8, false, size, minColumns = wide.columns)
+        assertEquals(wide.columns, kept.columns)
+        assertTrue("narrower cells, not overflow", kept.cellDp < wide.cellDp)
+        assertEquals(4, controlCenterGrid(422f, 848f, 8, false, size).columns) // without it the narrower width takes fewer
+    }
+
+    @Test fun `a kept column count never goes past what the controls can use or below four`() {
+        assertEquals(4, controlCenterGrid(1248f, 760f, 4, false, size, minColumns = 8).columns)
+        assertEquals(4, controlCenterGrid(379f, 700f, 8, false, size, minColumns = 1).columns)
+        assertEquals(6, controlCenterGrid(700f, 800f, 12, false, size, minColumns = 5).columns)
+    }
+
+    @Test fun theLeastPanelForSixColumnsKeepsEveryCellAtTheTouchSize() {
+        val width = controlCenterMinPanelDp(6, 90f)
+        val grid = controlCenterGrid(width, null, 12, false, 90f, 48f, 32f, true, minColumns = 6)
+        assertEquals(6, grid.columns)
+        assertTrue("cells are ${grid.cellDp} dp", grid.cellDp >= 48f - .01f)
     }
 }

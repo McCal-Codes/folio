@@ -207,7 +207,8 @@ internal fun FolderPanel(
             }
         }
         val animatedDisplacementDp by animateDpAsState(
-            targetValue = (targetDisplacementPx / density).dp,
+            // Never so far that the card leaves the screen: a 640 dp card does not fit in a 375 dp half, so it sits as close to the half as fits.
+            targetValue = folderDisplacementDp(targetDisplacementPx / density, config.screenWidthDp.toFloat(), folderW).dp,
             animationSpec = FolioMotion.spring(FolioMotion.Settle),
             label = "folder fold displacement" // english-only
         )
@@ -560,4 +561,13 @@ internal object FolderOpening {
 
     /** How far Home has stepped back, as a scale, while a folder is open. */
     fun homeScale(progress: Float) = 1f - STEP_BACK * progress.coerceIn(0f, 1f)
+}
+
+/**
+ * How far a folder card may be pushed toward its half of the screen: the room left on each side after a 16 dp margin, so the
+ * card never leaves the screen (a 640 dp card does not fit in a 375 dp half). A card wider than the screen minus margins stays centered.
+ */
+internal fun folderDisplacementDp(wantedDp: Float, screenWidthDp: Float, folderWidthDp: Float, marginDp: Float = 16f): Float {
+    val slack = ((screenWidthDp - folderWidthDp) / 2f - marginDp).coerceAtLeast(0f)
+    return wantedDp.coerceIn(-slack, slack)
 }

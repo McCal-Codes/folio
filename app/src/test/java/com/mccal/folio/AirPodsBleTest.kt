@@ -448,8 +448,10 @@ class AirPodsBleTest {
         val scan = Regex("""<uses-permission[^>]*android\.permission\.BLUETOOTH_SCAN[^>]*>""").find(manifest)?.value
         assertNotNull("BLUETOOTH_SCAN is declared", scan)
         assertTrue(scan!!.contains("""android:usesPermissionFlags="neverForLocation""""))
-        for (p in listOf("ACCESS_FINE_LOCATION", "ACCESS_BACKGROUND_LOCATION", "BLUETOOTH_CONNECT", "BLUETOOTH_ADMIN", "FOREGROUND_SERVICE_CONNECTED_DEVICE"))
+        for (p in listOf("ACCESS_BACKGROUND_LOCATION", "BLUETOOTH_CONNECT", "BLUETOOTH_ADMIN", "FOREGROUND_SERVICE_CONNECTED_DEVICE"))
             assertFalse("$p is not needed", manifest.contains("android.permission.$p\""))
+        // Precise location is declared only so Android will give the Wi-Fi network's name (Control Center's Show Wi-Fi network name); the scan permission above still never claims location.
+        assertTrue(manifest.contains("android.permission.ACCESS_FINE_LOCATION\""))
         assertTrue(manifest.contains("""<uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />"""))
     }
 }

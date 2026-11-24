@@ -78,6 +78,33 @@ internal enum class SpotlightSection(@androidx.annotation.StringRes val title: I
 /** How many of Folio's own settings Spotlight lists; the rest are counted, not listed. */
 private const val FOLIO_SETTING_ROWS = 3
 
+/** Below this much room above the keyboard Spotlight uses its compact chrome so the first result shows whole. */
+private val SPOTLIGHT_TIGHT_ABOVE_KEYBOARD = 320.dp
+
+/** Below this the field plus one compact result row no longer fits, so the top hit moves into the field. */
+private val SPOTLIGHT_INLINE_HIT_ABOVE_KEYBOARD = 170.dp
+
+/**
+ * Below this the field plus one row of suggestion icons no longer fits above the keyboard (the 48 dp field, the gaps around it
+ * and a 48 dp row), so the empty Spotlight shows the field alone rather than a card the keyboard cuts in half.
+ */
+internal const val SPOTLIGHT_STRIP_ABOVE_KEYBOARD_DP = 128f
+
+/** How the suggestions are drawn while nothing is typed. */
+internal enum class SuggestionsShape { FULL, STRIP, NONE }
+
+/**
+ * The suggestions card needs [SPOTLIGHT_TIGHT_ABOVE_KEYBOARD] of room to show whole (its heading, a card of app cells with labels).
+ * A flip's cover screen or a phone on its side leaves far less above a keyboard, where that card was drawn half under the keys
+ * (seen at 748x720: the field, the heading and the top of a card). With room for one row it becomes a single row of icons; with
+ * less than that, nothing, and the field stands alone.
+ */
+internal fun suggestionsShape(aboveKeyboardDp: Float): SuggestionsShape = when {
+    aboveKeyboardDp >= SPOTLIGHT_TIGHT_ABOVE_KEYBOARD.value -> SuggestionsShape.FULL
+    aboveKeyboardDp >= SPOTLIGHT_STRIP_ABOVE_KEYBOARD_DP -> SuggestionsShape.STRIP
+    else -> SuggestionsShape.NONE
+}
+
 /** Remembers the last apps launched from Folio, for Spotlight suggestions. Stays on the device. */
 internal object RecentApps {
     private const val KEY = "recent_apps"
@@ -236,6 +263,13 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
     fun shows(section: SpotlightSection) = section.name !in state.spotlightHidden
     val appHits = remember(q, apps, frecency) { if (q.isEmpty()) emptyList() else rankApps(apps, q, frecency) }
     val configuration = LocalConfiguration.current
+    // The room above the keyboard. A flip's cover screen or a phone on its side leaves little more than the field and half a
+    // result, so below this the chrome shrinks (less padding, no Top Hit heading, a smaller icon) and a hit shows whole.
+    val aboveKeyboard = configuration.screenHeightDp.dp -
+        with(androidx.compose.ui.platform.LocalDensity.current) { WindowInsets.imeAnimationTarget.getBottom(this).toDp() }
+    val tight = aboveKeyboard < SPOTLIGHT_TIGHT_ABOVE_KEYBOARD
+    // Not even one compact row fits: the top hit rides in the field (below) and no row is drawn for the keyboard to cut in half.
+    val inlineHit = tight && aboveKeyboard < SPOTLIGHT_INLINE_HIT_ABOVE_KEYBOARD && appHits.isNotEmpty()
     val shortcuts = remember(context, configuration) { systemSettingShortcuts(context) }
     val settingsLabel = stringResource(R.string.settings)
     val settingsVisible = shows(SpotlightSection.SETTINGS)
@@ -262,11 +296,11 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
     // re-layout a single time instead of on each frame of the keyboard sliding in.
     // Half folded, Spotlight moves off the hinge like iPhone Duo's system panels.
     FoldAvoidingBox(contentAlignment = Alignment.TopCenter) {
-    Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.folioSafeTop).windowInsetsPadding(WindowInsets.imeAnimationTarget).padding(horizontal = FolioSpace.LARGE.dp).padding(top = 18.dp),
+    Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.folioSafeTop).windowInsetsPadding(WindowInsets.imeAnimationTarget).padding(horizontal = FolioSpace.LARGE.dp).padding(top = if (tight) FolioSpace.SMALL.dp else 18.dp),
         horizontalAlignment = Alignment.CenterHorizontally) {
         // A readable column on big screens (iPad Spotlight floats at about this width) rather than stretching edge to edge.
         Column(Modifier.widthIn(max = 680.dp).fillMaxWidth().testTag("spotlight"),
-            verticalArrangement = Arrangement.spacedBy(FolioSpace.COMFY.dp)) {
+            verticalArrangement = Arrangement.spacedBy(if (tight) FolioSpace.SMALL.dp else FolioSpace.COMFY.dp)) {
             // Search field
             val fieldScope = rememberCoroutineScope()
             // iOS: the search capsule with Cancel beside it.
@@ -276,7 +310,7 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
                 // The whole capsule is the tap target, not just the text line.
                 .clickable(remember { MutableInteractionSource() }, null) { fieldScope.launch { raiseKeyboard() } }
                 // Fixed height: the capsule doesn't grow or jump when the clear button appears.
-                .heightIn(min = 52.dp).padding(start = FolioSpace.COMFY.dp, end = FolioSpace.TINY.dp),
+                .heightIn(min = if (tight) FolioTouch.MIN.dp else 52.dp).padding(start = FolioSpace.COMFY.dp, end = FolioSpace.TINY.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.Search, null, tint = Color.White.copy(alpha = .75f), modifier = Modifier.size(22.dp))
                 Spacer(Modifier.width(10.dp))
@@ -296,6 +330,14 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
                             }
                         }))
                 }
+                // With almost no room above the keyboard (a cover screen with a tall keyboard) not even a compact result row fits,
+                // so the top hit rides in the field: its icon opens it, the same thing the keyboard's search key does.
+                if (inlineHit) appHits.firstOrNull()?.let { top ->
+                    Box(Modifier.size(FolioTouch.MIN.dp).clip(CircleShape).clickable(onClickLabel = top.label) { launch(top) }.testTag("spotlight-inline-hit"),
+                        contentAlignment = Alignment.Center) {
+                        AppIcon(top, top.label, Modifier.size(32.dp).clip(RoundedCornerShape(9.dp)))
+                    }
+                }
                 if (query.isNotEmpty()) Box(Modifier.minimumInteractiveComponentSize().size(44.dp).clip(CircleShape).clickable { query = "" }, contentAlignment = Alignment.Center) {
                     Icon(Icons.Rounded.Cancel, stringResource(R.string.clear_text), tint = Color.White.copy(alpha = .6f), modifier = Modifier.size(20.dp))
                 }
@@ -307,11 +349,16 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
             }
 
             val resultsState = androidx.compose.foundation.lazy.rememberLazyListState()
-            LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false).edgeFade(resultsState), state = resultsState, verticalArrangement = Arrangement.spacedBy(FolioSpace.COMFY.dp),
+            // The keyboard leaves only the field in that state, so nothing below it is drawn to be cut in half.
+            if (!inlineHit) LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false).edgeFade(resultsState), state = resultsState, verticalArrangement = Arrangement.spacedBy(FolioSpace.COMFY.dp),
                 contentPadding = PaddingValues(bottom = 24.dp)) {
                 if (q.isEmpty()) {
-                    if (shows(SpotlightSection.SUGGESTIONS) && recent.isNotEmpty()) item("suggestions") {
-                        Section(stringResource(R.string.suggestions)) { AppGrid(recent, launch, fullRows = true) }
+                    if (shows(SpotlightSection.SUGGESTIONS) && recent.isNotEmpty()) when (suggestionsShape(aboveKeyboard.value)) {
+                        SuggestionsShape.FULL -> item("suggestions") {
+                            Section(stringResource(R.string.suggestions)) { AppGrid(recent, launch, fullRows = true) }
+                        }
+                        SuggestionsShape.STRIP -> item("suggestions-strip") { SuggestionStrip(recent, launch) }
+                        SuggestionsShape.NONE -> Unit
                     }
                 } else {
                     math?.takeIf { shows(SpotlightSection.CALCULATOR) }?.let { result -> item("math") {
@@ -323,7 +370,9 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
                         }
                     } }
                     appHits.firstOrNull()?.let { top -> item("top") {
-                        Section(stringResource(R.string.top_hit)) { TopHit(top, homeOffer(state.layout, top.id), onAdd = { onAddToHome(top) }) { launch(top) } }
+                        Section(if (tight) null else stringResource(R.string.top_hit)) {
+                            TopHit(top, homeOffer(state.layout, top.id), compact = tight, onAdd = { onAddToHome(top) }) { launch(top) }
+                        }
                     } }
                     if (appHits.size > 1) item("apps") { Section(stringResource(R.string.apps)) { AppGrid(appHits.drop(1).take(8), launch) } }
                     if (folioHits.isNotEmpty()) item("folio-settings") {
@@ -374,9 +423,9 @@ private fun SpotlightContent(state: LauncherState, active: Boolean, onClose: () 
 }
 
 @Composable
-private fun Section(title: String, content: @Composable ColumnScope.() -> Unit) {
+private fun Section(title: String?, content: @Composable ColumnScope.() -> Unit) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp)) {
-        Text(title, color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold,
+        if (title != null) Text(title, color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp, fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(start = FolioSpace.TINY.dp))
         Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.GROUPED_CARD.dp)).background(SpotGlass)
             .border(FolioGlass.edge, RoundedCornerShape(FolioRadius.GROUPED_CARD.dp)).padding(FolioSpace.COMPACT.dp),
@@ -400,6 +449,22 @@ internal fun WebSearchChips(targets: List<WebSearchTarget>, onPick: (WebSearchTa
                     tint = Color.White, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(target.label, color = Color.White, fontSize = FolioType.COMPACT.sp)
+            }
+        }
+    }
+}
+
+/** One row of suggested apps, icons only, for the room a short window leaves above the keyboard. Each icon says its name to TalkBack. */
+@Composable
+private fun SuggestionStrip(apps: List<AppEntry>, onLaunch: (AppEntry) -> Unit) {
+    BoxWithConstraints(Modifier.fillMaxWidth().testTag("spotlight-suggestion-strip")) {
+        val fit = (maxWidth / (FolioTouch.MIN.dp + FolioSpace.SMALL.dp)).toInt().coerceAtLeast(1)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            apps.take(fit).forEach { app ->
+                Box(Modifier.size(FolioTouch.MIN.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp)).clickable(onClickLabel = app.label) { onLaunch(app) },
+                    contentAlignment = Alignment.Center) {
+                    AppIcon(app, app.label, Modifier.size(40.dp).clip(RoundedCornerShape(FolioRadius.CONTROL.dp)))
+                }
             }
         }
     }
@@ -437,10 +502,10 @@ private fun AppGrid(apps: List<AppEntry>, onLaunch: (AppEntry) -> Unit, fullRows
 }
 
 @Composable
-private fun TopHit(app: AppEntry, offer: HomeOffer, onAdd: () -> Unit, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.CARD.dp)).clickable(onClick = onClick).padding(FolioSpace.SMALL.dp),
+private fun TopHit(app: AppEntry, offer: HomeOffer, compact: Boolean = false, onAdd: () -> Unit, onClick: () -> Unit) {
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(FolioRadius.CARD.dp)).clickable(onClick = onClick).padding(if (compact) FolioSpace.TINY.dp else FolioSpace.SMALL.dp),
         verticalAlignment = Alignment.CenterVertically) {
-        AppIcon(app, null, Modifier.size(56.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp)))
+        AppIcon(app, null, Modifier.size(if (compact) 44.dp else 56.dp).clip(RoundedCornerShape(FolioRadius.CARD.dp)))
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(app.label, color = Color.White, fontSize = FolioType.BODY.sp, fontWeight = FontWeight.SemiBold)

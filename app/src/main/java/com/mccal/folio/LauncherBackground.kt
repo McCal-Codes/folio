@@ -20,6 +20,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import java.io.File
 import java.io.FileOutputStream
 import java.nio.file.Files
@@ -82,7 +84,7 @@ internal fun launcherBackgroundIdentity(context: Context): String? {
     if (!launcherBackgroundEnabled(context)) return null
     return when (val choice = backgroundChoice(context)) {
         BackgroundChoice.None -> null
-        is BackgroundChoice.Art -> choice.save()
+        is BackgroundChoice.Art -> choice.save() + artTweaksIdentity(context, choice.id)
         BackgroundChoice.Photo -> launcherBackgroundPreferences(context).getString(BACKGROUND_ID, null)
             ?: "legacy-${launcherPhotoFile(context).lastModified()}"
     }
@@ -127,6 +129,8 @@ internal fun loadLauncherBackground(context: Context): Bitmap? {
  */
 private fun decodeBackground(context: Context, file: File): Bitmap? {
     val choice = backgroundChoice(context)
+    // A piece Folio drew, with colors the person changed: drawn from its recipe with those colors, not read from the file.
+    if (choice is BackgroundChoice.Art) tweakedArtBitmap(context, choice.id, TWEAKED_HOME_PX)?.let { return it }
     if (choice is BackgroundChoice.Art && BackgroundLibrary.isBuiltIn(choice.id)) {
         return runCatching {
             context.assets.open(BackgroundLibrary.assetPath(choice.id)).use(BitmapFactory::decodeStream)
@@ -197,6 +201,63 @@ class LauncherBackgroundController(
     private fun dropPreviewBitmap() { pendingArtPreviewBitmap = null }
 
     /**
+     * The color changes being tried on the staged piece, when it is one Folio drew (see WallpaperRecipe.kt). It starts as what
+     * is already saved for that piece, moves with the sliders in the preview, and is only written by Set. Cancel drops it.
+     */
+    internal var pendingTweaks by mutableStateOf(WallpaperTweaks.NONE)
+        private set
+    private var tweakJob: kotlinx.coroutines.Job? = null
+
+    private class LivePattern(val id: String, val pattern: HillsPattern)
+    private var livePattern: LivePattern? = null
+
+    /**
+     * A slider moved. One worker keeps the picture up with the sliders: it draws a quick copy of the newest colors, shows it, and
+     * looks again, so the picture updates as often as a copy can be drawn and never falls behind by more than one. (It used to start
+     * over on every move, and a copy that takes longer to draw than the gap between two moves was then thrown away every time, so the
+     * picture only changed when the finger paused.) Once the sliders rest a moment it draws the full-screen copy, which fades in over
+     * the quick one and is dropped part way if a slider moves again.
+     */
+    internal fun tweakPending(next: WallpaperTweaks) {
+        val art = pendingArt ?: return
+        if (!WallpaperRecipes.isCustomizable(art.id)) return
+        pendingTweaks = next
+        if (tweakJob?.isActive == true) return
+        val metrics = activity.resources.displayMetrics
+        tweakJob = activity.lifecycleScope.launch {
+            var shown: WallpaperTweaks? = null
+            while (true) {
+                val staged = pendingArt ?: return@launch
+                val want = pendingTweaks
+                if (want != shown) {
+                    val quick = withContext(Dispatchers.Default) {
+                        // The shape of the piece is worked out once; each move after that only mixes the colors through it.
+                        val cached = livePattern?.takeIf { it.id == staged.id }
+                        val pattern = cached?.pattern ?: WallpaperRecipes.of(staged.id)?.let { HillsPattern.build(it, TWEAKED_LIVE_PX) }
+                            ?.also { livePattern = LivePattern(staged.id, it) }
+                        pattern?.render(want)
+                    } ?: return@launch
+                    if (pendingArt != staged) return@launch
+                    shown = want
+                    pendingArtBitmap = quick
+                    dropPreviewBitmap()
+                    continue
+                }
+                // Rested on these colors: wait for another move, and only if none comes draw the sharp copy.
+                val moved = kotlinx.coroutines.withTimeoutOrNull(TWEAK_SETTLE_MS) {
+                    androidx.compose.runtime.snapshotFlow { pendingTweaks }.first { it != want }
+                }
+                if (moved != null) continue
+                val sharp = withContext(Dispatchers.Default) {
+                    renderTweaked(staged.id, want, maxOf(metrics.widthPixels, metrics.heightPixels)) { isActive && pendingTweaks == want }
+                } ?: continue
+                if (pendingArt == staged && pendingTweaks == want) pendingArtPreviewBitmap = sharp
+                return@launch
+            }
+        }
+    }
+
+    /**
      * True for the moment after a Set, and only then: the page offers "Also set as phone wallpaper" once, behind
      * Android's own preview, because that action cannot be undone and Folio's can. Cleared by the next stage, cancel,
      * reset or offer taken.
@@ -205,10 +266,13 @@ class LauncherBackgroundController(
         private set
 
     fun stageArt(id: String) {
+        revertOnCancel = null
         // A photo mid-preview and a piece of art cannot both be the candidate.
         if (previewPending) cancelPreview()
         justSet = false
+        tweakJob?.cancel()
         pendingArt = BackgroundChoice.Art(id)
+        pendingTweaks = artTweaks(activity, id)
         pendingArtBitmap = null
         val wanted = pendingArt
         activity.lifecycleScope.launch {
@@ -228,6 +292,9 @@ class LauncherBackgroundController(
 
     fun setPendingArt() {
         val art = pendingArt ?: return
+        tweakJob?.cancel()
+        livePattern = null
+        setArtTweaks(activity, art.id, pendingTweaks)
         setBackgroundChoice(activity, art)
         Diagnostics.backgroundSet(art)
         // Drop the decoded picture rather than decoding the new one here: whatever draws next asks for it, on its
@@ -259,6 +326,9 @@ class LauncherBackgroundController(
     }
 
     fun cancelPendingArt() {
+        tweakJob?.cancel()
+        livePattern = null
+        pendingTweaks = WallpaperTweaks.NONE
         pendingArt = null
         pendingArtBitmap = null
         dropPreviewBitmap()
@@ -315,7 +385,37 @@ class LauncherBackgroundController(
         }
     }
 
-    fun choosePhoto() {
+    /**
+     * Runs if a shared photo is cancelled or cannot be read, to put back the wallpaper choice that showing its preview
+     * changed. Cleared by anything that moves on: a Set, another photo, art, or Reset.
+     */
+    private var revertOnCancel: (() -> Unit)? = null
+
+    /**
+     * A photo shared to Folio, staged exactly as a picked one: the page's preview shows it and Set writes it. The caller
+     * says how to undo the switch to Folio's own background it made to show the preview (null when already there).
+     */
+    fun stageSharedPhoto(uri: Uri, revert: (() -> Unit)?) {
+        cancelPendingArt()
+        justSet = false
+        discardPreview()
+        releasePreviewGrant()
+        cleanupStagedFiles()
+        generation++; pickerPending = false; loading = false; errorMessage = null; successMessage = null
+        if (revert != null) revertOnCancel = revert
+        val operation = UUID.randomUUID().toString()
+        prefs.edit().putString(PENDING_OPERATION, operation).remove(PICKER_PENDING).remove(PENDING_URI)
+            .remove(PREVIEW_PHASE).remove(PREVIEW_FILE).apply()
+        beginPreview(uri, operation)
+    }
+
+    private fun revertSharedChoice() { revertOnCancel?.also { revertOnCancel = null }?.invoke() }
+
+    fun choosePhoto() = choosePhotoWith(null)
+
+    /** [revert]: how to put back the background choice the caller switched away from, if the picker or the framing is cancelled. */
+    fun choosePhotoWith(revert: (() -> Unit)?) {
+        revertOnCancel = revert
         cancelPendingArt()
         justSet = false
         discardPreview()
@@ -334,6 +434,7 @@ class LauncherBackgroundController(
     }
 
     fun reset() {
+        revertOnCancel = null
         generation++; pickerPending = false; loading = false
         discardPreview()
         releasePreviewGrant()
@@ -357,11 +458,19 @@ class LauncherBackgroundController(
         generation++; loading = false; clearPickerPending()
     }
 
-    fun applyPreview() {
+    /** [crop]: the part of the staged photo the person framed (pinch and drag); null keeps the whole picture. */
+    internal fun applyPreview(crop: PhotoCrop? = null, blur: Boolean = false) {
         val staged = preview ?: return
         if (!previewPending || pendingOperation() != staged.operation ||
             previewFile()?.absolutePath != staged.file.absolutePath) return
-        caught("Wallpaper: setting the photo") { staged.commit(launcherPhotoFile(activity)) }
+        var framed: Bitmap? = null
+        caught("Wallpaper: setting the photo") {
+            // Blur with no framing still saves the whole picture, blurred.
+            val region = crop?.takeIf { it.fitsIn(staged.bitmap.width, staged.bitmap.height) }
+                ?: PhotoCrop(0, 0, staged.bitmap.width, staged.bitmap.height).takeIf { blur }
+            framed = region?.let { staged.frame(it, blur) }
+            staged.commit(launcherPhotoFile(activity))
+        }
             .onSuccess {
                 releasePreviewGrant(staged.operation)
                 setBackgroundChoice(activity, BackgroundChoice.Photo)
@@ -372,7 +481,8 @@ class LauncherBackgroundController(
                 previewBitmap = null
                 previewPending = false
                 loading = false
-                LauncherBackgroundCache.changed(staged.bitmap, staged.operation)
+                revertOnCancel = null
+                LauncherBackgroundCache.changed(framed ?: staged.bitmap, staged.operation)
                 photoSelected = true
                 justSet = true
                 errorMessage = null
@@ -391,6 +501,7 @@ class LauncherBackgroundController(
         errorMessage = null
         successMessage = null
         cleanupStagedFiles()
+        revertSharedChoice()
     }
 
     override fun onDestroy(owner: LifecycleOwner) {
@@ -524,6 +635,7 @@ class LauncherBackgroundController(
         discardPreview()
         clearPreviewPersistence()
         cleanupStagedFiles()
+        revertSharedChoice()
     }
 
     private fun discardPreview() {
@@ -612,6 +724,23 @@ class LauncherBackgroundController(
         fun publish(): Bitmap {
             published = true
             return bitmap
+        }
+
+        /** Keeps only the framed part: it replaces the staged file, so the commit that follows saves exactly what was framed. */
+        fun frame(crop: PhotoCrop, blur: Boolean = false): Bitmap {
+            val cropped = Bitmap.createBitmap(bitmap, crop.left, crop.top, crop.width, crop.height)
+            // A blurred picture keeps no detail, so it is saved small; the cropped copy is let go unless it is the staged bitmap itself.
+            val framed = if (blur) cropped.blurredForSaving().also { if (cropped !== bitmap) cropped.recycle() } else cropped
+            try {
+                FileOutputStream(file).use { output ->
+                    require(framed.compress(Bitmap.CompressFormat.JPEG, 92, output)) { "The framed photo could not be saved." }
+                    output.fd.sync()
+                }
+            } catch (error: Exception) {
+                if (framed !== bitmap) framed.recycle()
+                throw error
+            }
+            return framed
         }
 
         fun commit(destination: File) {

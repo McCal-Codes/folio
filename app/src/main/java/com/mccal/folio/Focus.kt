@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bed
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.Work
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.background
@@ -105,17 +106,33 @@ internal object FocusController {
         val manager = context.getSystemService(NotificationManager::class.java)
         val prefs = context.getSharedPreferences(PREFS, 0)
         modes.forEach { mode ->
-            val ruleId = prefs.getString(mode.id, null)?.takeIf { runCatching { manager.getAutomaticZenRule(it) }.getOrNull() != null }
-            if (mode.id != active?.id) {
-                ruleId?.let { id -> runCatching { manager.setAutomaticZenRuleState(id, Condition(conditionId(mode), mode.name, Condition.STATE_FALSE)) } }
-                return@forEach
+            // One Focus's rule failing (a framework that lacks a method, a refused call) must never reach Home's main thread:
+            // this also runs from a schedule or charging with no tap (0.6.9.2).
+            guardedZen {
+                val ruleId = prefs.getString(mode.id, null)?.takeIf { runCatching { manager.getAutomaticZenRule(it) }.getOrNull() != null }
+                if (mode.id != active?.id) {
+                    ruleId?.let { id -> runCatching { manager.setAutomaticZenRuleState(id, Condition(conditionId(mode), mode.name, Condition.STATE_FALSE)) } }
+                    return@guardedZen
+                }
+                val rule = buildRule(context, mode)
+                val id = if (ruleId != null) ruleId.also { runCatching { manager.updateAutomaticZenRule(it, rule) } }
+                    else runCatching { manager.addAutomaticZenRule(rule) }.getOrNull()?.also { prefs.edit().putString(mode.id, it).apply() }
+                id?.let { runCatching { manager.setAutomaticZenRuleState(it, Condition(conditionId(mode), mode.name, Condition.STATE_TRUE)) } }
             }
-            val rule = buildRule(context, mode)
-            val id = if (ruleId != null) ruleId.also { runCatching { manager.updateAutomaticZenRule(it, rule) } }
-                else runCatching { manager.addAutomaticZenRule(rule) }.getOrNull()?.also { prefs.edit().putString(mode.id, it).apply() }
-            id?.let { runCatching { manager.setAutomaticZenRuleState(it, Condition(conditionId(mode), mode.name, Condition.STATE_TRUE)) } }
         }
     }
+
+    /** Runs [block], swallowing any failure (an Error such as NoSuchMethodError included): Do Not Disturb is a bonus, never a crash. */
+    internal fun guardedZen(block: () -> Unit) {
+        try { block() } catch (_: Throwable) { }
+    }
+
+    /**
+     * The Android 15 modes rule from [modern] where the framework has it, else the legacy rule from [legacy]. Some Android 15
+     * builds (a Samsung Z Flip 3 on One UI 7) report API 35 without `AutomaticZenRule.Builder`, so the call throws
+     * NoSuchMethodError, which is an Error and not an Exception.
+     */
+    internal fun <T> modernOrLegacy(modern: () -> T, legacy: () -> T): T = try { modern() } catch (_: Throwable) { legacy() }
 
     /** Whether Android still has [mode]'s rule on (someone may have turned it off in Android's own settings). */
     fun isOnInAndroid(context: Context, mode: FocusMode): Boolean? {
@@ -127,8 +144,12 @@ internal object FocusController {
     private fun buildRule(context: Context, mode: FocusMode): AutomaticZenRule {
         val settings = ComponentName(context, FolioSettingsActivity::class.java)
         val filter = if (mode.silence) NotificationManager.INTERRUPTION_FILTER_PRIORITY else NotificationManager.INTERRUPTION_FILTER_ALL
-        if (Build.VERSION.SDK_INT >= 35) {
-            return AutomaticZenRule.Builder(mode.name, conditionId(mode))
+        @Suppress("DEPRECATION")
+        val legacy = { AutomaticZenRule(mode.name, null, settings, conditionId(mode), null, filter, true) }
+        if (Build.VERSION.SDK_INT < 35) return legacy()
+        // The whole modes-API chain (Builder, setType, setDeviceEffects, ZenDeviceEffects, setManualInvocationAllowed) is inside the guard.
+        return modernOrLegacy({
+            AutomaticZenRule.Builder(mode.name, conditionId(mode))
                 .setConfigurationActivity(settings)
                 .setInterruptionFilter(filter)
                 .setType(if (mode.id == "sleep") AutomaticZenRule.TYPE_BEDTIME else AutomaticZenRule.TYPE_OTHER)
@@ -139,9 +160,7 @@ internal object FocusController {
                     .build())
                 .setManualInvocationAllowed(true)
                 .build()
-        }
-        @Suppress("DEPRECATION")
-        return AutomaticZenRule(mode.name, null, settings, conditionId(mode), null, filter, true)
+        }, legacy)
     }
 }
 
@@ -300,14 +319,35 @@ internal object FocusScheduler {
 }
 
 /**
- * iOS Focus "Customize Screens": while a Focus limits Home to some pages, Home shows only those, in order. The saved
- * layout is never rewritten; Home just draws a filtered copy, so editing is locked until the Focus ends (an edit to
- * the copy would land on the wrong page of the real layout).
+ * What Home draws when pages are not all showing. A Focus can limit Home to some pages (iOS "Customize Screens"), and the
+ * person can hide pages in the Page overview; either way Home draws a filtered copy of the saved layout, which is never
+ * rewritten, so editing is locked until every page shows again (an edit to the copy would land on the wrong page of the real
+ * layout). A Focus can narrow the pages that are showing but never brings a hidden page back.
  */
 internal object FocusPages {
-    /** The Focus that's hiding Home pages right now, if any. */
-    fun lockingFocus(state: LauncherState): FocusMode? = state.focusModes.firstOrNull { it.id == state.activeFocus }
-        ?.takeIf { mode -> mode.pages?.let { pages -> (0 until state.layout.pageCount).any { it !in pages } } == true }
+    private fun activeFocus(state: LauncherState) = state.focusModes.firstOrNull { it.id == state.activeFocus }
+
+    /** The real pages Home draws, in order: not the hidden ones, and only the active Focus's pages when it limits them. */
+    fun shown(state: LauncherState): List<Int> =
+        HomePages.shownPages(state.layout.pageCount, state.hiddenPages, activeFocus(state)?.pages)
+
+    /** True while Home draws fewer pages than there are, whether a Focus or a hidden page is the reason. */
+    fun isLocked(state: LauncherState) = shown(state).size < state.layout.pageCount
+
+    /** The Focus that's hiding Home pages right now, if any (pages the person hid themselves do not count). */
+    fun lockingFocus(state: LauncherState): FocusMode? = activeFocus(state)?.takeIf { mode ->
+        mode.pages != null && shown(state).size < HomePages.shownPages(state.layout.pageCount, state.hiddenPages, null).size
+    }
+
+    /** The lock Home reads: set whenever fewer pages show than there are, with the Focus behind it when there is one. */
+    fun lock(state: LauncherState): FocusLock? =
+        if (isLocked(state)) FocusLock(lockingFocus(state), state.layout.pageCount, shown(state)) else null
+
+    /** Cells on the pages Home does not draw, so nothing is put where the person cannot see it. */
+    fun hiddenCells(state: LauncherState): List<Int> {
+        val shown = shown(state).toSet()
+        return (0 until state.layout.pageCount).filter { it !in shown }.flatMap { page -> (0 until HOME_CELLS).map { homeCellIndex(page, it) } }
+    }
 
     /** Home's layout with only [pages] (in order, renumbered from 0); the unfolded-only page and the dock stay. */
     fun filter(layout: HomeLayout, pages: Set<Int>): HomeLayout {
@@ -321,11 +361,11 @@ internal object FocusPages {
             widgetRestores = layout.widgetRestores.filter { it.slot in slotsKept }, minPages = kept.size)
     }
 
-    /** What Home draws: the filtered layout while a Focus hides pages, otherwise [state] unchanged. */
+    /** What Home draws: the filtered layout while pages are limited or hidden, otherwise [state] unchanged. */
     fun effective(state: LauncherState): LauncherState {
-        val focus = lockingFocus(state) ?: return state
-        val filtered = filter(state.layout, focus.pages!!)
-        val kept = focus.pages!!.filter { it in 0 until state.layout.pageCount }.sorted().ifEmpty { listOf(0) }
+        if (!isLocked(state)) return state
+        val kept = shown(state)
+        val filtered = filter(state.layout, kept.toSet())
         return state.copy(homeSlots = filtered.slots, widgetPlacements = filtered.widgetPlacements,
             widgetRestores = filtered.widgetRestores, minPages = filtered.minPages, canUndoEdit = false,
             pageStyles = kept.mapIndexedNotNull { shown, real -> state.pageStyles[real]?.let { shown to it } }.toMap())
@@ -337,28 +377,42 @@ internal object FocusPages {
         val pages = mode?.pages ?: return real
         return pages.filter { it in 0 until realPages }.sorted().indexOf(real).takeIf { it >= 0 } ?: 0
     }
+
+    /** The same, numbered among the pages [shown] (a Focus's pages and the ones the person hid both counted). */
+    fun openPage(mode: FocusMode?, realPages: Int, shown: List<Int>): Int? {
+        val real = FocusModes.homePage(mode, realPages) ?: return null
+        return shown.indexOf(real).takeIf { it >= 0 } ?: 0
+    }
 }
 
-/** The Focus locking Home editing (it hides pages) and how many pages the real Home has; provided by MainActivity. */
-internal data class FocusLock(val mode: FocusMode, val realPages: Int)
+/**
+ * What locks Home editing (pages are limited or hidden), how many pages the real Home has, and which real pages Home draws; provided by
+ * MainActivity. [mode] is the Focus behind it, or null when only pages the person hid are missing.
+ */
+internal data class FocusLock(val mode: FocusMode?, val realPages: Int, val shown: List<Int>)
 internal val LocalFocusLock = androidx.compose.runtime.staticCompositionLocalOf<FocusLock?> { null }
 
-/** A short pill at the top: "Turn off Work to edit Home Screen". Shows for a moment each time [trigger] changes. */
+/**
+ * A short pill at the top: "Turn off Work to edit Home Screen", or "Show hidden pages to edit Home Screen" when pages the person
+ * hid are the reason. Shows for a moment each time [trigger] changes.
+ */
 @androidx.compose.runtime.Composable
-internal fun FocusLockNotice(trigger: Int, mode: FocusMode?, modifier: androidx.compose.ui.Modifier) {
+internal fun FocusLockNotice(trigger: Int, lock: FocusLock?, modifier: androidx.compose.ui.Modifier) {
     var visible by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-    androidx.compose.runtime.LaunchedEffect(trigger) { if (trigger > 0 && mode != null) { visible = true; kotlinx.coroutines.delay(2_600); visible = false } }
-    androidx.compose.animation.AnimatedVisibility(visible && mode != null, modifier.windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.folioSafeTop).padding(top = FolioSpace.MEDIUM.dp),
+    androidx.compose.runtime.LaunchedEffect(trigger) { if (trigger > 0 && lock != null) { visible = true; kotlinx.coroutines.delay(2_600); visible = false } }
+    androidx.compose.animation.AnimatedVisibility(visible && lock != null, modifier.windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.folioSafeTop).padding(top = FolioSpace.MEDIUM.dp),
         // Reduce Motion: the pill fades where it lands instead of sliding down from the top edge (A11Y-14).
         enter = if (LocalReduceMotion.current) androidx.compose.animation.fadeIn() else androidx.compose.animation.fadeIn() + androidx.compose.animation.slideInVertically { -it },
         exit = if (LocalReduceMotion.current) androidx.compose.animation.fadeOut() else androidx.compose.animation.fadeOut() + androidx.compose.animation.slideOutVertically { -it }) {
-        val m = mode ?: return@AnimatedVisibility
+        val l = lock ?: return@AnimatedVisibility
+        val m = l.mode
         androidx.compose.foundation.layout.Row(androidx.compose.ui.Modifier.clip(androidx.compose.foundation.shape.CircleShape)
             .background(FolioColors.SecondaryBackground.copy(alpha = .95f))
             .padding(horizontal = FolioSpace.LARGE.dp, vertical = FolioSpace.COMPACT.dp).testTag("focus-lock-notice"), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-            androidx.compose.material3.Icon(m.icon(), null, tint = androidx.compose.ui.graphics.Color(m.color), modifier = androidx.compose.ui.Modifier.size(18.dp))
+            androidx.compose.material3.Icon(m?.icon() ?: Icons.Rounded.VisibilityOff, null,
+                tint = m?.let { androidx.compose.ui.graphics.Color(it.color) } ?: androidx.compose.ui.graphics.Color.White, modifier = androidx.compose.ui.Modifier.size(18.dp))
             androidx.compose.foundation.layout.Spacer(androidx.compose.ui.Modifier.width(8.dp))
-            androidx.compose.material3.Text(stringResource(R.string.turn_off_1_to_edit_home_screen, m.name), color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.COMPACT.sp,
+            androidx.compose.material3.Text(if (m != null) stringResource(R.string.turn_off_1_to_edit_home_screen, m.name) else stringResource(R.string.show_hidden_pages_to_edit_home_screen), color = androidx.compose.ui.graphics.Color.White, fontSize = FolioType.COMPACT.sp,
                 fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
         }
     }

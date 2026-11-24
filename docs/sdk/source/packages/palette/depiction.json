@@ -4,16 +4,20 @@
   "tint": "#FF9F0A",
   "blocks": [
     {
+      "type": "hero",
+      "image": "assets/heroes/palette.webp"
+    },
+    {
       "type": "markdown",
-      "text": "Each notification card takes a little of its app's own colour, so a screen of notifications reads as a list of apps before you have read a word of it.\n\nThe colour comes from the app's icon. Folio looks for the strongest colour in it - the one that most of the icon actually is, not the brightest pixel in it - and mixes about a third of that into the card's glass: enough to tell two apps apart, not enough to argue with the text. An icon that is grey, black or white has no colour to give, so those cards stay exactly as they were. Every icon's colour is worked out once, away from the screen, and remembered.\n\nLike every tweak it has its own page in Settings › Tweaks, with a switch for the cover screen and a switch for the inner one, so it can be on where it helps and off where it doesn't.\n\nInspired by Velvet by NoisyFlake and HiMyNameisUbik. Re-created from scratch for Folio; no tweak code is included."
+      "text": "Each notification card takes a little of its app's own color, so a screen of notifications reads as a list of apps before you have read a word of it.\n\nThe color comes from the app's icon. Folio looks for the strongest color in it - the one that most of the icon actually is, not the brightest pixel in it - and mixes about a third of that into the card's glass: enough to tell two apps apart, not enough to argue with the text. An icon that is grey, black or white has no color to give, so those cards stay exactly as they were. Every icon's color is worked out once, away from the screen, and remembered.\n\nLike every tweak it has its own page in Settings › Tweaks, with a switch for the cover screen and a switch for the inner one, so it can be on where it helps and off where it doesn't.\n\nInspired by Velvet by NoisyFlake and HiMyNameisUbik. Re-created from scratch for Folio; no tweak code is included."
     },
     {
       "type": "featureList",
       "items": [
         "Cards tinted by their own app's icon",
-        "A third of the colour, so the text still reads",
+        "A third of the color, so the text still reads",
         "Grey and black-and-white icons are left alone",
-        "Each colour is read once and remembered"
+        "Each color is read once and remembered"
       ]
     },
     {
