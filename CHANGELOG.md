@@ -173,7 +173,7 @@ Folio shows the newest section on the phone after an update, and every version u
 - **Dual-Screen Ambient Light switch:** StandBy 2's options now show the switch for the outer-screen glow. It was in the code but missing from the page, so the glow could not be turned off. <!-- beta 1 -->
 
 ### Fixed
-- **Simple Mode keeps a picked person:** adding a person to call opened the contact picker, and Helper Settings locked itself when Folio stopped for it, so you landed on Home and the person was never saved. Helper Settings now stays open for the pick, and its 5-minute idle lock waits while the picker is open. <!-- beta 6 -->
+- **Simple Mode keeps a picked person:** adding a person to call opened the contact picker, and Helper Settings locked itself when Folio stopped for it, so you landed on Home and the person was never saved. Helper Settings now stays open for the pick, and its 5-minute idle lock waits while the picker is open, for up to 3 minutes. Turning the screen off while it is open locks it at once. <!-- beta 6 -->
 
 ## [0.6.9.2] - 2026-11-17
 

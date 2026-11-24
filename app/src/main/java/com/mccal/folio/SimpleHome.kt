@@ -153,6 +153,12 @@ internal enum class SimpleScreen(val parent: SimpleScreen?) {
 internal const val SIMPLE_IDLE_RELOCK_MS = 5 * 60_000L
 
 /**
+ * The longest Helper Settings stays open for the contact picker. Folio cannot see the helper leave the picker for another
+ * app (Folio is already stopped, so no second stop comes), so the pick has a limit instead of waiting forever.
+ */
+internal const val SIMPLE_PICK_GRACE_MS = 3 * 60_000L
+
+/**
  * Folio stopping locks Helper Settings, unless it is only being recreated for a fold, a turn, a font size or dark mode,
  * or Helper Settings itself just opened the system contact picker: that stops Folio too, and locking then would drop the
  * helper back to Home before the picked person comes back.
@@ -166,12 +172,13 @@ internal fun relocksOnStop(changingConfigurations: Boolean, helperPickStop: Bool
  * exit from Folio still locks.
  */
 internal object SimpleHelperPick {
-    @Volatile var waiting = false
-        private set
+    // Snapshot state so Simple Home can start and stop its time limit and screen-off watch as the pick starts and ends.
+    private val waitingState = androidx.compose.runtime.mutableStateOf(false)
+    val waiting: Boolean get() = waitingState.value
     @Volatile private var stopExpected = false
-    fun launched() { waiting = true; stopExpected = true }
+    fun launched() { waitingState.value = true; stopExpected = true }
     fun consumeStop(): Boolean = stopExpected.also { stopExpected = false }
-    fun finished() { waiting = false; stopExpected = false }
+    fun finished() { waitingState.value = false; stopExpected = false }
 }
 
 /**
@@ -315,6 +322,24 @@ private fun SimpleHome(state: LauncherState, setup: SimpleSetup, model: Launcher
             do { kotlinx.coroutines.delay(SIMPLE_IDLE_RELOCK_MS) } while (SimpleHelperPick.waiting)
             screen = SimpleScreen.HOME
         }
+    }
+    // The contact picker may not hold Helper Settings open for ever: Folio sees no second stop when the helper leaves the
+    // picker for another app, so the pick expires, and turning the screen off ends it at once.
+    val picking = SimpleHelperPick.waiting
+    LaunchedEffect(picking) {
+        if (picking) {
+            kotlinx.coroutines.delay(SIMPLE_PICK_GRACE_MS)
+            SimpleHelperPick.finished(); screen = SimpleScreen.HOME; hint = false; holding = false
+        }
+    }
+    DisposableEffect(picking) {
+        val off = object : android.content.BroadcastReceiver() {
+            override fun onReceive(c: android.content.Context?, i: Intent?) {
+                SimpleHelperPick.finished(); screen = SimpleScreen.HOME; hint = false; holding = false
+            }
+        }
+        if (picking) runCatching { context.registerReceiver(off, android.content.IntentFilter(Intent.ACTION_SCREEN_OFF)) }
+        onDispose { if (picking) runCatching { context.unregisterReceiver(off) } }
     }
     // Back, like Home, just returns to Simple Home. On Home it does nothing, as on any Home.
     BackHandler { hint = false; screen = SimpleScreen.HOME }

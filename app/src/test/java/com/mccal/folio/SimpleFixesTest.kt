@@ -44,6 +44,7 @@ class SimpleFixesTest {
         assertTrue("still waiting for the answer after that stop", SimpleHelperPick.waiting)
         SimpleHelperPick.finished()
         assertFalse("the answer, or closing the page, ends the wait", SimpleHelperPick.waiting)
+        assertTrue("a pick that never answers gives up before the idle lock would", SIMPLE_PICK_GRACE_MS in 1 until SIMPLE_IDLE_RELOCK_MS)
         SimpleHelperPick.launched(); SimpleHelperPick.finished()
         assertFalse("a launch that never stopped Folio leaves nothing behind", SimpleHelperPick.consumeStop())
         assertFalse("a recreated Folio counts Home presses from zero", relocksOnHomeRequest(request = 0, seen = 3))
