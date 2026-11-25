@@ -106,6 +106,12 @@ object DuetClip {
         return (2.0 * kotlin.math.asin(kotlin.math.sqrt(x.toDouble())) / Math.PI).toFloat()
     }
 
+    /** The strength that gives [progress]: the inverse of [progress], so a fade can be timed in how far the fold has gone. */
+    fun strength(progress: Float): Float {
+        val s = kotlin.math.sin(Math.PI * progress.coerceIn(0f, 1f) / 2.0).toFloat()
+        return HOLD * s * s
+    }
+
     /** Share of the blur at [progress]: 0 flat, about half a few degrees in, 1 from about 18 degrees on. */
     fun blur(progress: Float): Float =
         BLUR_JUMP * smooth(BLUR_FROM, BLUR_JUMP_AT, progress) + (1f - BLUR_JUMP) * smooth(BLUR_JUMP_AT, BLUR_FULL_AT, progress)

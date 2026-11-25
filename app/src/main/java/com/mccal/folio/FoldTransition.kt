@@ -78,6 +78,7 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
     // A device that cannot fold starts on its one screen: a tablet launched wide was not just unfolded, so nothing plays on its first frames.
     remember(fold) { foldStartsExpanded(hasHinge(context), expanded).also { fold.expanded = it } }
     fold.unfoldStart = style.startAt
+    fold.coverByProgress = style.clip
     fold.reduceMotion = reduceMotion
     // The screen's own corner radius, so a tilted pane and the slightly shrunk open screen have the panel's corners.
     // Read when a fold starts rather than at first composition: the window's insets (and so its rounded corners) can
@@ -99,6 +100,8 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
     fold.stayAwake = stayAwake
     // One light tick as the hinge passes halfway, opening or closing (idea from FoldFX).
     val tick by androidx.compose.runtime.rememberUpdatedState(enabled && haptics)
+    // Read by the frame loop, which is launched once, so a style change still reaches it.
+    val clipStyle by androidx.compose.runtime.rememberUpdatedState(style.clip)
     fold.onHalfway = { if (tick) view.performHapticFeedback(
         if (Build.VERSION.SDK_INT >= 34) android.view.HapticFeedbackConstants.SEGMENT_TICK else android.view.HapticFeedbackConstants.CLOCK_TICK) }
     // Hinge detents replace that single tick with a stop at 45, 90 and 135 degrees, the ends and flat (see HingeDetents.kt).
@@ -178,7 +181,7 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
                 // Follow the target closely but never jump: small time constant, frame-rate independent.
                 val next = m + (target - m) * (1f - exp(-dt / fold.followMs))
                 fold.trace(now, target, next)
-                m = if (target == 0f && next < .003f) 0f else next
+                m = if (target == 0f && next < settleBelow(clipStyle)) 0f else next
                 if (fold.morphFrom >= 0) {
                     val t = ((now - fold.morphFrom) / (if (fold.expanded) MORPH_UNFOLD_MS else MORPH_FOLD_MS)).coerceIn(0f, 1f)
                     morph = easeInOutSine(t)
@@ -391,6 +394,12 @@ internal class FoldTimeline(private val context: Context, private val suLauncher
     val closing get() = closeStartAt >= 0 && expanded
     /** How frosted the open screen is when it lights: the style's own start (iPhone Duo starts where the real hinge is). */
     var unfoldStart = START_M_ON_UNFOLD
+    /**
+     * Duo Clip times the cover's fades by how far the fold has gone, not by strength. Its look changes only in the last eighth or so of
+     * the strength, so a fade eased in strength left the cover dark and frosted for most of its length, then cleared the blur in about
+     * ten frames at the end (traced on the Fold8, 24 Nov 2026), and opening from the cover went from sharp to full blur in three or four.
+     */
+    var coverByProgress = false
     /** With Reduce Motion on, the fades keep their short, plain lengths. */
     var reduceMotion = false
     /** Which way the hinge last went: true once it starts opening or lands on the open screen, false once it folds. */
@@ -639,7 +648,9 @@ internal class FoldTimeline(private val context: Context, private val suLauncher
                 coverTargetAt = now
                 coverTarget
             }
-            else easeInOutSine(((now - coverOpeningAt) / COVER_OPEN_MS).coerceIn(0f, 1f)).also {
+            else ((now - coverOpeningAt) / COVER_OPEN_MS).coerceIn(0f, 1f).let { t ->
+                if (coverByProgress) com.mccal.folio.duet.DuetClip.strength(coverOpenProgress(t)) else easeInOutSine(t)
+            }.also {
                 // Remembered, so a angle that turns out to be continuous carries on from here and not from nothing.
                 coverTarget = it; coverTargetAt = now
             }
@@ -648,7 +659,9 @@ internal class FoldTimeline(private val context: Context, private val suLauncher
         // Cover after folding: short focus-in.
         !expanded && coverLitAt >= 0 -> {
             val t = ((now - coverLitAt) / coverFocusMs(reduceMotion)).coerceIn(0f, 1f)
-            if (t >= 1f) { coverLitAt = -1L; 0f } else START_M_ON_COVER * (1f - easeInOutSine(t))
+            if (t >= 1f) { coverLitAt = -1L; 0f }
+            else if (coverByProgress) com.mccal.folio.duet.DuetClip.strength(coverClearProgress(t))
+            else START_M_ON_COVER * (1f - easeInOutSine(t))
         }
         else -> 0f
     }
@@ -704,6 +717,24 @@ internal fun coverFocusMs(reduceMotion: Boolean): Float = if (reduceMotion) COVE
  */
 internal fun stallToAbsorb(frameMs: Float): Long =
     if (frameMs <= FRAME_STEP_MAX_MS || frameMs > STALL_ABSORB_MAX_MS) 0L else (frameMs - FRAME_STEP_MAX_MS).toLong()
+
+/**
+ * How far the fold has gone at [t] (0 to 1) of Duo Clip's cover coming into focus. Falling as (1 - t)² gives the part that shows (the
+ * shade lifting and the blur letting go, below about 0.15) the last 40% of the fade, about as long as the open screen's own, and it
+ * eases out at the end; the start goes quickly, through a stretch that is dark on screen anyway.
+ */
+internal fun coverClearProgress(t: Float): Float { val left = 1f - t.coerceIn(0f, 1f); return left * left }
+
+/**
+ * Below this the effect is let go to exactly 0 once its target is 0. Duo Clip's blur is already about half at 0.003 (its look
+ * changes most at the low end), so letting go there dropped half the blur in one frame at the end of every fade; it waits until
+ * nothing shows. The other styles change evenly with the strength, so 0.003 is already invisible for them.
+ */
+internal fun settleBelow(clip: Boolean): Float = if (clip) CLIP_SETTLE else .003f
+private const val CLIP_SETTLE = 1e-6f
+
+/** The same while the cover opens: an ease in how far the fold has gone, so the blur comes in over about 70 ms instead of a few frames. */
+internal fun coverOpenProgress(t: Float): Float = easeInOutSine(t.coerceIn(0f, 1f))
 
 private fun easeInOutSine(t: Float): Float = (-(kotlin.math.cos(Math.PI * t) - 1) / 2).toFloat()
 
