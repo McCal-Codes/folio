@@ -1189,8 +1189,8 @@
     <string name="install_from_google_play">Install from Google Play</string>
     <string name="install_from_f_droid">Install from F-Droid</string>
     <string name="install_from_the_repository_s_releases">Install from the repository\'s releases, and keep updating from there</string>
-    <string name="folio_doesn_t_install_apps_itself_choose">Folio doesn\'t install apps itself. Choose where to get it; Android takes it from there.</string>
-    <string name="folio_never_downloads_or_installs_an_app">Folio never downloads or installs an app. It opens the store you pick, and notices afterwards when the app is on your phone.</string>
+    <string name="choose_where_to_get_it_android_takes_it">Choose where to get it; Android takes it from there.</string>
+    <string name="folio_opens_the_store_you_pick">Folio opens the store you pick, and notices afterwards when the app is on your phone.</string>
     <string name="on_this_phone">On this phone</string>
     <string name="not_yet">Not yet</string>
     <string name="installed_from_1_s">Installed from %1$s</string>
@@ -1225,6 +1225,8 @@
     <string name="open_play_f_droid_or_obtainium_instead">Open Play, F-Droid or Obtainium instead</string>
     <string name="some_listings_are_apps_of_their_own">Some listings are apps of their own rather than something Folio applies: a keyboard has to be its own app, because Android says so. With this on, Folio downloads one and hands it to Android, which asks before installing it and names the app. With it off, Folio opens the store the author named and you install it there.</string>
     <string name="turn_it_on_only_for_sources_you_would">Turn it on only for sources you would install an app from anyway. Folio checks the download against the checksum the source signed, so nothing can be swapped in on the way. The source is still what vouches for the app itself, and Folio can\'t check that for you.</string>
+    <string name="installing_apps_is_off_tap_to_turn_it_on">Installing apps is off in Market settings. Tap to turn it on.</string>
+    <string name="turn_on_installing_apps">Turn on Installing apps?</string>
     <plurals name="columns">
         <item quantity="one">%1$d column</item>
         <item quantity="other">%1$d columns</item>
