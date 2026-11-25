@@ -1489,7 +1489,10 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
         if (s.homePages <= 1 || s.layout.contentPageCount >= s.homePages) return false
         // Never leave Home with every page hidden: the empty last page may be the only one showing.
         if ((0 until s.homePages - 1).all { it in s.hiddenPages }) return false
-        undoLayout = null; mutable.update { it.copy(minPages = maxOf(1, it.homePages - 1), canUndoEdit = false) }; persist(); return true }
+        // The removed page takes its hidden flag and page look with it, so a page added later does not inherit them.
+        val left = s.homePages - 1
+        undoLayout = null; mutable.update { it.copy(minPages = maxOf(1, left), hiddenPages = it.hiddenPages.filter { p -> p < left }.toSet(),
+            pageStyles = it.pageStyles.filterKeys { p -> p < left }, canUndoEdit = false) }; persist(); return true }
 
     /**
      * Moves Home page [from] to place [to] (the Page overview's drag, or a TalkBack move). Every holder of a page number follows the

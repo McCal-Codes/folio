@@ -335,9 +335,11 @@ internal object FocusPages {
 
     /** The real pages Home draws, in order: not the hidden ones (unless Home is being edited), and only the active Focus's pages when it limits them. */
     fun shown(state: LauncherState): List<Int> {
-        val focus = activeFocus(state)
-        if (revealHidden && focus?.pages == null) return (0 until state.layout.pageCount).toList()
-        return HomePages.shownPages(state.layout.pageCount, state.hiddenPages, focus?.pages)
+        val count = state.layout.pageCount
+        val shown = HomePages.shownPages(count, state.hiddenPages, activeFocus(state)?.pages)
+        // Editing reveals the pages the person hid, unless a Focus is cutting pages beyond those (then it is the lock, and stays).
+        if (revealHidden && shown.size == HomePages.shownPages(count, state.hiddenPages, null).size) return (0 until count).toList()
+        return shown
     }
 
     /** True while Home draws fewer pages than there are, whether a Focus or a hidden page is the reason. */

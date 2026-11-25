@@ -207,9 +207,12 @@ class HomePagesTest {
             assertEquals(listOf(0, 1, 2), FocusPages.shown(s))
             assertNull(FocusPages.lock(s))
             assertSame(s, FocusPages.effective(s))
-            // A Focus that limits the pages is not lifted by editing.
+            // A Focus that takes nothing more away than the hidden page does not hold the pages back either.
             val work = DEFAULT_FOCUS_MODES.first { it.id == "work" }.copy(pages = setOf(0, 2))
-            assertEquals(listOf(0, 2), FocusPages.shown(state(hidden = setOf(1), focus = work)))
+            assertEquals(listOf(0, 1, 2), FocusPages.shown(state(hidden = setOf(1), focus = work)))
+            assertNull(FocusPages.lock(state(hidden = setOf(1), focus = work)))
+            // A Focus that does limit the pages is not lifted by editing.
+            assertEquals(listOf(0, 2), FocusPages.shown(state(focus = work)))
             assertEquals("work", FocusPages.lock(state(focus = work))?.mode?.id)
         } finally {
             FocusPages.revealHidden = false
