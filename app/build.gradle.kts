@@ -217,6 +217,10 @@ android {
     buildFeatures { compose = true }
     // Robolectric needs the app's resources and manifest in unit tests.
     testOptions.unitTests.isIncludeAndroidResources = true
+    // The Mockup Lab parity tests find the lab's own clone through this (MockupLab in the unit tests says more).
+    providers.gradleProperty("folio.labDir").orNull?.let { lab ->
+        testOptions.unitTests.all { it.systemProperty("folio.labDir", lab) }
+    }
     // Android 13's per-app language picker: AGP builds locales_config.xml from the values-* folders a translation adds.
     androidResources { generateLocaleConfig = true }
     compileOptions {

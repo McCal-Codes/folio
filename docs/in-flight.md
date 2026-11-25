@@ -35,9 +35,11 @@ Dependabot's open bumps are left out: they touch only `gradle/libs` or `build.gr
 
 ## Worth knowing without a row
 
-- **The Mockup Lab** (`docs/mockups/lab/`) is git-excluded and exists only in the `folio-0.7.0` checkout, so two
-  sessions editing it cannot see each other's changes at all. Check the file times before you edit, and back a file
-  up first: there is no history to fall back on.
-- **`docs/update-map.md`, `docs/plan.md` and `CLAUDE.md`** are excluded too, for the same reason.
+- **The Mockup Lab** (`docs/mockups/lab/`) is git-excluded from this repository and has its own private one,
+  `folio-mockups`, cloned only inside the `folio-0.7.0` checkout. Commit lab work there the day it is made; its rules
+  are in the lab's `STANDARDS.md` (`LAB-1` and on). The parity tests (`LabParityTest`, `LabSettingsParityTest`) skip
+  unless Gradle's `folio.labDir` property points at the lab.
+- **`docs/update-map.md`, `docs/plan.md` and `CLAUDE.md`** are excluded too, and have no history to fall back on: check
+  the file times before you edit and back a file up first.
 - **A squash merge changes patch ids**, so `git branch --merged` and `git cherry` both lie about whether a branch
   landed. Compare trees instead: `git merge-tree --write-tree origin/main <branch>` against `main`'s tree.
