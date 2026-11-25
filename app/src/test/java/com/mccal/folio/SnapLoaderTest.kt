@@ -46,6 +46,9 @@ class SnapLoaderTest {
         val picker = source("WidgetPicker.kt")
         assertTrue("SnapLoader(size = 26.dp, color = Color.White)" in picker)
         assertTrue("SnapLoader(size = 40.dp, color = ink)" in picker)
+        val home = source("HomeWorkspace.kt")
+        assertTrue("finish widget setup uses the loader", "SnapLoader(size = 28.dp)" in home)
+        assertTrue("no plain spinner left on Home", "CircularProgressIndicator(" !in home)
     }
 
     @Test fun `motion off keeps the halves still and only fades them`() {
