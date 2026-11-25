@@ -37,6 +37,7 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -67,6 +68,29 @@ import java.util.Date
 
 /** Longest side, in pixels, a photo is decoded to; never the full bitmap. */
 private const val PHOTO_DECODE_PX = 1400
+
+/**
+ * Keeps live Discover's host closed while the photo picker is open. That host sits over Home as the resumed activity,
+ * so Home stays paused and Android holds the picker's result until something resumes Home: the pick looked lost.
+ * Closing it first, as the wallpaper picker does, lets the result reach Home the moment the picker closes.
+ */
+internal class PhotoPickHold(private val hold: (Boolean) -> Unit) {
+    var pending = false
+        private set
+
+    /** Closes the host, then opens the picker; a picker that will not open lets the host come back. */
+    fun launch(open: () -> Unit) {
+        if (!pending) { pending = true; hold(true) }
+        try { open() } catch (error: Exception) {
+            release()
+            // A line in the bug-report trail, read by McCal rather than shown to people.
+            Diagnostics.caught("Photos widget: opening the photo picker", error) // english-only
+        }
+    }
+
+    /** The picker answered (or the card left Home): Discover may start again. */
+    fun release() { if (pending) { pending = false; hold(false) } }
+}
 
 /** Decodes [uri] downsampled so its longest side is near [PHOTO_DECODE_PX]. Null when unreadable. */
 private fun decodePhoto(context: Context, uri: Uri): Bitmap? = runCatching {
@@ -154,13 +178,20 @@ internal fun PhotoWidgetCard(onEdit: () -> Unit) {
     LaunchedEffect(changes) { if (changes > 0) state = PhotoWidgetStore.load(context) }
     fun update(next: PhotoWidgetState) { state = next; PhotoWidgetStore.save(context, next) }
 
+    // Only Home's own activity hosts live Discover; anywhere else there is nothing to hold.
+    val home = androidx.activity.compose.LocalActivity.current as? MainActivity
+    val pickHold = remember(home) {
+        PhotoPickHold { active -> home?.let { LiveDiscover.setExternalResultPending(it, "main", "photo-widget-picker", active) } }
+    }
+    DisposableEffect(pickHold) { onDispose { pickHold.release() } }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(20)) { picked ->
+        pickHold.release()
         if (picked.isNotEmpty()) {
             picked.forEach { runCatching { context.contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION) } }
             update(state.copy(uris = picked.map { it.toString() }, index = 0))
         }
     }
-    val pick = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
+    val pick = { pickHold.launch { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) } }
 
     val count = state.uris.size
     if (playing && !reduce && count > 1) {
