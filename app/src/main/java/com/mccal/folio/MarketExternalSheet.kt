@@ -44,6 +44,8 @@ internal fun MarketExternalSheet(
     signed: Boolean = true,
     /** Folio would install it here but the listing names no signer or package, so it can't check the APK. */
     unverifiable: Boolean = false,
+    /** [onInstallHere] asks to turn Installing apps on first, because the setting is off. The row says so. */
+    settingOff: Boolean = false,
     onPick: (ExternalSource) -> Unit,
     onCancel: () -> Unit,
 ) {
@@ -59,7 +61,7 @@ internal fun MarketExternalSheet(
         Text(
             stringResource(
                 if (here) R.string.install_it_with_folio_or_get_it_from
-                else R.string.folio_doesn_t_install_apps_itself_choose,
+                else R.string.choose_where_to_get_it_android_takes_it,
             ),
             color = Color.White.copy(alpha = .7f), fontSize = FolioType.COMPACT.sp, modifier = Modifier.padding(top = FolioSpace.SNUG.dp),
         )
@@ -82,7 +84,7 @@ internal fun MarketExternalSheet(
                 ) {
                     Text(label, color = LocalAccent.current.ink, fontSize = FolioType.CALLOUT.sp, fontWeight = FontWeight.SemiBold)
                     Text(
-                        stringResource(R.string.folio_downloads_it_and_android_asks),
+                        stringResource(if (settingOff) R.string.installing_apps_is_off_tap_to_turn_it_on else R.string.folio_downloads_it_and_android_asks),
                         color = Color.White.copy(alpha = .55f), fontSize = FolioType.FOOTNOTE.sp,
                     )
                 }
@@ -111,7 +113,7 @@ internal fun MarketExternalSheet(
         Text(
             stringResource(
                 when {
-                    !here -> R.string.folio_never_downloads_or_installs_an_app
+                    !here -> R.string.folio_opens_the_store_you_pick
                     signed -> R.string.folio_checks_the_download_against_the
                     else -> R.string.folio_checks_the_download_unsigned
                 },

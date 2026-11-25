@@ -1180,8 +1180,8 @@
     <string name="install_from_google_play">从 Google Play 安装</string>
     <string name="install_from_f_droid">从 F-Droid 安装</string>
     <string name="install_from_the_repository_s_releases">从代码库的发布版本安装，并在那里持续更新</string>
-    <string name="folio_doesn_t_install_apps_itself_choose">Folio 自己不安装 App。选择从哪里获取，之后交给 Android 处理。</string>
-    <string name="folio_never_downloads_or_installs_an_app">Folio 从不下载或安装 App。它会打开你选择的商店，之后在 App 装到手机上时察觉到。</string>
+    <string name="choose_where_to_get_it_android_takes_it">选择从哪里获取，之后交给 Android 处理。</string>
+    <string name="folio_opens_the_store_you_pick">Folio 会打开你选择的商店，之后在 App 装到手机上时察觉到。</string>
     <string name="on_this_phone">在这部手机上</string>
     <string name="not_yet">还没有</string>
     <string name="installed_from_1_s">安装自 %1$s</string>
@@ -1216,6 +1216,9 @@
     <string name="open_play_f_droid_or_obtainium_instead">改为打开 Play、F-Droid 或 Obtainium</string>
     <string name="some_listings_are_apps_of_their_own">有些条目是独立的 App，而不是由 Folio 应用的内容：键盘就必须是独立的 App，因为 Android 这样要求。开启此项后，Folio 会下载它并交给 Android，Android 会在安装前询问，并显示 App 的名称。关闭时，Folio 会打开作者指定的商店，由你在那里安装。</string>
     <string name="turn_it_on_only_for_sources_you_would">只对那些你本来就愿意从中安装 App 的源开启此项。Folio 会用源签名的校验值核对下载的文件，所以途中无法被替换。为 App 本身担保的仍然是源，这一点 Folio 无法替你核对。</string>
+    <string name="installing_apps_is_off_tap_to_turn_it_on">Market 设置中的“安装 App”已关闭。轻点以开启。</string>
+    <string name="turn_on_installing_apps">开启“安装 App”？</string>
+    <string name="turn_on_and_install">开启并安装</string>
     <string name="time_now">现在</string>
     <string name="rename">重新命名…</string>
     <string name="rename_app">重新命名 App</string>

@@ -1183,8 +1183,8 @@
     <string name="install_from_google_play">Google Play에서 설치</string>
     <string name="install_from_f_droid">F-Droid에서 설치</string>
     <string name="install_from_the_repository_s_releases">저장소의 릴리스에서 설치하고 이후 업데이트도 받기</string>
-    <string name="folio_doesn_t_install_apps_itself_choose">Folio가 앱을 직접 설치하지는 않습니다. 받을 곳을 선택하면 이후 과정은 Android가 처리합니다.</string>
-    <string name="folio_never_downloads_or_installs_an_app">Folio는 앱을 다운로드하거나 설치하지 않습니다. 선택한 스토어를 열고, 이후 휴대전화에 앱이 설치되었는지 확인합니다.</string>
+    <string name="choose_where_to_get_it_android_takes_it">받을 곳을 선택하면 이후 과정은 Android가 처리합니다.</string>
+    <string name="folio_opens_the_store_you_pick">선택한 스토어를 열고, 이후 휴대전화에 앱이 설치되었는지 확인합니다.</string>
     <string name="on_this_phone">이 휴대전화에 설치됨</string>
     <string name="not_yet">아직 없음</string>
     <string name="installed_from_1_s">%1$s에서 설치됨</string>
@@ -1219,6 +1219,9 @@
     <string name="open_play_f_droid_or_obtainium_instead">대신 Play, F-Droid 또는 Obtainium 열기</string>
     <string name="some_listings_are_apps_of_their_own">일부 항목은 Folio에 적용하는 패키지가 아닌 독립 앱입니다. 예를 들어 키보드는 Android의 요구사항에 따라 별도 앱이어야 합니다. 켜면 Folio가 다운로드하여 Android에 전달하고, Android가 앱 이름을 표시하고 설치 전에 확인합니다. 끄면 제작자가 지정한 스토어를 열어 그곳에서 설치합니다.</string>
     <string name="turn_it_on_only_for_sources_you_would">평소에도 앱을 설치할 만큼 신뢰하는 소스에만 사용하세요. 소스가 서명한 체크섬과 다운로드 파일을 대조하여 전송 중 파일이 바뀌지 않았는지 확인합니다. 앱 자체에 대한 신뢰는 여전히 제공 소스를 기준으로 판단해야 하며, Folio가 대신 확인할 수는 없습니다.</string>
+    <string name="installing_apps_is_off_tap_to_turn_it_on">Market 설정에서 앱 설치가 꺼져 있습니다. 탭하여 켜세요.</string>
+    <string name="turn_on_installing_apps">앱 설치를 켜시겠습니까?</string>
+    <string name="turn_on_and_install">켜고 설치</string>
     <plurals name="columns">
         <item quantity="other">%1$d열</item>
     </plurals>

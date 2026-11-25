@@ -240,6 +240,8 @@ internal fun MarketScreen(
 
     /** An external app whose "where from" sheet is open. */
     var choosing by rememberSaveable { mutableStateOf<String?>(null) }
+    // An install waiting on "Turn on Installing apps?": the setting is only ever turned on by someone saying yes to it.
+    var turningOn by remember { mutableStateOf<(() -> Unit)?>(null) }
 
     fun apply(entry: MarketEntry) {
         confirming = null
@@ -279,10 +281,10 @@ internal fun MarketScreen(
         // A newer version than the one on the phone: Folio installs it over the old one when it may, and otherwise
         // the sheet offers the places it installs from, the same as Get.
         MarketAppUpdate.offered(appContext, entry)?.let { onPhone ->
-            if (MarketApkInstall.canInstall(entry.source, entry.entry, session.prefs.installApps, entry.unavailable, updating = true)) {
-                installApp(entry, onPhone)
-            } else {
-                choosing = entry.listingKey
+            when (MarketApkInstall.offer(entry.source, entry.entry, session.prefs.installApps, entry.unavailable, updating = true)) {
+                MarketApkInstall.Offer.INSTALL -> installApp(entry, onPhone)
+                MarketApkInstall.Offer.TURN_ON_FIRST -> turningOn = { installApp(entry, onPhone) }
+                MarketApkInstall.Offer.NONE -> choosing = entry.listingKey
             }
             return
         }
@@ -447,6 +449,19 @@ internal fun MarketScreen(
                     askingUpdates = false
                     if (!SoftwareUpdate.canPostNotifications(context)) notifyPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
                 }) { Text(stringResource(R.string.turn_on)) }
+            })
+    }
+    turningOn?.let { proceed ->
+        AlertDialog(onDismissRequest = { turningOn = null },
+            title = { Text(stringResource(R.string.turn_on_installing_apps)) },
+            text = { Text(stringResource(R.string.turn_it_on_only_for_sources_you_would)) },
+            dismissButton = { androidx.compose.material3.TextButton(onClick = { turningOn = null }) { Text(stringResource(R.string.cancel)) } },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    session.prefs.installApps = true
+                    turningOn = null
+                    proceed()
+                }) { Text(stringResource(R.string.turn_on_and_install)) }
             })
     }
 
@@ -772,16 +787,16 @@ internal fun MarketScreen(
                             .clickable(enabled = false) {},
                     ) {
                         val listing = entries.first { it.listingKey == key }
+                        val offer = MarketApkInstall.offer(listing.source, listing.entry, session.prefs.installApps, listing.unavailable)
                         MarketExternalSheet(
                             manifest = manifest,
                             signed = listing.source.kind != Source.Kind.LOCAL_DEV,
                             unverifiable = MarketApkInstall.cannotVerify(listing.source, listing.entry, session.prefs.installApps, listing.unavailable),
-                            onInstallHere = if (
-                                MarketApkInstall.canInstall(listing.source, listing.entry, session.prefs.installApps, listing.unavailable)
-                            ) {
-                                { choosing = null; installApp(listing) }
-                            } else {
-                                null
+                            settingOff = offer == MarketApkInstall.Offer.TURN_ON_FIRST,
+                            onInstallHere = when (offer) {
+                                MarketApkInstall.Offer.INSTALL -> { { choosing = null; installApp(listing) } }
+                                MarketApkInstall.Offer.TURN_ON_FIRST -> { { choosing = null; turningOn = { installApp(listing) } } }
+                                MarketApkInstall.Offer.NONE -> null
                             },
                             onPick = { from ->
                                 choosing = null

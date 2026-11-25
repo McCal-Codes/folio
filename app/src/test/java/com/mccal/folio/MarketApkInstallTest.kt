@@ -74,6 +74,18 @@ class MarketApkInstallTest {
         assertTrue(MarketApkInstall.canInstall(added, entry(), on = true))
     }
 
+    @Test fun `with the setting off, an app Folio could install still gets a row that asks first`() {
+        assertEquals(MarketApkInstall.Offer.TURN_ON_FIRST, MarketApkInstall.offer(added, entry(), on = false))
+        assertEquals(MarketApkInstall.Offer.TURN_ON_FIRST, MarketApkInstall.offer(added, entry(signers = emptySet()), on = false, updating = true))
+        assertEquals(MarketApkInstall.Offer.INSTALL, MarketApkInstall.offer(added, entry(), on = true))
+        // Turning the setting on wouldn't help these, so there is nothing to ask.
+        assertEquals(MarketApkInstall.Offer.NONE, MarketApkInstall.offer(added, entry(sha = null), on = false))
+        assertEquals(MarketApkInstall.Offer.NONE, MarketApkInstall.offer(added, entry(signers = emptySet()), on = false))
+        assertEquals(MarketApkInstall.Offer.NONE, MarketApkInstall.offer(added, entry(), on = false, revoked = true))
+        assertEquals(MarketApkInstall.Offer.NONE,
+            MarketApkInstall.offer(Source("http://localhost:8787/", kind = Source.Kind.LOCAL_DEV), entry(), on = false))
+    }
+
     @Test fun `a source the user added may offer an app`() {
         // The earlier draft allowed only sources whose key ships in Folio. McCal chose Cydia's bargain instead:
         // you chose the source, so you chose what it may hand you.

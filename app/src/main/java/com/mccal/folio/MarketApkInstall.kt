@@ -83,6 +83,20 @@ internal object MarketApkInstall {
             (updating || (entry.signerSha256.isNotEmpty() && appIds(entry).isNotEmpty())) &&
             source.kind != Source.Kind.BUILT_IN && source.kind != Source.Kind.LOCAL_DEV
 
+    /** What the sheet's "Install with Folio" row does: install, ask to turn the setting on first, or not appear. */
+    enum class Offer { INSTALL, TURN_ON_FIRST, NONE }
+
+    /**
+     * [canInstall], told for the sheet. With the setting off, a listing Folio could install still gets its row, one that
+     * says the setting is off and asks before turning it on: otherwise an app listed with a store that isn't on the
+     * phone (Keyd names only Obtainium) had no way in at all, and nothing said why.
+     */
+    fun offer(source: Source, entry: IndexPackage, on: Boolean, revoked: Boolean = false, updating: Boolean = false): Offer = when {
+        canInstall(source, entry, on, revoked, updating) -> Offer.INSTALL
+        !on && canInstall(source, entry, on = true, revoked = revoked, updating = updating) -> Offer.TURN_ON_FIRST
+        else -> Offer.NONE
+    }
+
     /**
      * True when Folio would install [entry] but can't, because the listing doesn't name its signer or its package:
      * the sheet says so, so a missing "Install with Folio" row isn't a mystery.
