@@ -1227,7 +1227,6 @@
     <string name="turn_it_on_only_for_sources_you_would">Turn it on only for sources you would install an app from anyway. Folio checks the download against the checksum the source signed, so nothing can be swapped in on the way. The source is still what vouches for the app itself, and Folio can\'t check that for you.</string>
     <string name="installing_apps_is_off_tap_to_turn_it_on">Installing apps is off in Market settings. Tap to turn it on.</string>
     <string name="turn_on_installing_apps">Turn on Installing apps?</string>
-    <string name="turn_on_and_install">Turn on and install</string>
     <plurals name="columns">
         <item quantity="one">%1$d column</item>
         <item quantity="other">%1$d columns</item>

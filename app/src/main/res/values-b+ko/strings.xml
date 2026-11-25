@@ -1221,7 +1221,6 @@
     <string name="turn_it_on_only_for_sources_you_would">평소에도 앱을 설치할 만큼 신뢰하는 소스에만 사용하세요. 소스가 서명한 체크섬과 다운로드 파일을 대조하여 전송 중 파일이 바뀌지 않았는지 확인합니다. 앱 자체에 대한 신뢰는 여전히 제공 소스를 기준으로 판단해야 하며, Folio가 대신 확인할 수는 없습니다.</string>
     <string name="installing_apps_is_off_tap_to_turn_it_on">Market 설정에서 앱 설치가 꺼져 있습니다. 탭하여 켜세요.</string>
     <string name="turn_on_installing_apps">앱 설치를 켜시겠습니까?</string>
-    <string name="turn_on_and_install">켜고 설치</string>
     <plurals name="columns">
         <item quantity="other">%1$d열</item>
     </plurals>

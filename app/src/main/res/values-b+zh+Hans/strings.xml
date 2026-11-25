@@ -1218,7 +1218,6 @@
     <string name="turn_it_on_only_for_sources_you_would">只对那些你本来就愿意从中安装 App 的源开启此项。Folio 会用源签名的校验值核对下载的文件，所以途中无法被替换。为 App 本身担保的仍然是源，这一点 Folio 无法替你核对。</string>
     <string name="installing_apps_is_off_tap_to_turn_it_on">Market 设置中的“安装 App”已关闭。轻点以开启。</string>
     <string name="turn_on_installing_apps">开启“安装 App”？</string>
-    <string name="turn_on_and_install">开启并安装</string>
     <string name="time_now">现在</string>
     <string name="rename">重新命名…</string>
     <string name="rename_app">重新命名 App</string>

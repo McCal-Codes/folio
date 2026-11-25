@@ -461,7 +461,7 @@ internal fun MarketScreen(
                     session.prefs.installApps = true
                     turningOn = null
                     proceed()
-                }) { Text(stringResource(R.string.turn_on_and_install)) }
+                }) { Text(stringResource(R.string.turn_on)) }
             })
     }
 
