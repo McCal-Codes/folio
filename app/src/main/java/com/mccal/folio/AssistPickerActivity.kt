@@ -72,6 +72,8 @@ class AssistPickerActivity : ComponentActivity() {
         setContent {
             var shown by remember { mutableStateOf(false) }
             LaunchedEffect(Unit) { shown = true }
+            // This screen is its own activity, so MainActivity's Reduce Motion flag does not reach it: ask for Folio's switch and Android's here.
+            val still = remember { reduceMotionPreferred(this@AssistPickerActivity) }
             var query by remember { mutableStateOf("") }
             val focus = remember { FocusRequester() }
             // Side key set to "Search Google Without AI": just the search field, ready to type.
@@ -79,7 +81,7 @@ class AssistPickerActivity : ComponentActivity() {
             LaunchedEffect(searchOnly) { if (searchOnly) { kotlinx.coroutines.delay(250); runCatching { focus.requestFocus() } } }
             Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .35f))
                 .clickable(remember { MutableInteractionSource() }, null) { finish() }, contentAlignment = Alignment.BottomCenter) {
-                AnimatedVisibility(shown, enter = fadeIn() + slideInVertically(FolioMotion.spring(FolioMotion.Appear)) { it / 3 }) {
+                AnimatedVisibility(shown, enter = if (still) fadeIn() else fadeIn() + slideInVertically(FolioMotion.spring(FolioMotion.Appear)) { it / 3 }) {
                     Column(Modifier.navigationBarsPadding().windowInsetsPadding(WindowInsets.imeAnimationTarget).padding(FolioSpace.LARGE.dp).widthIn(max = 520.dp).fillMaxWidth()
                         .clip(RoundedCornerShape(30.dp)).background(FolioColors.SecondaryBackground.copy(alpha = .94f))
                         .clickable(remember { MutableInteractionSource() }, null) {}.padding(18.dp),

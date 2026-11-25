@@ -12,6 +12,7 @@ import androidx.compose.ui.test.onNodeWithText
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -51,5 +52,13 @@ class SettingsFocusTest {
         assertEquals(null, SettingsFocus.label)
         // 40 rows of filler push the switch well past a 891 dp screen, so it is not on screen.
         compose.onNodeWithText("Filler 0").assertIsDisplayed()
+    }
+
+    @Test fun `the glow eases in over a moment and is gone well inside the patience window`() {
+        // It used to appear at full strength. Rising over about a fifth of a second reads as a highlight, not a flash.
+        assertTrue(SettingsFocus.GLOW_IN_MS in 120..300)
+        assertTrue(SettingsFocus.GLOW_PEAK in .1f..0.4f)
+        assertTrue("one slow pulse, never faster than a second", SettingsFocus.GLOW_IN_MS + SettingsFocus.GLOW_OUT_MS >= 1000)
+        assertTrue(250 + SettingsFocus.GLOW_IN_MS + SettingsFocus.GLOW_OUT_MS < SettingsFocus.PATIENCE_MS)
     }
 }
