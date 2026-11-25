@@ -206,6 +206,34 @@ internal fun ccEdgeStripHeight(pages: Int, battery: Boolean, gapDp: Float, apart
 /** The extra space between the battery ring and the first page dot, so the ring reads as a status and not as a page; on top of the strip's own gap between targets. */
 internal const val CC_BATTERY_APART_DP = FolioSpace.LARGE.toFloat()
 
+/** The size of each connection mark (Wi-Fi, cellular) on the rail under the battery ring, in dp. */
+internal const val CC_RAIL_MARK_DP = 22f
+
+/** The line height of the words under the rail's marks (the network and carrier names) at normal text size, in sp, set on the text so the height below holds. */
+internal const val CC_RAIL_WORD_LINE_SP = FolioType.GROUP_LABEL * 1.25f
+
+/** The rail's connection marks at their tallest (both marks, each with its line of words, [FolioSpace.TINY] apart) at the system's [fontScale]; a line of words is laid out in whole dp, so each is rounded up. CcRailDrawnTest holds this to the marks as drawn. */
+internal fun ccRailReadoutsHeight(fontScale: Float): Float =
+    2 * CC_RAIL_MARK_DP + 3 * FolioSpace.TINY + 2 * kotlin.math.ceil(CC_RAIL_WORD_LINE_SP * fontScale.coerceAtLeast(1f))
+
+/**
+ * Whether the rail beside the grid has the height for the connection marks as well as the battery ring and a button for each of [pages]:
+ * [columnDp] is the most the rail can take (the panel's height less its padding). Past it the marks are left out, so they never run into
+ * the page buttons (McCal 24 Nov 2026 on the Fold's inner screen: "control center icons are overlapping").
+ */
+internal fun ccRailShowsReadouts(columnDp: Float, pages: Int, gapDp: Float, apart: Boolean, fontScale: Float): Boolean =
+    ccEdgeStripHeight(pages, battery = true, gapDp = gapDp, apart = apart) + gapDp + ccRailReadoutsHeight(fontScale) <= columnDp
+
+/**
+ * Where the page buttons start on the rail, from its top. With [center] they stand in the middle of the [railDp] tall rail, as Apple places them,
+ * but never higher than the status block above them ([statusDp] tall: the battery ring and the connection marks) plus [gapDp]; without it they
+ * follow the status block straight away. Any unit works, as long as all four are in it.
+ */
+internal fun ccRailPagesTop(railDp: Float, statusDp: Float, pagesDp: Float, gapDp: Float, center: Boolean): Float {
+    val below = if (statusDp > 0f) statusDp + gapDp else 0f
+    return if (center) maxOf((railDp - pagesDp) / 2f, below) else below
+}
+
 /**
  * How many rows the Controls page needs. With four columns the first four small controls sit beside the sliders; with more the sliders join
  * the top row (beside the connectivity and Now Playing modules) and every small control runs in rows of [columns].
