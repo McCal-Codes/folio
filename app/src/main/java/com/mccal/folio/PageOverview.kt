@@ -39,7 +39,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Undo
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -85,6 +87,9 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.window.DialogProperties
 
+/** The most pages Home can have (the model stops adding here). */
+private const val MAX_PAGES = 20
+
 /** What the overview needs to draw one page: its cells, its widgets, whether it is hidden. Plain data, so a miniature costs nothing to build. */
 private class PageSketch(val page: Int, val cells: List<String?>, val widgets: List<WidgetPlacement>, val hidden: Boolean)
 
@@ -108,6 +113,8 @@ internal fun PageOverview(
     canUndo: Boolean,
     onMove: (from: Int, to: Int) -> Unit,
     onSetHidden: (page: Int, hidden: Boolean) -> Boolean,
+    onAddPage: () -> Int,
+    onRemoveLast: () -> Boolean,
     onUndo: () -> Unit,
     onOpen: (page: Int) -> Unit,
     onDone: () -> Unit,
@@ -130,9 +137,15 @@ internal fun PageOverview(
                 Box(Modifier.fillMaxSize().graphicsLayer { alpha = appear.value.coerceIn(0f, 1f) * fade.value * OverlayExits.alpha(exit.progress.value, fades = true, reduce = exit.reduce) }
                     .background(FolderBackdrop.scrim(solid))) {
                     FoldAvoidingBox(Modifier.windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = FolioSpace.XL.dp)) {
-                        Column(Modifier.widthIn(max = 640.dp).fillMaxSize().testTag("page-overview")) {
-                            OverviewHeader(canUndo, { onUndo(); status = "" }, dismiss)
-                            OverviewGrid(sketches, rows, currentPage, status, { status = it }, onMove, onSetHidden, onOpen = { page -> exit.close { onOpen(page) } }, solid)
+                        // Undo and Done sit at the window's own edges, so on a wide screen Done is still where a thumb expects it; only the
+                        // title and the pages are held to a readable width in the middle.
+                        Column(Modifier.fillMaxSize().testTag("page-overview"), horizontalAlignment = Alignment.CenterHorizontally) {
+                            OverviewBar(canUndo, { onUndo(); status = "" }, dismiss)
+                            Column(Modifier.widthIn(max = 640.dp).fillMaxSize()) {
+                                OverviewTitle()
+                                OverviewGrid(sketches, rows, currentPage, status, { status = it }, onMove, onSetHidden, onAddPage, onRemoveLast,
+                                    onOpen = { page -> exit.close { onOpen(page) } }, solid)
+                            }
                         }
                     }
                 }
@@ -142,14 +155,17 @@ internal fun PageOverview(
 }
 
 @Composable
-private fun OverviewHeader(canUndo: Boolean, onUndo: () -> Unit, onDone: () -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(top = FolioSpace.LARGE.dp, bottom = FolioSpace.SMALL.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            if (canUndo) OverviewPill(stringResource(R.string.undo), Icons.AutoMirrored.Rounded.Undo, "page-overview-undo", onUndo)
-            Spacer(Modifier.weight(1f))
-            OverviewPill(stringResource(R.string.done), null, "page-overview-done", onDone, emphasized = true)
-        }
-        Spacer(Modifier.size(FolioSpace.SMALL.dp))
+private fun OverviewBar(canUndo: Boolean, onUndo: () -> Unit, onDone: () -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(top = FolioSpace.LARGE.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (canUndo) OverviewPill(stringResource(R.string.undo), Icons.AutoMirrored.Rounded.Undo, "page-overview-undo", onUndo)
+        Spacer(Modifier.weight(1f))
+        OverviewPill(stringResource(R.string.done), null, "page-overview-done", onDone, emphasized = true)
+    }
+}
+
+@Composable
+private fun OverviewTitle() {
+    Column(Modifier.fillMaxWidth().padding(top = FolioSpace.SMALL.dp, bottom = FolioSpace.SMALL.dp)) {
         Text(stringResource(R.string.page_overview), color = Color.White, fontSize = FolioType.TITLE3.sp, fontWeight = FontWeight.SemiBold,
             modifier = Modifier.semantics { heading() })
         Text(stringResource(R.string.page_overview_hint), color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp,
@@ -172,7 +188,7 @@ private fun OverviewPill(label: String, icon: androidx.compose.ui.graphics.vecto
 
 @Composable
 private fun OverviewGrid(sketches: List<PageSketch>, rows: Int, currentPage: Int, status: String, setStatus: (String) -> Unit, onMove: (Int, Int) -> Unit,
-    onSetHidden: (Int, Boolean) -> Boolean, onOpen: (Int) -> Unit, solid: Boolean) {
+    onSetHidden: (Int, Boolean) -> Boolean, onAddPage: () -> Int, onRemoveLast: () -> Boolean, onOpen: (Int) -> Unit, solid: Boolean) {
     val haptic = LocalHapticFeedback.current
     val density = LocalDensity.current
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -231,9 +247,32 @@ private fun OverviewGrid(sketches: List<PageSketch>, rows: Int, currentPage: Int
             // Its line is always there, so the grid never jumps down when the first message arrives.
             Text(status, color = FolioGlass.secondary, fontSize = FolioType.FOOTNOTE.sp,
                 modifier = Modifier.heightIn(min = 20.dp).semantics { liveRegion = LiveRegionMode.Polite })
-            sketches.chunked(columns).forEach { row ->
+            // The last cell is "Add Page" (until Home has the most pages it can), so adding is where pages are managed.
+            val cells: List<PageSketch?> = if (count < MAX_PAGES) sketches + listOf(null) else sketches
+            val added = stringResource(R.string.page_added, count + 1)
+            val removedText = stringResource(R.string.page_removed, count)
+            cells.chunked(columns).forEach { row ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(gap)) {
                     row.forEach { sketch ->
+                        if (sketch == null) {
+                            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                                val addLabel = stringResource(R.string.add_page)
+                                Box(Modifier.fillMaxWidth().aspectRatio(GRID_COLUMNS / (rows * 1.15f))
+                                    .clip(RoundedCornerShape(FolioRadius.CARD.dp))
+                                    .background(FolioGlass.card.copy(alpha = if (solid) 1f else FolioGlass.card.alpha * .5f))
+                                    .border(FolioGlass.edge, RoundedCornerShape(FolioRadius.CARD.dp))
+                                    .clickable(role = Role.Button, onClickLabel = addLabel) {
+                                        if (onAddPage() >= 0) { haptic.perform(FolioHaptic.Commit); setStatus(added) } else haptic.perform(FolioHaptic.Refuse)
+                                    }
+                                    .semantics { contentDescription = addLabel }.testTag("page-overview-add"), contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Rounded.Add, null, tint = Color.White, modifier = Modifier.size(32.dp))
+                                }
+                                // Same height as a page's check row, so the add card lines up with the pages beside it.
+                                Text(addLabel, color = FolioGlass.secondary, fontSize = FolioType.CAPTION.sp, textAlign = TextAlign.Center,
+                                    modifier = Modifier.heightIn(min = FolioTouch.MIN.dp).padding(top = FolioSpace.SMALL.dp))
+                            }
+                            return@forEach
+                        }
                         val page = sketch.page
                         val label = stringResource(R.string.home_page, page + 1)
                         val shownText = stringResource(if (sketch.hidden) R.string.page_overview_hidden else R.string.page_overview_shown)
@@ -305,6 +344,18 @@ private fun OverviewGrid(sketches: List<PageSketch>, rows: Int, currentPage: Int
                                     }
                                 }.testTag("page-thumb-$page")) {
                                 PageMiniature(sketch, rows, Modifier.fillMaxSize().padding(FolioSpace.SNUG.dp))
+                                // The last page, when it is empty, can be removed: a minus badge, as in iOS's editing mode.
+                                if (page == count - 1 && count > 1 && sketch.cells.all { it == null } && sketch.widgets.isEmpty()) {
+                                    val removeLabel = stringResource(R.string.remove_this_empty_page)
+                                    Box(Modifier.align(Alignment.TopStart).size(FolioTouch.MIN.dp)
+                                        .clickable(role = Role.Button, onClickLabel = removeLabel) {
+                                            if (onRemoveLast()) { haptic.perform(FolioHaptic.Commit); setStatus(removedText) } else { haptic.perform(FolioHaptic.Refuse); setStatus(keepOne) }
+                                        }.semantics { contentDescription = removeLabel }.testTag("page-remove-$page"), contentAlignment = Alignment.Center) {
+                                        Box(Modifier.size(24.dp).clip(CircleShape).background(FolioGlass.raised), contentAlignment = Alignment.Center) {
+                                            Icon(Icons.Rounded.Remove, null, tint = FolioColors.RedOnDark, modifier = Modifier.size(16.dp))
+                                        }
+                                    }
+                                }
                                 if (sketch.cells.all { it == null } && sketch.widgets.isEmpty()) {
                                     Text(stringResource(R.string.page_overview_empty), color = FolioGlass.secondary, fontSize = FolioType.CAPTION.sp, textAlign = TextAlign.Center,
                                         modifier = Modifier.align(Alignment.Center).padding(FolioSpace.SMALL.dp))

@@ -2896,6 +2896,8 @@
     <string name="page_overview_shown">Shown</string>
     <string name="page_overview_hidden">Hidden</string>
     <string name="page_overview_keep_one">Keep at least one page showing.</string>
+    <string name="page_added">Page %1$d added</string>
+    <string name="page_removed">Page %1$d removed</string>
     <string name="page_overview_empty">Empty page</string>
     <string name="move_page_earlier">Move page earlier</string>
     <string name="move_page_later">Move page later</string>

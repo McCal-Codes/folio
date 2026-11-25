@@ -1481,11 +1481,14 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     }
     fun setLabels(value: Boolean) { if (statePayloadInvalid) return; undoLayout = null; undoImportSettings = null; mutable.update { it.copy(labels = value, canUndoEdit = false) }; persist() }
     /** Adds an empty Home page after the last one; returns its index. */
-    fun addPage(): Int { if (statePayloadInvalid || FocusPages.isLocked(state.value)) return -1; val next = state.value.homePages
+    fun addPage(): Int { if (statePayloadInvalid || FocusPages.lockingFocus(state.value) != null) return -1; val next = state.value.layout.pageCount
+        if (next >= 20) return -1
         undoLayout = null; mutable.update { it.copy(minPages = (next + 1).coerceAtMost(20), canUndoEdit = false) }; persist(); return next }
-    /** Removes the last page when it has no apps or widgets. */
-    fun removeLastEmptyPage(): Boolean { if (statePayloadInvalid || FocusPages.isLocked(state.value)) return false; val s = state.value
+    /** Removes the last page when it has no apps or widgets. Like [addPage] it works on the real pages, so hidden pages do not block it. */
+    fun removeLastEmptyPage(): Boolean { if (statePayloadInvalid || FocusPages.lockingFocus(state.value) != null) return false; val s = state.value
         if (s.homePages <= 1 || s.layout.contentPageCount >= s.homePages) return false
+        // Never leave Home with every page hidden: the empty last page may be the only one showing.
+        if ((0 until s.homePages - 1).all { it in s.hiddenPages }) return false
         undoLayout = null; mutable.update { it.copy(minPages = maxOf(1, it.homePages - 1), canUndoEdit = false) }; persist(); return true }
 
     /**

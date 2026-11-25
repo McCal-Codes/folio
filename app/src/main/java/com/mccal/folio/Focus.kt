@@ -327,9 +327,18 @@ internal object FocusScheduler {
 internal object FocusPages {
     private fun activeFocus(state: LauncherState) = state.focusModes.firstOrNull { it.id == state.activeFocus }
 
-    /** The real pages Home draws, in order: not the hidden ones, and only the active Focus's pages when it limits them. */
-    fun shown(state: LauncherState): List<Int> =
-        HomePages.shownPages(state.layout.pageCount, state.hiddenPages, activeFocus(state)?.pages)
+    /**
+     * True while Home is being edited (jiggling). Pages the person hid show again for the length of the edit, so every cell on screen is
+     * a real cell and an edit lands where it looks like it does; Done hides them again. A Focus that limits pages is not lifted by this.
+     */
+    var revealHidden by androidx.compose.runtime.mutableStateOf(false)
+
+    /** The real pages Home draws, in order: not the hidden ones (unless Home is being edited), and only the active Focus's pages when it limits them. */
+    fun shown(state: LauncherState): List<Int> {
+        val focus = activeFocus(state)
+        if (revealHidden && focus?.pages == null) return (0 until state.layout.pageCount).toList()
+        return HomePages.shownPages(state.layout.pageCount, state.hiddenPages, focus?.pages)
+    }
 
     /** True while Home draws fewer pages than there are, whether a Focus or a hidden page is the reason. */
     fun isLocked(state: LauncherState) = shown(state).size < state.layout.pageCount

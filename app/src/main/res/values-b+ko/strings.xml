@@ -2843,6 +2843,8 @@
     <string name="page_overview_shown">표시됨</string>
     <string name="page_overview_hidden">숨김</string>
     <string name="page_overview_keep_one">페이지를 하나 이상 표시해야 합니다.</string>
+    <string name="page_added">%1$d페이지를 추가했습니다</string>
+    <string name="page_removed">%1$d페이지를 삭제했습니다</string>
     <string name="page_overview_empty">빈 페이지</string>
     <string name="move_page_earlier">페이지를 앞으로 이동</string>
     <string name="move_page_later">페이지를 뒤로 이동</string>
