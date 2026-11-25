@@ -81,7 +81,11 @@ internal class PhotoPickHold(private val hold: (Boolean) -> Unit) {
     /** Closes the host, then opens the picker; a picker that will not open lets the host come back. */
     fun launch(open: () -> Unit) {
         if (!pending) { pending = true; hold(true) }
-        try { open() } catch (error: Exception) { release(); Diagnostics.caught("Photos widget: opening the photo picker", error) }
+        try { open() } catch (error: Exception) {
+            release()
+            // A line in the bug-report trail, read by McCal rather than shown to people.
+            Diagnostics.caught("Photos widget: opening the photo picker", error) // english-only
+        }
     }
 
     /** The picker answered (or the card left Home): Discover may start again. */
