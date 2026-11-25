@@ -393,6 +393,9 @@ internal fun CustomizationSheet(state: LauncherState, initiallyWide: Boolean, mo
                         }
                         if (backgrounds.loading) LinearProgressIndicator(Modifier.fillMaxWidth().testTag("background-loading"))
                     }
+                    // Folio look or Android look: the broadest set on the page, so it sits under the preview it changes,
+                    // above the wallpaper list (which runs long), where it is seen without scrolling.
+                    LookCard(state, model)
                     SettingsCard(stringResource(R.string.wallpaper)) {
                         IosSegmented(listOf(true to stringResource(R.string.android_wallpaper), false to stringResource(R.string.folio_background)),
                             state.systemWallpaper, { system -> model.setSystemWallpaper(system); wallpaperContext.asActivity()?.applyWallpaperWindow(system) },
@@ -1543,6 +1546,7 @@ internal val SettingsIndex: List<Triple<Int, Int, CustomizationPage>> = listOf(
     Triple(R.string.lock_cover, R.string.settings_keywords_lock_cover, CustomizationPage.LOCK),
     Triple(R.string.fold_animation, R.string.settings_keywords_fold_animation, CustomizationPage.FOLD),
     Triple(R.string.standby, R.string.settings_keywords_standby, CustomizationPage.FOLD),
+    Triple(R.string.starting_android, R.string.settings_keywords_android_look, CustomizationPage.WALLPAPER),
     Triple(R.string.themes, R.string.settings_keywords_themes, CustomizationPage.THEMES),
     Triple(R.string.focus, R.string.settings_keywords_focus, CustomizationPage.FOCUS),
     Triple(R.string.tweaks, R.string.settings_keywords_tweaks, CustomizationPage.TWEAKS),

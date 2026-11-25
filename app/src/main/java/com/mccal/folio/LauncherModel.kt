@@ -1349,8 +1349,22 @@ class LauncherModel(application: Application, private val readOnly: Boolean) : A
     }
     /** The helper's changes to Simple Home: its apps, style and text size. Nothing while Simple is off. */
     internal fun setSimpleSetup(setup: SimpleSetup) = updateSettings(soon = false) { if (it.simple == null) it else it.copy(simple = setup.sanitized()) }
-    /** Setup's first question: where you are coming from (see [StartingPoint]). */
-    internal fun setStartingPoint(point: StartingPoint) = updateSettings(soon = false) { it.withStartingPoint(point) }
+    /**
+     * Setup's look question, and Settings' Look card (see [StartingPoint]). Going to the Android look first keeps a copy of
+     * the look settings it replaces (not again while it is already on, so a second tap can't save Android's own values);
+     * going back to Folio puts that copy back and forgets it.
+     */
+    internal fun setStartingPoint(point: StartingPoint) {
+        if (statePayloadInvalid) return
+        val looks = getApplication<android.app.Application>().getSharedPreferences(LOOK_PREFS, 0)
+        val before = LookSettings.parse(looks.getString(LOOK_BEFORE_ANDROID, null))
+        when (point) {
+            StartingPoint.ANDROID -> if (mutable.value.startingPoint() != StartingPoint.ANDROID || before == null)
+                looks.edit().putString(LOOK_BEFORE_ANDROID, LookSettings.of(mutable.value).takeUnless { it == LookSettings.ANDROID }?.toJson()?.toString()).apply()
+            StartingPoint.IPHONE -> looks.edit().remove(LOOK_BEFORE_ANDROID).apply()
+        }
+        updateSettings(soon = false) { it.withStartingPoint(point, before) }
+    }
     fun setHoldDelay(value: HoldDelay) = updateSettings(soon = false) { it.copy(holdDelay = value) }
     fun setMotionSpeed(value: MotionSpeed) = updateSettings(soon = false) { it.copy(motionSpeed = value) }
     fun setPageEffect(value: PageEffect) = updateSettings(soon = false) { it.withPageEffect(value) }
