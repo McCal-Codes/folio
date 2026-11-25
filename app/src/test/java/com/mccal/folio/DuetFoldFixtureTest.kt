@@ -69,6 +69,34 @@ class DuetFoldFixtureTest {
         assertEquals("clear by 520 ms after the panel lights", 0f, clearing.last(), 1e-4f)
     }
 
+    @Test fun `only a hitch someone sees is held back, not a normal frame or a pause`() {
+        assertEquals("a 120 Hz frame", 0L, stallToAbsorb(8f))
+        assertEquals("a long but normal frame", 0L, stallToAbsorb(FRAME_STEP_MAX_MS))
+        assertEquals("the Fold8's hitch after the screen lights", 95L, stallToAbsorb(120f))
+        assertEquals("the screen off: nobody watched, so nothing waits", 0L, stallToAbsorb(STALL_ABSORB_MAX_MS + 1f))
+    }
+
+    @Test fun `a hitch after the open screen lights freezes the fade instead of skipping it`() {
+        fun lit() = timeline(expanded = false).also { it.expanded = true; it.onDisplaySwitched(300); it.onPanelLit(350) }
+        val smooth = lit()
+        val hitched = lit()
+        // A 120 ms frame from 425 to 545: the fade picks up where it froze, 25 ms on, not 120.
+        hitched.targetM(425)
+        hitched.absorbStall(stallToAbsorb(120f))
+        assertEquals(smooth.targetM(450), hitched.targetM(545), 1e-4f)
+        // And it still clears, only later by the time held back.
+        assertEquals(0f, hitched.targetM(350 + unfoldFadeMs(false).toLong() + 95), 1e-4f)
+    }
+
+    @Test fun `a hitch after the cover lights freezes its focus too`() {
+        fun lit() = timeline(expanded = true).also { it.expanded = false; it.onDisplaySwitched(300); it.onPanelLit(350) }
+        val smooth = lit()
+        val hitched = lit()
+        hitched.targetM(425)
+        hitched.absorbStall(stallToAbsorb(120f))
+        assertEquals(smooth.targetM(450), hitched.targetM(545), 1e-4f)
+    }
+
     @Test fun `opening back up before closing counts as opening again`() {
         val fold = timeline(expanded = true)
         fold.play(listOf(0L to 180f, 200L to 90f, 400L to 180f), until = 400)

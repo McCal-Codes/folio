@@ -160,7 +160,11 @@ fun FoldTransitionHost(enabled: Boolean = true, intensity: Float = 1f, stayAwake
             if (cornerPx == 0f) cornerPx = screenCornerPx(view)
             withFrameNanos { frame ->
                 val now = SystemClock.uptimeMillis()
-                val dt = if (lastFrame == 0L) 16f else ((frame - lastFrame) / 1_000_000f).coerceIn(1f, 64f)
+                val frameMs = if (lastFrame == 0L) 16f else (frame - lastFrame) / 1_000_000f
+                val dt = frameMs.coerceIn(1f, FRAME_STEP_MAX_MS)
+                // A frame the phone held up (it does for 50 to 120 ms just after the new screen lights) pushes the fades back by the time lost,
+                // so they carry on from where they froze instead of jumping ahead to catch up.
+                if (lastFrame != 0L) fold.absorbStall(stallToAbsorb(frameMs))
                 lastFrame = frame
                 if (fold.waitingForPanel) {
                     val lit = view.display?.state == Display.STATE_ON
@@ -477,6 +481,20 @@ internal class FoldTimeline(private val context: Context, private val suLauncher
         if (expanded) { litAt = now; litAngle = tracker.visual ?: HingeTracker.FLAT_ENTER_DEG; if (tracker.flat) flatAt = now } else coverLitAt = now
     }
 
+    /**
+     * Shifts the timed fades (the open screen clearing, the cover coming into focus, the cover's timed opening and the still picture's
+     * melt) later by [lostMs], so a held-up frame freezes them rather than skipping them on. The fold away is left alone: its start
+     * also teaches how long this person's fold takes, and a stall must not shorten that.
+     */
+    fun absorbStall(lostMs: Long) {
+        if (lostMs <= 0L) return
+        if (litAt >= 0) litAt += lostMs
+        if (coverLitAt >= 0) coverLitAt += lostMs
+        if (coverOpeningAt >= 0) coverOpeningAt += lostMs
+        if (coverTargetAt > 0L) coverTargetAt += lostMs
+        if (morphFrom >= 0) morphFrom += lostMs
+    }
+
     override fun onSensorChanged(event: SensorEvent) {
         onAngle(event.values.firstOrNull() ?: return, event.timestamp, SystemClock.uptimeMillis())
         wake.trySend(Unit)
@@ -679,6 +697,14 @@ internal fun unfoldFadeMs(reduceMotion: Boolean): Float = if (reduceMotion) UNFO
 /** The same for the cover, which comes into focus after folding. */
 internal fun coverFocusMs(reduceMotion: Boolean): Float = if (reduceMotion) COVER_MS else COVER_FOCUS_LONG_MS
 
+/**
+ * How much of a frame the timed fades should not count: the part over [FRAME_STEP_MAX_MS] for a hitch someone sees (traced on the Fold8,
+ * 24 Nov 2026: one of 50 to 120 ms just after each new screen lights), and nothing for a gap longer than [STALL_ABSORB_MAX_MS], which
+ * is a pause (the screen off) that nobody watched, so the fade does not wait on it.
+ */
+internal fun stallToAbsorb(frameMs: Float): Long =
+    if (frameMs <= FRAME_STEP_MAX_MS || frameMs > STALL_ABSORB_MAX_MS) 0L else (frameMs - FRAME_STEP_MAX_MS).toLong()
+
 private fun easeInOutSine(t: Float): Float = (-(kotlin.math.cos(Math.PI * t) - 1) / 2).toFloat()
 
 @RequiresApi(33)
@@ -732,6 +758,10 @@ private const val MIN_FOLD_DROP_DEG = 20f
 private const val CLOSED_STALL_MS = 1_800L
 private const val LIT_TIMEOUT_MS = 1_200L
 private const val IDLE_WAIT_MS = 500L
+/** The longest step one frame may move the effect: 1.5 frames at 60 Hz, three at 120 Hz. */
+internal const val FRAME_STEP_MAX_MS = 25f
+/** Past this a gap is a pause, not a hitch (see [stallToAbsorb]). */
+internal const val STALL_ABSORB_MAX_MS = 300f
 private const val MOVE_DEG = 3f
 private const val REOPEN_DEG = 15f
 
