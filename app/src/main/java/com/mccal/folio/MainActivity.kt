@@ -542,6 +542,7 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         recordingWatch.stop(windowManager)
         stoppedSinceHome = true
+        Diagnostics.panelClosed(topPanel.value, PanelClose.HOME_STOPPED)
         closeOverlays() // never come back to a blurred Home
         if (timeReceiverRegistered) { unregisterReceiver(timeReceiver); timeReceiverRegistered = false }
         widgets.host.stopListening(); Diagnostics.event("Widgets stopped listening (Home stopped)"); model.flushPending(); super.onStop() // english-only
@@ -611,7 +612,7 @@ class MainActivity : ComponentActivity() {
     /** Opens Spotlight, Notification Center or Control Center (Folio's own panels when enabled). */
     internal fun showPanel(panel: ShadePanel) { if (panel == ShadePanel.SEARCH) openSpotlight() else openSystemShade(panel) }
 
-    internal fun openSpotlight() { if (SimpleQuiet.active) return; topPanel.value = null; spotlightVisible.value = true } // no Spotlight in Simple Mode
+    internal fun openSpotlight() { if (SimpleQuiet.active) return; Diagnostics.panelClosed(topPanel.value, PanelClose.SPOTLIGHT); topPanel.value = null; spotlightVisible.value = true } // no Spotlight in Simple Mode
     private fun closeOverlays() { topPanel.value = null; spotlightVisible.value = false }
 
     /**
@@ -620,6 +621,7 @@ class MainActivity : ComponentActivity() {
      * Finish setting up still lists what is left, and Settings › Help › Show Welcome Again opens it at the page you left.
      */
     private fun closeEverything() {
+        Diagnostics.panelClosed(topPanel.value, PanelClose.HOME_BUTTON)
         closeOverlays(); setupExperience.deferByHome(showFirstRun.value); showFirstRun.value = false; lockCoverVisible.value = false
     }
 
@@ -964,7 +966,10 @@ class MainActivity : ComponentActivity() {
         lastWindowSize = size
         // Only the panel: Spotlight lays itself out for the new screen, and closing it would throw away a search
         // somebody is halfway through typing.
-        if (windowChangedShape(was, size)) topPanel.value = null
+        if (windowChangedShape(was, size)) {
+            Diagnostics.panelClosed(topPanel.value, PanelClose.WINDOW_RESIZED, "${was?.first}x${was?.second} to ${size.first}x${size.second} dp") // english-only
+            topPanel.value = null
+        }
         // Folding, Display size, Smallest width or split screen can bring Android's status bar back over the Side Bar
         // status; hide it again once the new layout is in place.
         window.decorView.post { setStatusMode(model.state.value.verticalStatus) }
