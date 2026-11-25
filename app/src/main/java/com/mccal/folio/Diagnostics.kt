@@ -38,6 +38,13 @@ internal object Diagnostics {
     private val trail = ArrayDeque<String>()
     private val time = DateTimeFormatter.ofPattern("HH:mm:ss.SSS")
 
+    /**
+     * Notes why Notification Center or Control Center closed, just before the trail's "Nothing open over Home", so a panel that
+     * closes by itself says which path closed it (beta 6: Control Center closed about a second after a fast swipe open on the
+     * Fold's inner screen, and nothing in a report could tell why). Nothing is written when no panel was open.
+     */
+    fun panelClosed(panel: ShadePanel?, why: PanelClose, detail: String? = null) { if (panel != null) event(panelClosedLine(panel, why, detail)) }
+
     /** Adds one line to the trail (short, no personal content). */
     @Synchronized fun event(what: String) {
         lastCaught = null // any other line ends a run of repeats
@@ -559,4 +566,27 @@ internal inline fun <T> caught(where: String, rethrowCancellation: Boolean = tru
 internal inline fun <T> traced(section: String, block: () -> T): T {
     androidx.tracing.Trace.beginSection(section)
     try { return block() } finally { androidx.tracing.Trace.endSection() }
+}
+
+/** Every way a panel over Home closes, in the words the bug-report trail uses. */
+internal enum class PanelClose(val words: String) {
+    TAP_OUTSIDE("a tap outside the panel"),
+    TAP_BELOW("a tap under the controls"),
+    SWIPE_UP("a swipe up"),
+    CLOSE_BUTTON("its close button"),
+    BACK("Back"),
+    ACCESSIBILITY("an accessibility dismiss"),
+    AFTER_TOGGLE("Close After Toggle"),
+    CONTROL("a control that opens something else"),
+    FROM_PANEL("something in the panel"),
+    SPOTLIGHT("Spotlight opening"),
+    HOME_BUTTON("the Home button"),
+    HOME_STOPPED("Home going to the background"),
+    WINDOW_RESIZED("the window changing size"),
+}
+
+/** The trail line for [Diagnostics.panelClosed], kept apart so a test can read it. */
+internal fun panelClosedLine(panel: ShadePanel, why: PanelClose, detail: String? = null): String {
+    val name = when (panel) { ShadePanel.QUICK_SETTINGS -> "Control Center"; ShadePanel.NOTIFICATIONS -> "Notification Center"; else -> panel.name }
+    return "$name closed by ${why.words}" + (detail?.let { " ($it)" } ?: "")
 }
