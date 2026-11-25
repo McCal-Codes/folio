@@ -9,20 +9,20 @@ import org.junit.Test
 import java.io.File
 
 /**
- * The Settings scene draws Folio's real Settings, from `docs/mockups/lab/data/settings.json`. That file is generated
+ * The Settings scene draws Folio's real Settings, from the lab's `data/settings.json`. That file is generated
  * from the app, so this checks it still matches: a row added, renamed or moved in Settings has to reach the lab, or
  * the lab stops being a reference and becomes a nice drawing.
  *
- * It skips where the lab isn't checked out, since that folder isn't in git.
+ * It skips where the lab isn't on the machine; [MockupLab] says how to point it at a clone.
  */
 class LabSettingsParityTest {
-    private val root = generateSequence(File("").absoluteFile) { it.parentFile }.first { File(it, "CHANGELOG.md").exists() }
-    private val data = File(root, "docs/mockups/lab/data/settings.json")
+    private val root = MockupLab.repoRoot
+    private val data = MockupLab.file("data/settings.json")
     private val sheet = File(root, "app/src/main/java/com/mccal/folio/CustomizationSheet.kt")
     private val checklist = File(root, "app/src/main/java/com/mccal/folio/SetupChecklist.kt")
 
     private fun json(): JSONObject {
-        assumeTrue("the Mockup Lab isn't on this machine", data.isFile)
+        assumeTrue(MockupLab.MISSING, data.isFile)
         return JSONObject(data.readText())
     }
 
@@ -34,9 +34,12 @@ class LabSettingsParityTest {
         return value.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("\\'", "'").replace("\\\"", "\"")
     }
 
-    /** The Settings rows the app draws, in order, as (title, tag). */
+    /** The rows of the app's Settings overview, in order, as (title, tag). Rows on the pages behind it don't count. */
     private fun appRows(): List<Pair<String, String>> {
-        val body = sheet.readText().let { it.substring(it.indexOf("fun CustomizationSheet("), it.indexOf("@Composable private fun SwitchRow(")) }
+        val sheetBody = sheet.readText().let { it.substring(it.indexOf("fun CustomizationSheet("), it.indexOf("@Composable private fun SwitchRow(")) }
+        // The overview is everything before the page branches start, the same cut data/generate.py makes.
+        val pages = Regex("""^ {16}CustomizationPage\.OVERVIEW ->""", RegexOption.MULTILINE).find(sheetBody)
+        val body = if (pages == null) sheetBody else sheetBody.substring(0, pages.range.first)
         // A row's color is a raw value or a FolioColors.Value, and its title a literal or a string resource.
         return Regex("""TweakRow\(Icons\.Rounded\.\w+, (?:0x[0-9A-Fa-f]{8}|FolioColors\.Value\.\w+), (?:"([^"]+)"|stringResource\(R\.string\.(\w+)\)), "([^"]+)"""")
             .findAll(body).map { it.groupValues[1].ifEmpty { resource(it.groupValues[2]) } to it.groupValues[3] }.toList()
@@ -54,16 +57,15 @@ class LabSettingsParityTest {
 
     @Test fun `the lab shows the same Settings rows, in the same order`() {
         val lab = labRows()
-        val app = appRows().take(lab.size)
-        assertEquals("the lab's rows have drifted from CustomizationSheet.kt", app, lab)
+        // The whole overview, not a prefix of it: a lab that stops short or runs on is as out of date as one with a
+        // row out of place. (The overview used to end at Support Folio; since 0.7.0 it ends at Tweaks.)
+        assertEquals("the lab's rows have drifted from CustomizationSheet.kt; run data/generate.py", appRows(), lab)
         assertTrue("the lab shows the whole overview", lab.size >= 15)
-        // The overview ends at Support Folio (the Market has its own tab); a lab that stops short is out of date.
-        assertEquals("customization-support-folio", lab.last().second)
     }
 
     @Test fun `the lab splits Settings at the same widths the app does`() {
-        val scene = File(root, "docs/mockups/lab/scenes/settings.js")
-        assumeTrue("the Mockup Lab isn't on this machine", scene.isFile)
+        val scene = MockupLab.file("scenes/settings.js")
+        assumeTrue(MockupLab.MISSING, scene.isFile)
         val style = scene.readText()
         val rule = File(root, "app/src/main/java/com/mccal/folio/SizeClass.kt").readText()
         // Both say 1200: the app in THREE_PANES_DP, the lab in the scene's own container query. A mockup drawn at a
@@ -120,8 +122,8 @@ class LabSettingsParityTest {
     }
 
     @Test fun `the scene and the app say the same thing about refreshing`() {
-        assumeTrue("the Mockup Lab isn't on this machine", data.isFile)
-        val scene = File(root, "docs/mockups/lab/scenes/settings.js")
+        assumeTrue(MockupLab.MISSING, data.isFile)
+        val scene = MockupLab.file("scenes/settings.js")
         assumeTrue(scene.isFile)
         val text = scene.readText()
         // Wording that appears in both places, so a change in one shows up as a failure rather than a surprise.

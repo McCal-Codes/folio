@@ -359,6 +359,16 @@
       ]
     },
     {
+      "id": "duet-cover-smooth",
+      "title": "Smooth fold effect on the cover screen",
+      "where": "Fold the phone shut and open it again, Duet on with Duo Clip",
+      "steps": [
+        "Fold the phone shut and watch the cover screen. Home should come out of the dark and the blur in one even ease over the last part of the fade, with no snap from blurred to sharp at the end.",
+        "Start opening the phone from the cover and watch the cover frost over. It should build over a moment, not jump to fully blurred.",
+        "Do it a few times, fast and slow. Tell us if the cover still looks choppy, and whether it was while folding shut or while opening."
+      ]
+    },
+    {
       "id": "duet-no-catch-up",
       "title": "Smoother fold effect after the screen lights",
       "where": "Fold and unfold the phone, Duet on",

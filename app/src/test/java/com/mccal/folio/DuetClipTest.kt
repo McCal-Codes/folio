@@ -20,6 +20,13 @@ class DuetClipTest {
         assertEquals(0f, DuetClip.progress(-1f), 1e-6f)
     }
 
+    @Test fun `strength is the inverse of progress, so a fade can be timed in how far the fold has gone`() {
+        for (i in 0..20) { val p = i / 20f; assertEquals(p, DuetClip.progress(DuetClip.strength(p)), 1e-4f) }
+        assertEquals(0f, DuetClip.strength(0f), 0f)
+        assertEquals("closed is the held strength", DuetClip.HOLD, DuetClip.strength(1f), 1e-6f)
+        assertEquals(DuetClip.HOLD, DuetClip.strength(2f), 1e-6f)
+    }
+
     @Test fun `the blur comes up to half within about 7 degrees, and is full by about 22 degrees`() {
         assertEquals(0f, DuetClip.blur(0f), 0f)
         assertEquals(0f, DuetClip.blur(DuetClip.BLUR_FROM), 0f)

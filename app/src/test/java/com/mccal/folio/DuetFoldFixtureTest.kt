@@ -97,6 +97,49 @@ class DuetFoldFixtureTest {
         assertEquals(smooth.targetM(450), hitched.targetM(545), 1e-4f)
     }
 
+    /** Duo Clip's blur share on screen for a strength, as the shader works it out. */
+    private fun clipBlur(m: Float) = com.mccal.folio.duet.DuetClip.blur(com.mccal.folio.duet.DuetClip.progress(m))
+
+    /** How long, in ms, the blur takes to go between 98% and 2% of full, sampling every 8 ms (a 120 Hz frame); and its biggest step in one frame. */
+    private fun blurChange(samples: List<Float>): Pair<Int, Float> {
+        val blur = samples.map(::clipBlur)
+        val changing = blur.count { it in .02f..0.98f }
+        return changing * 8 to blur.zipWithNext().maxOf { (a, b) -> kotlin.math.abs(a - b) }
+    }
+
+    private fun coverLit(byProgress: Boolean) = timeline(expanded = true).also {
+        it.coverByProgress = byProgress; it.expanded = false; it.onDisplaySwitched(300); it.onPanelLit(350)
+    }
+
+    @Test fun `with Duo Clip the cover's blur lets go over a fifth of a second, not a few frames`() {
+        val fade = coverFocusMs(false).toLong()
+        val old = coverLit(byProgress = false).let { f -> (350L..350L + fade step 8L).map { f.targetM(it) } }
+        val new = coverLit(byProgress = true).let { f -> (350L..350L + fade step 8L).map { f.targetM(it) } }
+        val (oldMs, oldStep) = blurChange(old)
+        val (newMs, newStep) = blurChange(new)
+        assertTrue("before: the blur cleared in about $oldMs ms", oldMs < 100)
+        assertTrue("now it takes $newMs ms", newMs >= 150)
+        assertTrue("and never moves by a tenth in one frame (biggest step $newStep, was $oldStep)", newStep < .1f && newStep < oldStep)
+        assertTrue("it only ever clears: $new", new.zipWithNext().all { (a, b) -> b <= a + 1e-5f })
+        assertEquals("the cover starts closed and dark", 1f, com.mccal.folio.duet.DuetClip.progress(new.first()), 1e-4f)
+        assertEquals("and is clear when the fade ends", 0f, new.last(), 1e-6f)
+    }
+
+    @Test fun `with Duo Clip the effect is let go only once nothing shows, not with half its blur left`() {
+        assertTrue("the old letting-go point still showed ${clipBlur(.003f)} of the blur", clipBlur(.003f) > .3f)
+        assertTrue("now ${clipBlur(settleBelow(true))}", clipBlur(settleBelow(true)) < .01f)
+        assertEquals("other styles keep theirs", .003f, settleBelow(false), 0f)
+    }
+
+    @Test fun `with Duo Clip the cover's blur comes in over several frames as it opens`() {
+        fun opening(byProgress: Boolean) = timeline(expanded = false).also { it.coverByProgress = byProgress }
+            .let { f -> f.play(listOf(0L to 0f, 200L to 90f), until = 200); (200L..500L step 8L).map { f.targetM(it) } }
+        val (oldMs, _) = blurChange(opening(byProgress = false))
+        val (newMs, newStep) = blurChange(opening(byProgress = true))
+        assertTrue("before: sharp to full in $oldMs ms", oldMs <= 32)
+        assertTrue("now over $newMs ms, biggest step $newStep", newMs >= 40 && newStep < .3f)
+    }
+
     @Test fun `opening back up before closing counts as opening again`() {
         val fold = timeline(expanded = true)
         fold.play(listOf(0L to 180f, 200L to 90f, 400L to 180f), until = 400)

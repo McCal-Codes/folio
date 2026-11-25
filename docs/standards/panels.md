@@ -24,7 +24,13 @@ than Apple", "there should be some standards for the control center and notifica
   (`controlCenterGrid`), never out of a device name ([ADP](adaptive-layout.md)). No fixed ceiling on a list's height; a card
   is at most two thirds of the window.
 - **PNL-4 MUST** prove PNL-1 and PNL-2 by test: every screen in `screen-matrix.json`, both orientations and as a split
-  half, at each size, with the starting controls and with all of them (`ControlCenterFitTest`).
+  half, at each size, with the starting controls and with all of them (`ControlCenterFitTest`). The test covers every
+  option that changes the layout (the page rail is off by default, so it needs its own case: `CcRailTest`), every text
+  size up to 2.0, and everything the layout draws: a part added to a panel updates the height model in the same change,
+  and a model the layout relies on is held to the drawn Compose by a Robolectric test with
+  `GraphicsMode.NATIVE` (the legacy mode fakes text sizes; `CcRailDrawnTest`). Two parts that share a box are placed
+  against each other's measured size, never aligned independently. (The beta 6 rail overlap: the Wi-Fi and cellular
+  marks were drawn but left out of the model, and the page buttons were centered without regard to them.)
 
 ### Readability
 

@@ -1551,23 +1551,35 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
             }
             else if (grid.stripAtEdge) {
                 val roomy = (tall ?: 0f) >= 560f
-                val top: @Composable () -> Unit = {
-                    // As beside the grid on the iPhone and the Duo: the battery first, then the pages. Only where the column has the height for it.
-                    // A gap on top of the strip's own keeps the ring from reading as the first page dot.
-                    if ((tall ?: Float.MAX_VALUE) >= 360f) Box(if (dedupe) Modifier.padding(bottom = CC_BATTERY_APART_DP.dp) else Modifier) { BatteryRing(status) }
-                    // Under the ring, the connection marks the Duo's rail shows (Wi-Fi, then cellular), when the column is tall enough for them as well.
-                    if ((tall ?: Float.MAX_VALUE) >= 520f) RailReadouts(status)
-                }
-                if (roomy) {
-                    // Tall enough: the status stays at the top and the page icons stand in the middle of the grid's height, as Apple places them.
-                    val railHeight = pageHeight + FolioTouch.MIN.dp + gap + (if (reserveSwitchRow) PANEL_SWITCH_ROW_DP.dp + gap else 0.dp)
-                    Box(Modifier.height(railHeight).then(swipePages)) {
-                        Column(Modifier.align(Alignment.TopCenter), verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp), horizontalAlignment = Alignment.CenterHorizontally) { top() }
-                        Column(Modifier.align(Alignment.Center), verticalArrangement = Arrangement.spacedBy(FolioSpace.TINY.dp), horizontalAlignment = Alignment.CenterHorizontally) { items() }
+                val railGap = FolioSpace.SMALL.dp
+                // As beside the grid on the iPhone and the Duo: the battery first, then the pages. Only where the column has the height for it.
+                val ring = (tall ?: Float.MAX_VALUE) >= 360f
+                // Under the ring, the connection marks the Duo's rail shows (Wi-Fi, then cellular), when the column is tall enough for them and
+                // every page button as well, at the text size the person uses (their words grow with it).
+                val marks = ring && (tall ?: Float.MAX_VALUE) >= 520f && (tall == null ||
+                    ccRailShowsReadouts(tall - 2 * CC_PANEL_PAD_DP, pages.size, railGap.value, dedupe, LocalDensity.current.fontScale))
+                // Tall enough: the status stays at the top and the page icons stand in the middle of the grid's height, as Apple places them.
+                val railHeight = if (roomy) pageHeight + FolioTouch.MIN.dp + gap + (if (reserveSwitchRow) PANEL_SWITCH_ROW_DP.dp + gap else 0.dp) else 0.dp
+                // The page icons are measured against the status above them and never stand higher than its bottom and a gap (the middle of a
+                // rail on the Fold's inner screen put the first page under the cellular mark and against the Wi-Fi name).
+                androidx.compose.ui.layout.Layout(content = {
+                    Column(verticalArrangement = Arrangement.spacedBy(railGap), horizontalAlignment = Alignment.CenterHorizontally) {
+                        // A gap on top of the strip's own keeps the ring from reading as the first page dot.
+                        if (ring) Box(if (dedupe) Modifier.padding(bottom = CC_BATTERY_APART_DP.dp) else Modifier) { BatteryRing(status) }
+                        if (marks) RailReadouts(status)
                     }
-                } else Column(swipePages, verticalArrangement = Arrangement.spacedBy(FolioSpace.SMALL.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    top()
-                    items()
+                    Column(verticalArrangement = Arrangement.spacedBy(if (roomy) FolioSpace.TINY.dp else railGap), horizontalAlignment = Alignment.CenterHorizontally) { items() }
+                }, modifier = swipePages.heightIn(min = railHeight)) { measurables, constraints ->
+                    val free = constraints.copy(minWidth = 0, minHeight = 0, maxHeight = androidx.compose.ui.unit.Constraints.Infinity)
+                    val statusPlaced = measurables[0].measure(free)
+                    val pagesPlaced = measurables[1].measure(free)
+                    val pagesTop = kotlin.math.ceil(ccRailPagesTop(constraints.minHeight.toFloat(), statusPlaced.height.toFloat(), pagesPlaced.height.toFloat(),
+                        railGap.toPx(), roomy)).toInt()
+                    val width = maxOf(statusPlaced.width, pagesPlaced.width).coerceIn(constraints.minWidth, constraints.maxWidth)
+                    layout(width, maxOf(constraints.minHeight, pagesTop + pagesPlaced.height)) {
+                        statusPlaced.place((width - statusPlaced.width) / 2, 0)
+                        pagesPlaced.place((width - pagesPlaced.width) / 2, pagesTop)
+                    }
                 }
             }
             else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FolioSpace.COMFY.dp, Alignment.CenterHorizontally)) { items() }
@@ -1667,7 +1679,7 @@ private fun BatteryRing(status: DeviceStatus) {
  * signal, and TalkBack reads each as its name and state. They are read-only; the Connectivity page changes them.
  */
 @Composable
-private fun RailReadouts(status: DeviceStatus) {
+internal fun RailReadouts(status: DeviceStatus) {
     val wifiOn = status.wifiConnected && !status.airplane
     val cellOn = !status.airplane && (status.cellularLevel ?: 0) > 0
     val wifiWords = stringResource(R.string.cc_rail_mark, stringResource(R.string.wi_fi), stringResource(if (wifiOn) R.string.state_on else R.string.state_off))
@@ -1679,15 +1691,17 @@ private fun RailReadouts(status: DeviceStatus) {
     val slide = if (reduceMotion) Modifier else Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 600, velocity = 24.dp)
     val slideEnd = if (reduceMotion) TextOverflow.Ellipsis else TextOverflow.Clip
     val wordSize = FolioType.GROUP_LABEL.sp
+    // A set line height, so ccRailReadoutsHeight knows how tall the marks are before the rail places its page buttons.
+    val wordLine = CC_RAIL_WORD_LINE_SP.sp
     Column(Modifier.widthIn(max = 56.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(FolioSpace.TINY.dp)) {
-        Icon(Icons.Rounded.Wifi, null, tint = Color.White.copy(alpha = if (wifiOn) 1f else .35f), modifier = Modifier.size(22.dp).semantics { contentDescription = wifiWords })
-        if (wifiOn) Text(status.wifiName ?: stringResource(R.string.wi_fi), color = Color.White, fontSize = wordSize, maxLines = 1, overflow = slideEnd,
+        Icon(Icons.Rounded.Wifi, null, tint = Color.White.copy(alpha = if (wifiOn) 1f else .35f), modifier = Modifier.size(CC_RAIL_MARK_DP.dp).semantics { contentDescription = wifiWords })
+        if (wifiOn) Text(status.wifiName ?: stringResource(R.string.wi_fi), color = Color.White, fontSize = wordSize, lineHeight = wordLine, maxLines = 1, overflow = slideEnd,
             modifier = slide.clearAndSetSemantics {})
-        Icon(Icons.Rounded.SignalCellularAlt, null, tint = Color.White.copy(alpha = if (cellOn) 1f else .35f), modifier = Modifier.size(22.dp).semantics { contentDescription = cellWords })
+        Icon(Icons.Rounded.SignalCellularAlt, null, tint = Color.White.copy(alpha = if (cellOn) 1f else .35f), modifier = Modifier.size(CC_RAIL_MARK_DP.dp).semantics { contentDescription = cellWords })
         // No service: SOS. Otherwise the network the phone is on.
-        if (noService) Text(stringResource(R.string.status_sos), color = Color.White, fontSize = wordSize, fontWeight = FontWeight.SemiBold, maxLines = 1,
+        if (noService) Text(stringResource(R.string.status_sos), color = Color.White, fontSize = wordSize, lineHeight = wordLine, fontWeight = FontWeight.SemiBold, maxLines = 1,
             modifier = Modifier.clearAndSetSemantics {})
-        else if (cellOn && status.carrierName != null) Text(status.carrierName!!, color = Color.White, fontSize = wordSize, maxLines = 1, overflow = slideEnd,
+        else if (cellOn && status.carrierName != null) Text(status.carrierName!!, color = Color.White, fontSize = wordSize, lineHeight = wordLine, maxLines = 1, overflow = slideEnd,
             modifier = slide.clearAndSetSemantics {})
     }
 }
