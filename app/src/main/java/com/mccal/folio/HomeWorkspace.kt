@@ -600,7 +600,7 @@ internal fun SharedHomeGrid(
                         shape = RoundedCornerShape(FolioRadius.PANEL.dp), border = androidx.compose.foundation.BorderStroke(2.dp, Color.White)) {
                         Column(Modifier.padding(FolioSpace.COMFY.dp), verticalArrangement = Arrangement.Center,
                             horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp)
+                            SnapLoader(size = 28.dp)
                             Spacer(Modifier.height(8.dp)); Text(stringResource(R.string.finish_widget_setup), color = Ink)
                         }
                     }
