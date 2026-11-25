@@ -139,7 +139,10 @@ internal object LiveDiscover {
             else if (progress == 0f || progress == 1f) progress else null
         driver.request(nativeProgress(progress), scrolling, towardFeed)?.let { host.get()?.page(it.position, it.scrolling) }
     }
+    /** Closes Google's feed again; a seam so tests can see the request without a live host. */
+    internal var reclose: () -> Unit = { host.get()?.page(0f, false) }
     fun native(progress: Float): Boolean {
+        val previous = nativePosition
         nativePosition = progress
         if (DuoMotionTrace.enabled) DuoMotionTrace.event("native_progress_received",
             "native=$progress page=${this.progress} pagerOwns=$pagerOwnsMotion pending=$pendingEndpoint allowOpen=$allowNativeOpen")
@@ -152,6 +155,13 @@ internal object LiveDiscover {
             // Binder updates can arrive after Compose has settled. A late echo must not
             // pull the pager back to an intermediate position or start another gesture.
             if (kotlin.math.abs(progress - endpoint) < .001f) pendingEndpoint = null
+            // Home has settled with the feed shut, yet Google says it is open and not closing. Pressing Home recreates
+            // the host, and the new Google session can come back open; left alone, its window stayed over Home, the
+            // frame painted Home on top of it as a tinted block, and it took the Spotlight pull. Close it again.
+            else if (discoverShouldReclose(endpoint, previous, progress)) {
+                if (DuoMotionTrace.enabled) DuoMotionTrace.event("native_reclose", "native=$progress previous=$previous")
+                reclose()
+            }
             if (DuoMotionTrace.enabled) DuoMotionTrace.event("native_progress_rejected",
                 "native=$progress reason=pending_endpoint endpoint=$endpoint")
             return false
@@ -284,6 +294,14 @@ class LiveDiscoverActivity : ComponentActivity() {
         super.onDestroy()
     }
 }
+
+/**
+ * Whether Google's feed must be closed again: Home settled on the feed shut ([endpoint] 0), and Google reports it open
+ * and not on its way closed ([reported] no lower than the position before). A falling report is Google's own close in
+ * progress and is left alone; closing what is already closing would only repeat the request.
+ */
+internal fun discoverShouldReclose(endpoint: Float, previous: Float, reported: Float): Boolean =
+    endpoint == 0f && reported > 0f && reported >= previous
 
 /** Whether Home may start the Discover host now: only while it is resumed, never while an app it just opened takes over (#371). */
 internal fun mayStartDiscoverHost(state: androidx.lifecycle.Lifecycle.State): Boolean =
