@@ -246,12 +246,12 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     // Images from sources the user added (Apache-2.0). Only coil3 core and the Compose binding: the bytes come from
     // Folio's own HTTPS client, so there is no second network stack in the APK and no second set of rules.
-    implementation("io.coil-kt.coil3:coil-compose:3.2.0")
+    implementation("io.coil-kt.coil3:coil-compose:3.6.3")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20260814") // real org.json for StatusStyle round-trip tests
     // Renders Compose on the JVM, so a screen can be checked without a phone attached.
-    testImplementation("org.robolectric:robolectric:4.17")
+    testImplementation("org.robolectric:robolectric:4.18.1")
     // runTest, so the Market's network calls can be tested without a real dispatcher.
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
     testImplementation("androidx.compose.ui:ui-test-junit4")
@@ -262,7 +262,7 @@ dependencies {
     androidTestImplementation("androidx.test:runner:1.7.0")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
-    androidTestImplementation("androidx.test.uiautomator:uiautomator:2.4.0")
+    androidTestImplementation("androidx.test.uiautomator:uiautomator:2.4.1")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
 
