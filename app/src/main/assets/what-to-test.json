@@ -359,6 +359,16 @@
       ]
     },
     {
+      "id": "duet-no-catch-up",
+      "title": "Smoother fold effect after the screen lights",
+      "where": "Fold and unfold the phone, Duet on",
+      "steps": [
+        "Unfold the phone several times, quickly and slowly, and watch Home come into focus. The blur should clear in one smooth ease, with no sudden step a moment after the screen turns on.",
+        "Fold it onto the cover a few times and watch the cover come into focus the same way.",
+        "Tell us if you still see a step, and whether it was on the open screen or the cover."
+      ]
+    },
+    {
       "id": "duet-longer-depth",
       "title": "Longer, softer fold effect",
       "where": "Fold and unfold the phone, Duet on (Duo Clip)",
