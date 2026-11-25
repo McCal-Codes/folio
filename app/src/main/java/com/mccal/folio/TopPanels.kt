@@ -114,12 +114,14 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     focusModes: List<FocusMode> = emptyList(), activeFocus: String? = null, onFocus: (String?) -> Unit = {},
     onSwitchPanel: ((ShadePanel) -> Unit)? = null) {
     val open = panel == ShadePanel.NOTIFICATIONS || panel == ShadePanel.QUICK_SETTINGS
-    OverlayBackHandler(open, onClose)
+    // Each way out notes its reason in the bug-report trail first, so a panel that closes by itself says why.
+    val closeBy: (PanelClose) -> Unit = { why -> Diagnostics.panelClosed(panel, why); onClose() }
+    OverlayBackHandler(open) { closeBy(PanelClose.BACK) }
     val pageBack = remember { CcPageBack() }
     // The swipe up that closes a panel pulls it with the finger; a panel opened again starts from rest.
     val pull = remember { PanelPull() }
     LaunchedEffect(open) { if (open) pull.reset() }
-    val pullGesture = rememberPanelPull(pull, pageBack, onClose)
+    val pullGesture = rememberPanelPull(pull, pageBack) { closeBy(PanelClose.SWIPE_UP) }
     var shown by remember { mutableStateOf<ShadePanel?>(null) }
     if (open) shown = panel
     val current = shown ?: return
@@ -160,7 +162,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
     // Scrim: tap or swipe up anywhere to close.
     Box(Modifier.fillMaxSize().graphicsLayer { alpha = progress() * dim * PanelPull.fade(pull.offset, size.height) }
         .then(if (LocalShadeBackdropImage.current != null || LocalShadeBackdropPending.current || (LocalShadeOverApps.current && !LocalShadeBackdropBlur.current)) Modifier else Modifier.background(FolioGlass.scrim))
-        .then(if (open) Modifier.clickable(remember { MutableInteractionSource() }, null, onClick = onClose)
+        .then(if (open) Modifier.clickable(remember { MutableInteractionSource() }, null, onClick = { closeBy(PanelClose.TAP_OUTSIDE) })
             .then(pullGesture) else Modifier)
         .testTag("top-panel-scrim")) {
         // Where the backdrop is a picture (over an app that cannot blur its window, or Home behind a panel): the picture, blurred once, fades in
@@ -221,7 +223,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
             .then(if (tall) Modifier.fillMaxHeight() else Modifier)
             // Taps on gaps inside the panel must not fall through to the scrim and close it. Control Center's own margins (beside and around the grid) are
             // the exception: a tap there closes it, as a tap outside does; the grid and the page strip take their own taps (see ControlCenter).
-            .pointerInput(which) { detectTapGestures(onTap = if (which == ShadePanel.QUICK_SETTINGS) ({ _: androidx.compose.ui.geometry.Offset -> onClose() }) else null) }
+            .pointerInput(which) { detectTapGestures(onTap = if (which == ShadePanel.QUICK_SETTINGS) ({ _: androidx.compose.ui.geometry.Offset -> closeBy(PanelClose.TAP_OUTSIDE) }) else null) }
             // A swipe up that starts in Control Center's margins is the same swipe as one under it (it used to count as a tap there and close the panel from any page).
             .then(if (open) pullGesture else Modifier)
             .graphicsLayer {
@@ -253,7 +255,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
         }
         if (shape == ShadeShape.BOTH) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(FolioSpace.MEDIUM.dp, Alignment.CenterHorizontally)) {
             // Either pull opens both: Notification Center on the left and Control Center on the right, each with its own close button.
-            NotificationCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.NOTIFICATIONS)), false, grouped, sections, listMax = cardListMax, onClose = onClose, onSystemQuickSettings = { onSystemPanel(ShadePanel.QUICK_SETTINGS) }) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
+            NotificationCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.NOTIFICATIONS)), false, grouped, sections, listMax = cardListMax, onClose = { closeBy(PanelClose.FROM_PANEL) }, onSystemQuickSettings = { onSystemPanel(ShadePanel.QUICK_SETTINGS) }) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
             ControlCenter(Modifier.weight(1f, fill = false).then(panelModifier(ShadePanel.QUICK_SETTINGS)), status, ccControls, onCcControls, ccSize, ccOptions, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open, pageBack = pageBack, ccLayout = ccLayout, onCcLayout = onCcLayout) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
         }
         else {
@@ -274,7 +276,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
             }, contentAlignment = Alignment.TopStart, label = "panel switch") { which ->
                 Box(Modifier.fillMaxWidth().then(if (tall) Modifier.fillMaxHeight() else Modifier), contentAlignment = alignFor(which)) {
                     if (which == ShadePanel.NOTIFICATIONS) NotificationCenter(panelModifier(ShadePanel.NOTIFICATIONS), showClock && !split && shape != ShadeShape.CARD, grouped, sections,
-                        listMax = if (shape == ShadeShape.CARD) cardListMax else Dp.Infinity, onClose = onClose, onSwitch = switcher.takeUnless { hoistSwitch }, reserveSwitchRow = hoistSwitch,
+                        listMax = if (shape == ShadeShape.CARD) cardListMax else Dp.Infinity, onClose = { closeBy(PanelClose.FROM_PANEL) }, onSwitch = switcher.takeUnless { hoistSwitch }, reserveSwitchRow = hoistSwitch,
                         detail = detail, onSystemQuickSettings = { onSystemPanel(ShadePanel.QUICK_SETTINGS) }) { onSystemPanel(ShadePanel.NOTIFICATIONS) }
                     else ControlCenter(panelModifier(ShadePanel.QUICK_SETTINGS), status, ccControls, onCcControls, ccSize, ccOptions, wide, onClose, focusModes, activeFocus, onFocus, panelOpen = open, pageBack = pageBack, ccLayout = ccLayout, onCcLayout = onCcLayout,
                         onSwitch = switcher.takeUnless { hoistSwitch }, reserveSwitchRow = hoistSwitch) { onSystemPanel(ShadePanel.QUICK_SETTINGS) }
@@ -926,14 +928,16 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
     size: PanelSize, ccOptions: CcOptions, wide: Boolean, onClose: () -> Unit,
     focusModes: List<FocusMode>, activeFocus: String?, onFocus: (String?) -> Unit, panelOpen: Boolean = true, pageBack: CcPageBack? = null, onSwitch: ((ShadePanel) -> Unit)? = null, reserveSwitchRow: Boolean = false, ccLayout: CcSavedLayout? = null, onCcLayout: (CcSavedLayout?) -> Unit = {}, onSystem: () -> Unit) {
     val context = LocalContext.current
+    // Every way out notes its reason in the bug-report trail first (see Diagnostics.panelClosed).
+    val closeFor: (PanelClose) -> Unit = { why -> Diagnostics.panelClosed(ShadePanel.QUICK_SETTINGS, why); onClose() }
     val controls = remember { DeviceControls(context) }
     DisposableEffect(controls) { controls.start(); onDispose { controls.stop() } }
     val media = (IslandListenerService.activity.collectAsStateWithLifecycle().value as? IslandActivity.Media)
-    val open = { intent: Intent -> onClose(); runCatching { context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }; Unit }
+    val open = { intent: Intent -> closeFor(PanelClose.CONTROL); runCatching { context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }; Unit }
     // Starts the first intent a phone has an app for, and says so when none opens: a tap that silently does nothing reads as broken (#554).
     // Starting and catching is the check, because `resolveActivity` can't see another app's activities without a <queries> entry.
     val openFirst = { label: Int, intents: List<Intent> ->
-        onClose()
+        closeFor(PanelClose.CONTROL)
         val opened = intents.any { runCatching { context.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess }
         if (!opened) IslandEvents.notice(context, context.getString(R.string.folio_couldn_t_open_1_s_on_this_phone, context.getString(label)))
     }
@@ -1021,17 +1025,17 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
             }
             // Close first so the panel isn't in the screenshot.
             // (A main-thread post, not a composition scope: the panel leaves composition as it closes.)
-            CcControl.SCREENSHOT -> { onClose(); android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            CcControl.SCREENSHOT -> { closeFor(PanelClose.CONTROL); android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                 if (!SystemShadeAccessibilityService.global(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT))
                     IslandEvents.notice(context, context.getString(R.string.needs_accessibility_service)) }, 450) }
-            CcControl.LOCK -> { onClose(); if (!SystemShadeAccessibilityService.global(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)) onSystem() }
+            CcControl.LOCK -> { closeFor(PanelClose.CONTROL); if (!SystemShadeAccessibilityService.global(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN)) onSystem() }
             CcControl.WALLET -> launchFirst(CcControl.WALLETS)?.let(open)
             CcControl.NOTES -> launchFirst(CcControl.NOTE_APPS)?.let(open)
             CcControl.HOTSPOT -> open(Intent("android.settings.TETHER_SETTINGS").takeIf { it.resolveActivity(context.packageManager) != null }
                 ?: Intent(Settings.ACTION_WIRELESS_SETTINGS))
             CcControl.BATTERY_SAVER -> open(Intent(Settings.ACTION_BATTERY_SAVER_SETTINGS))
             CcControl.SETTINGS -> open(Intent(Settings.ACTION_SETTINGS))
-            CcControl.SYSTEM -> { onClose(); onSystem() }
+            CcControl.SYSTEM -> { closeFor(PanelClose.CONTROL); onSystem() }
             CcControl.CAST -> openFirst(R.string.screen_mirroring, listOf(Intent(Settings.ACTION_CAST_SETTINGS)))
             CcControl.DISPLAY -> open(Intent(Settings.ACTION_DISPLAY_SETTINGS))
             CcControl.ACCESSIBILITY -> open(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
@@ -1048,7 +1052,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
     fun run(control: CcControl) {
         runNow(control)
         // After the tile's own press and haptic, not instead of them.
-        if (ccClosesAfterTap(control, options)) closeScope.launch { delay(CC_CLOSE_AFTER_MS); onClose() }
+        if (ccClosesAfterTap(control, options)) closeScope.launch { delay(CC_CLOSE_AFTER_MS); closeFor(PanelClose.AFTER_TOGGLE) }
     }
 
     var panelBounds by remember { mutableStateOf<androidx.compose.ui.geometry.Rect?>(null) }
@@ -1162,11 +1166,11 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
         // The connection below is made once, so it reads these through State: a new density (a fold, a display-size change) or a new onClose is seen at the next gesture.
         val swipeAwayPx by rememberUpdatedState(with(swipeDensity) { CC_SWIPE_AWAY_DP.dp.toPx() })
         val flickPx by rememberUpdatedState(with(swipeDensity) { CC_SWIPE_AWAY_FLICK_DP.dp.toPx() })
-        val closePanel by rememberUpdatedState(onClose)
+        val swipedAway by rememberUpdatedState { closeFor(PanelClose.SWIPE_UP) }
         val tick by rememberUpdatedState(androidx.compose.ui.platform.LocalHapticFeedback.current)
         val swipeConnection = remember(pager, edit, pull) {
             CcSwipeAwayConnection(pull, pageScope, onFirstPage = { pager.currentPage == pager.pageCount - 1 }, editing = { edit.active },
-                thresholdPx = { swipeAwayPx }, flickPx = { flickPx }, close = { closePanel() },
+                thresholdPx = { swipeAwayPx }, flickPx = { flickPx }, close = { swipedAway() },
                 tick = { tick.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove) })
         }
         fun goTo(page: Int) { val index = firstIndex - page; pageScope.launch { if (reduceMotion) pager.scrollToPage(index) else pager.animateScrollToPage(index, animationSpec = FolioMotion.spring(FolioMotion.Sheet)) } }
@@ -1275,7 +1279,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                 open(target)
             },
         )
-        val playing: () -> Unit = { media?.let { onClose(); IslandListenerService.open(context, it) } }
+        val playing: () -> Unit = { media?.let { closeFor(PanelClose.CONTROL); IslandListenerService.open(context, it) } }
 
         // Focus, like iOS: the Focus that's on (or "Focus"); the icon toggles it, the rest opens the list. It stands under the modules on the first page, or on the Media page when the first has no row for it.
         val focusModuleAt: @Composable (Dp, Dp) -> Unit = { focusWidth, focusHeight ->
@@ -1587,7 +1591,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
 
         ProvideJiggle(edit) {
         Box(Modifier.fillMaxWidth().padding(vertical = CC_PANEL_PAD_DP.dp).graphicsLayer { translationY = pull.offset; alpha = PanelPull.fade(pull.offset, this.size.height) }
-            .semantics { dismiss(closeLabel) { onClose(); true } }, contentAlignment = Alignment.TopCenter) {
+            .semantics { dismiss(closeLabel) { closeFor(PanelClose.ACCESSIBILITY); true } }, contentAlignment = Alignment.TopCenter) {
             Row(Modifier.padding(horizontal = FolioSpace.LARGE.dp), horizontalArrangement = Arrangement.spacedBy(gap), verticalAlignment = Alignment.Top) {
                 // The grid takes the taps that land between its controls, so only the margins around it close the panel.
                 Column(Modifier.width(maxOf(gridWidth, if (grid.stripInHeader) ccHeaderMinWidth(pages.size).dp else 0.dp)).pointerInput(Unit) { detectTapGestures() }, verticalArrangement = Arrangement.spacedBy(gap)) {
@@ -1605,9 +1609,9 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                         if (onSwitch != null && !grid.stripInHeader && gridWidth >= CC_SWITCH_BUTTON_MIN_GRID_DP.dp) { PanelSwitch(ShadePanel.QUICK_SETTINGS, onSwitch, compact = gridWidth < CC_SWITCH_PILL_MIN_GRID_DP.dp); Spacer(Modifier.weight(1f)) }
                         if (grid.stripInHeader) { strip(); Spacer(Modifier.weight(1f)) }
                         // A button for the way out, for anyone who does not know the swipe (a short, narrow window has no room for it: the swipe and a tap outside close there).
-                        else GlassIconButton(Icons.Rounded.KeyboardArrowUp, closeLabel) { onClose() }
+                        else GlassIconButton(Icons.Rounded.KeyboardArrowUp, closeLabel) { closeFor(PanelClose.CLOSE_BUTTON) }
                         GlassIconButton(Icons.Rounded.PowerSettingsNew, stringResource(R.string.power_menu)) {
-                            onClose(); if (!SystemShadeAccessibilityService.global(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_POWER_DIALOG)) onSystem()
+                            closeFor(PanelClose.CONTROL); if (!SystemShadeAccessibilityService.global(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_POWER_DIALOG)) onSystem()
                         }
                     }
                     // Pages are stacked and the next one comes down with a swipe down (reverseLayout: the first page is anchored, so a swipe up past it closes the panel), as the pages beside the grid read on the Duo. The settle is Folio's Sheet spring
@@ -1635,7 +1639,7 @@ private fun ControlCenter(modifier: Modifier, status: DeviceStatus, controlNames
                             // The page slides with the finger (the pager does that) and thins out as it leaves, so the one coming in reads as the one in front.
                             alpha = ccPageAlpha(away)
                             if (!reduceMotion) { val scale = 1f - CC_PAGE_SHRINK * away; scaleX = scale; scaleY = scale }
-                        }.pointerInput(shownPx) { detectTapGestures { at -> if (at.y > shownPx) closePanel() } },
+                        }.pointerInput(shownPx) { detectTapGestures { at -> if (at.y > shownPx) closeFor(PanelClose.TAP_BELOW) } },
                             contentAlignment = Alignment.TopStart) { pageContent(pages[firstIndex - index]) }
                     }
                     if (!grid.stripAtEdge && !grid.stripInHeader && pages.size > 1) strip()
