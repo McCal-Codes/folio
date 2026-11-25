@@ -1,6 +1,7 @@
 package com.mccal.folio
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.relocation.BringIntoViewRequester
@@ -31,6 +32,14 @@ internal object SettingsFocus {
 
     /** How long a search target waits for its row to show up before it is dropped. */
     const val PATIENCE_MS = 3000L
+
+    /**
+     * The glow rises and falls once, the way a tapped row does on iOS, instead of appearing at full strength. One slow
+     * pulse, far from the three-a-second flash limit (WCAG 2.3.1), and it only changes opacity, so Reduce Motion keeps it.
+     */
+    const val GLOW_PEAK = .28f
+    const val GLOW_IN_MS = 180
+    const val GLOW_OUT_MS = 1500
 }
 
 /** Gives a Settings row the scroll-and-glow when search picked it. Costs nothing for every other row. */
@@ -45,8 +54,8 @@ internal object SettingsFocus {
         delay(250) // the page is still sliding in
         // Asks for room above and below the row, so it lands clear of the bars rather than flush against an edge.
         requester.bringIntoView(Rect(0f, -room, size.width.toFloat(), size.height + room))
-        glow.snapTo(.28f)
-        glow.animateTo(0f, tween(1600))
+        glow.animateTo(SettingsFocus.GLOW_PEAK, tween(SettingsFocus.GLOW_IN_MS, easing = FastOutSlowInEasing))
+        glow.animateTo(0f, tween(SettingsFocus.GLOW_OUT_MS, easing = FastOutSlowInEasing))
         if (SettingsFocus.label == label) SettingsFocus.label = null
     }
     return onSizeChanged { size = it }.bringIntoViewRequester(requester).drawBehind {
