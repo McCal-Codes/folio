@@ -5,20 +5,18 @@ import com.mccal.folio.market.PackageSafety
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
-import java.io.File
 
 /**
  * The Mockup Lab is the design reference, so what it shows has to be what Folio says.
  *
- * The lab isn't in git (it lives under `docs/mockups`, which is excluded), so this skips when it isn't there — on a
- * machine that has it, it fails as soon as the two drift apart.
+ * The lab is its own private repository, so this skips when it isn't on the machine ([MockupLab] says how to point
+ * it at a clone). Where it is, it fails as soon as the two drift apart.
  */
 class LabParityTest {
-    private val root = generateSequence(File("").absoluteFile) { it.parentFile }.first { File(it, "CHANGELOG.md").exists() }
-    private val scene = File(root, "docs/mockups/lab/scenes/market.js")
+    private val scene = MockupLab.file("scenes/market.js")
 
     private fun sceneText(): String {
-        assumeTrue("the Mockup Lab isn't on this machine", scene.isFile)
+        assumeTrue(MockupLab.MISSING, scene.isFile)
         return scene.readText()
     }
 
