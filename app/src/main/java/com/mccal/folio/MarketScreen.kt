@@ -2105,12 +2105,8 @@ private fun InstallProgress(progress: MarketProgress?, words: Boolean, name: Str
                     strokeWidth = 3.dp,
                 )
             } else {
-                androidx.compose.material3.CircularProgressIndicator(
-                    modifier = Modifier.size(26.dp),
-                    color = LocalAccent.current.ink,
-                    trackColor = Color.White.copy(alpha = .16f),
-                    strokeWidth = 3.dp,
-                )
+                // No known length yet (queued, or the size is not known): the snap loader, not a ring that implies progress.
+                SnapLoader(size = 26.dp)
             }
         }
     }

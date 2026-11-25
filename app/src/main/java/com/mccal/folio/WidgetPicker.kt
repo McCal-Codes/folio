@@ -210,7 +210,7 @@ internal fun WidgetProviderPreview(entry: WidgetCatalogEntry, span: WidgetSpan, 
                 Text(entry.providerLabel, style = MaterialTheme.typography.bodySmall, color = Color.White)
                 Text("${span.width} × ${span.height}", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = .6f))
             }
-            null -> CircularProgressIndicator(Modifier.size(26.dp), strokeWidth = 3.dp, color = Color.White)
+            null -> SnapLoader(size = 26.dp, color = Color.White)
         }
     }
 }
@@ -393,7 +393,7 @@ internal fun VisualWidgetPicker(
                     }
                 }
                 if (entries == null) item("catalog-loading", span = { GridItemSpan(maxLineSpan) }) {
-                    Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.TopCenter) { CircularProgressIndicator(color = ink) }
+                    Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.TopCenter) { SnapLoader(size = 40.dp, color = ink) }
                 }
                 if (builtins.isNotEmpty()) {
                     // Folio's own widgets follow the same rule as any app's: one row while browsing.
