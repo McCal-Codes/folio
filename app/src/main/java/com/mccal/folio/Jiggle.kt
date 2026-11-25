@@ -66,8 +66,18 @@ internal class HomeEditMode {
      * screen) wraps Done under the rest. Measured, so Home gives way for exactly what the bar takes.
      */
     var barExtra by mutableStateOf(0.dp)
-    fun start() { active = true }
-    fun stop() { active = false; barExtra = 0.dp }
+    /**
+     * Set by LauncherScreen: runs a change of [active] around the page bookkeeping it needs. Editing shows the pages the person hid
+     * ([FocusPages.revealHidden]) and ending it hides them again, so the pages Home draws change with it and the screen has to keep the
+     * page Home was on.
+     */
+    var around: ((change: () -> Unit) -> Unit)? = null
+    fun start() { if (!active) change(true) }
+    fun stop() { if (active) { barExtra = 0.dp; change(false) } else barExtra = 0.dp }
+    private fun change(on: Boolean) {
+        val apply = { active = on; FocusPages.revealHidden = on }
+        around?.invoke(apply) ?: apply()
+    }
 }
 
 internal val LocalHomeEdit = staticCompositionLocalOf { HomeEditMode() }

@@ -200,6 +200,27 @@ class HomePagesTest {
         assertEquals(null, FocusPages.lock(state()))
     }
 
+    @Test fun `editing shows the hidden pages and ending it hides them again, but a Focus that limits pages stays`() {
+        val s = state(hidden = setOf(1))
+        try {
+            FocusPages.revealHidden = true
+            assertEquals(listOf(0, 1, 2), FocusPages.shown(s))
+            assertNull(FocusPages.lock(s))
+            assertSame(s, FocusPages.effective(s))
+            // A Focus that takes nothing more away than the hidden page does not hold the pages back either.
+            val work = DEFAULT_FOCUS_MODES.first { it.id == "work" }.copy(pages = setOf(0, 2))
+            assertEquals(listOf(0, 1, 2), FocusPages.shown(state(hidden = setOf(1), focus = work)))
+            assertNull(FocusPages.lock(state(hidden = setOf(1), focus = work)))
+            // A Focus that does limit the pages is not lifted by editing.
+            assertEquals(listOf(0, 2), FocusPages.shown(state(focus = work)))
+            assertEquals("work", FocusPages.lock(state(focus = work))?.mode?.id)
+        } finally {
+            FocusPages.revealHidden = false
+        }
+        assertEquals(listOf(0, 2), FocusPages.shown(s))
+        assertTrue(FocusPages.isLocked(s))
+    }
+
     @Test fun `the lock names the Focus only when a Focus cuts pages beyond the hidden ones`() {
         val work = DEFAULT_FOCUS_MODES.first { it.id == "work" }.copy(pages = setOf(0, 2))
         // Page 1 hidden, and the Focus lists 0 and 2 only: the Focus takes nothing more away, so only hidden pages lock Home.
