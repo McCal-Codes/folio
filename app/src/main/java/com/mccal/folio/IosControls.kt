@@ -216,6 +216,15 @@ internal fun reduceMotionEnabled(context: android.content.Context): Boolean =
         .getOrDefault(1f) == 0f
 
 /**
+ * Folio's own Reduce Motion switch (the saved settings), or Android's Remove animations: what MainActivity gives every screen.
+ * For a window that is its own activity and so outside that composition.
+ */
+internal fun reduceMotionPreferred(context: android.content.Context): Boolean =
+    reduceMotionEnabled(context) || runCatching {
+        org.json.JSONObject(context.getSharedPreferences(SettingKeys.PREFS, 0).getString(SettingKeys.STATE, "{}") ?: "{}").optBoolean("reduceMotion", false)
+    }.getOrDefault(false)
+
+/**
  * iOS pop-up button row (Settings' "Menu" style): the title on the left, the current choice on the right with ⌃⌄, and a
  * tap opens a compact menu of choices under it with a checkmark on the current one. Use for three or more choices.
  */

@@ -72,8 +72,8 @@ class AssistPickerActivity : ComponentActivity() {
         setContent {
             var shown by remember { mutableStateOf(false) }
             LaunchedEffect(Unit) { shown = true }
-            // This screen is its own activity, so MainActivity's Reduce Motion setting does not reach it: ask for it here.
-            val still = remember { reduceMotionEnabled(this@AssistPickerActivity) }
+            // This screen is its own activity, so MainActivity's Reduce Motion flag does not reach it: ask for Folio's switch and Android's here.
+            val still = remember { reduceMotionPreferred(this@AssistPickerActivity) }
             var query by remember { mutableStateOf("") }
             val focus = remember { FocusRequester() }
             // Side key set to "Search Google Without AI": just the search field, ready to type.
