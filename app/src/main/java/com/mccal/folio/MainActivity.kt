@@ -270,6 +270,10 @@ class MainActivity : ComponentActivity() {
             val panelBackdrop = panelBackdropHolder.image
             var panelSnapshotFailed by androidx.compose.runtime.remember { mutableStateOf(false) }
             val panelOpen = topPanel.value != null
+            // A picture is on its way (the same early exits as the capture below), so the panel shows frosted glass until it arrives.
+            val panelStandIn = (panelOpen || panelSession) && panelBackdrop == null && !panelSnapshotFailed && !SafeMode.active &&
+                !(state.systemWallpaper && this@MainActivity.showsWallpaper) &&
+                panelBackdropSnapshotWanted(backdropBlurPx, LauncherPages.isOpen(this@MainActivity), SettingsPeek.value != null, SafeMode.active)
             androidx.compose.runtime.LaunchedEffect(panelOpen) {
                 if (!panelOpen) return@LaunchedEffect
                 panelSession = true; panelSnapshotFailed = false
@@ -483,7 +487,7 @@ class MainActivity : ComponentActivity() {
                     ?.takeUnless { state.railActivities && state.verticalStatus && !overlayOpen }, state.islandEventsOff + "BLUETOOTH") {
                     IslandListenerService.open(this@MainActivity, it)
                 }
-                androidx.compose.runtime.CompositionLocalProvider(LocalShadeBackdropImage provides panelBackdrop) {
+                androidx.compose.runtime.CompositionLocalProvider(LocalShadeBackdropImage provides panelBackdrop, LocalShadeBackdropPending provides panelStandIn) {
                 TopPanels(topPanel.value, { OverlayBack.shown(overlayProgress, OverlayBack.swipe.value) }, deviceStatus, onClose = { topPanel.value = null },
                     onSystemPanel = { openAndroidShade(it) }, showClock = state.notificationClock, grouped = state.groupNotifications, sections = state.notificationSections,
                     ccControls = state.ccControls, onCcControls = model::setCcControls, ccLayout = state.ccLayout, onCcLayout = model::setCcLayout,
