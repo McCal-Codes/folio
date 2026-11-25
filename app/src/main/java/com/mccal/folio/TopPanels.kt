@@ -159,7 +159,7 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
 
     // Scrim: tap or swipe up anywhere to close.
     Box(Modifier.fillMaxSize().graphicsLayer { alpha = progress() * dim * PanelPull.fade(pull.offset, size.height) }
-        .then(if (LocalShadeBackdropImage.current != null || (LocalShadeOverApps.current && !LocalShadeBackdropBlur.current)) Modifier else Modifier.background(FolioGlass.scrim))
+        .then(if (LocalShadeBackdropImage.current != null || LocalShadeBackdropPending.current || (LocalShadeOverApps.current && !LocalShadeBackdropBlur.current)) Modifier else Modifier.background(FolioGlass.scrim))
         .then(if (open) Modifier.clickable(remember { MutableInteractionSource() }, null, onClick = onClose)
             .then(pullGesture) else Modifier)
         .testTag("top-panel-scrim")) {
@@ -167,6 +167,9 @@ internal fun TopPanels(panel: ShadePanel?, progress: () -> Float, status: Device
         // under a dim. Over an app with no picture yet or none possible, Folio's frosted glass stands in.
         val picture = LocalShadeBackdropImage.current
         val fadeIn by androidx.compose.animation.core.animateFloatAsState(if (picture != null) .94f else 0f, androidx.compose.animation.core.tween(160), label = "backdrop picture")
+        // The picture is taken after the panel has begun to open: until it exists the frosted glass holds the place, so the tiles never sit on sharp Home.
+        val standIn = shadeStandInAlpha(LocalShadeBackdropPending.current, picture != null, fadeIn)
+        if (standIn > 0f) FrostedBackdrop(LocalWallpaperTone.current, Modifier.fillMaxSize().graphicsLayer { alpha = standIn })
         if (picture != null) {
             androidx.compose.foundation.Image(picture, null, Modifier.fillMaxSize().graphicsLayer { alpha = fadeIn },
                 contentScale = androidx.compose.ui.layout.ContentScale.Crop, filterQuality = androidx.compose.ui.graphics.FilterQuality.High)
@@ -642,6 +645,26 @@ internal val LocalShadeBackdropBlur = androidx.compose.runtime.staticComposition
 
 /** The shrunk, blurred picture of the app behind the panels, when one could be taken; null draws Folio's frosted glass instead. */
 internal val LocalShadeBackdropImage = androidx.compose.runtime.staticCompositionLocalOf<androidx.compose.ui.graphics.ImageBitmap?> { null }
+
+/**
+ * True from the moment a panel starts opening on Home until the blurred picture behind it exists (or cannot be made). The picture is
+ * taken after the panel has begun to open, so for a few frames the tiles would sit on sharp Home and the blur would arrive after them:
+ * while this is true the frosted glass stands in, and hands over to the picture as it fades in ([shadeStandInAlpha]).
+ */
+internal val LocalShadeBackdropPending = androidx.compose.runtime.staticCompositionLocalOf { false }
+
+/** How strong the frosted stand-in is while it holds the place of the picture; the same as over an app, where it is all there is. */
+internal const val SHADE_STAND_IN_ALPHA = .86f
+
+/**
+ * The stand-in's strength: full while the picture is pending, then eased out as the picture fades in ([fade] runs 0 to
+ * [fadeEnd]), so the hand-over is one continuous change with no step at the moment the picture arrives. Nothing when there is neither.
+ */
+internal fun shadeStandInAlpha(pending: Boolean, hasPicture: Boolean, fade: Float, fadeEnd: Float = .94f): Float = when {
+    pending -> SHADE_STAND_IN_ALPHA
+    hasPicture -> SHADE_STAND_IN_ALPHA * (1f - (fade / fadeEnd).coerceIn(0f, 1f))
+    else -> 0f
+}
 
 /** Over another app, what Reply does: starts a box to type in (the overlay cannot take the keyboard). Null on Home, where the card has its own field. */
 internal val LocalShadeReply = androidx.compose.runtime.staticCompositionLocalOf<((NotificationItem) -> Unit)?> { null }
