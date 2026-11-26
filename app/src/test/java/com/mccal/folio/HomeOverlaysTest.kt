@@ -29,6 +29,29 @@ class HomeOverlaysTest {
         everything.closeAll(); assertEquals(false, everything.anyOpen)
     }
 
+    @Test fun `a Home press leaves the open folder to close itself and shuts the rest`() {
+        val overlays = HomeOverlays(menu = "a", rename = "b", folder = "folder-7", emptyCell = 3)
+        overlays.closeAllAnimatingFolder()
+        assertEquals("folder-7", overlays.folder)
+        assertEquals(1, overlays.folderCloseRequests)
+        assertEquals(null, overlays.menu); assertEquals(null, overlays.rename); assertEquals(null, overlays.emptyCell)
+        overlays.folder = null
+        assertEquals(false, overlays.anyOpen)
+    }
+
+    @Test fun `a Home press with no folder open asks nothing of a folder`() {
+        val overlays = HomeOverlays(menu = "a")
+        overlays.closeAllAnimatingFolder()
+        assertEquals(0, overlays.folderCloseRequests)
+        assertEquals(false, overlays.anyOpen)
+    }
+
+    @Test fun `each Home press is its own request`() {
+        val overlays = HomeOverlays(folder = "folder-7")
+        overlays.closeAllAnimatingFolder(); overlays.closeAllAnimatingFolder()
+        assertEquals(2, overlays.folderCloseRequests)
+    }
+
     @Test fun `every overlay comes back as itself`() {
         val back = roundTrip(everything)
         assertEquals("menu-app", back.menu)

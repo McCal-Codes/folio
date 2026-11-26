@@ -489,7 +489,7 @@ fun LauncherScreen(
         val somethingOpen = sheet.isNotEmpty() || homeEdit.active || widgetSession != null || resize.active || picker.packageName != null || overlays.anyOpen || pageOverview
         val page = homePressPage(homeFromFront, somethingOpen, focusPage, pager.currentPage, homePages, lastHomePage)
         drag.clear(); widgetSession = null; resize.stop(); sheet = ""; picker.packageName = null; pageOverview = false
-        picker.exactTarget = false; widgetPlacementMessage = null; overlays.closeAll(); homeEdit.stop()
+        picker.exactTarget = false; widgetPlacementMessage = null; overlays.closeAllAnimatingFolder(); homeEdit.stop()
         focus.clearFocus(); keyboard?.hide()
         pager.animateScrollToPage(page)
     } }
@@ -2401,7 +2401,7 @@ fun LauncherScreen(
                 }
                 FolderPanel(folder, appsById, drag, pager.currentPage, homeDestinations,
                     dockVacancies = state.dock.indices.filter { state.dock[it] == null },
-                    onDismiss = { overlays.folder = null }, onRename = { model.renameFolder(id, it) },
+                    onDismiss = { overlays.folder = null }, closeRequests = overlays.folderCloseRequests, onRename = { model.renameFolder(id, it) },
                     color = state.folderColors[id], onColor = { model.setFolderColor(id, it) },
                     size = if (folderEditing) state.folderSizes[id] else null, onSize = { model.setFolderSize(id, it) }, editing = folderEditing,
                     onReorder = { appId, index -> model.moveFolderApp(id, appId, index) },

@@ -53,6 +53,8 @@ import kotlinx.coroutines.launch
 internal fun FolderPanel(
     folder: FolderEntry, apps: Map<String, AppEntry>, drag: HomeDragState, page: Int,
     homeDestinations: List<Int>, dockVacancies: List<Int>, onDismiss: () -> Unit,
+    /** Rises when something outside the panel (a Home press) asks it to close; the panel then runs its own close, so it zooms back into its tile. */
+    closeRequests: Int = 0,
     onRename: (String) -> Unit, onLaunch: (AppEntry, android.graphics.Rect?) -> Unit,
     onMoveOut: (String, DropTarget) -> Unit,
     color: Long? = null, onColor: (Long?) -> Unit = {}, onAddApps: (() -> Unit)? = null,
@@ -97,6 +99,8 @@ internal fun FolderPanel(
             appear.animateTo(0f, FolioMotion.spring(FolioMotion.Firm)); onDismiss()
         } }
     }
+    val closeRequestsAtOpen = remember(folder.id) { closeRequests }
+    LaunchedEffect(closeRequests) { if (closeRequests != closeRequestsAtOpen) close() }
     val tile = remember(folder.id) { IconBounds.of(folder.id) }
     var panelBounds by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
     DisposableEffect(folder.id) { onDispose { if (title.isNotBlank() && title != folder.title) onRename(title) } }
