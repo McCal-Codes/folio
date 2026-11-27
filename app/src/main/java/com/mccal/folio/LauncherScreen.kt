@@ -1808,9 +1808,11 @@ fun LauncherScreen(
                     },
                     onBack = widgetPickerBack,
                     onTap = tap@{ provider ->
+                        // The size chosen in the picker's second step, taken once so it cannot carry over into the next widget added.
+                        val pickedSpan = placeSpan
+                        placeSpan = null
                         if (picker.toToday) {
-                            val span = widgets.sizing(provider, pickerSizing)?.preferred
-                            widgets.addToToday(provider, span?.let { TodaySize.forSpan(it.width, it.height) } ?: TodaySize.MEDIUM, pickerSizing)
+                            widgets.addToToday(provider, TodaySize.forChoice(pickedSpan, widgets.sizing(provider, pickerSizing), TodaySize.MEDIUM), pickerSizing)
                             picker.toToday = false; sheet = ""; picker.packageName = null
                             return@tap
                         }
@@ -1829,8 +1831,7 @@ fun LauncherScreen(
                             val existing = model.placement(picker.slot)
                             val constraints = widgets.sizing(provider, pickerSizing)
                             // A size chosen in the picker's second step wins over the old footprint and the widget's own.
-                            val chosenSpan = placeSpan?.takeIf { constraints == null || constraints.accepts(it) }
-                            placeSpan = null
+                            val chosenSpan = pickedSpan?.takeIf { constraints == null || constraints.accepts(it) }
                             val span = chosenSpan ?: existing?.let { placement ->
                                 WidgetSpan(placement.spanX, placement.spanY).takeIf {
                                     constraints != null && it.width in constraints.minimum.width..constraints.maximum.width &&
@@ -1865,7 +1866,12 @@ fun LauncherScreen(
                         }
                     },
                     onBuiltin = builtin@{ builtinId ->
-                        if (picker.toToday) { model.addTodayWidget(builtinId, TodaySize.SMALL); picker.toToday = false; sheet = ""; return@builtin }
+                        val pickedSpan = placeSpan
+                        placeSpan = null
+                        if (picker.toToday) {
+                            model.addTodayWidget(builtinId, TodaySize.forChoice(pickedSpan, builtinWidgetConstraints(builtinId), TodaySize.SMALL))
+                            picker.toToday = false; sheet = ""; return@builtin
+                        }
                         picker.stackSlot?.let { stackSlot ->
                             model.addToStack(stackSlot, builtinId); picker.stackSlot = null; sheet = ""; picker.packageName = null
                             return@builtin
@@ -1876,8 +1882,7 @@ fun LauncherScreen(
                         val limits = builtinWidgetConstraints(builtinId)
                         // Replacing keeps the old footprint only when the new widget accepts it: a narrow Suggestions slot is
                         // too small for the Music widget, which then starts at its own preferred size.
-                        val chosenSpan = placeSpan?.takeIf { limits == null || limits.accepts(it) }
-                        placeSpan = null
+                        val chosenSpan = pickedSpan?.takeIf { limits == null || limits.accepts(it) }
                         val span = chosenSpan ?: existing?.let { WidgetSpan(it.spanX, it.spanY) }?.takeIf { limits == null || limits.accepts(it) }
                             ?: builtinDefaultSpan(builtinId)
                         if (special != null) {

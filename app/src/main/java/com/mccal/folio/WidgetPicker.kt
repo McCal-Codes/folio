@@ -308,14 +308,15 @@ internal fun VisualWidgetPicker(
             onBack = { chosen = null },
             onAdd = { index, span ->
                 chosen = null
-                if (placement != null && index != null) onAddAt(chosenEntry.provider, null, index, span) else onTap(chosenEntry.provider)
+                // With no page map (the Today View, a stack) the chosen size still has to reach whoever adds the widget.
+                if (placement != null && index != null) onAddAt(chosenEntry.provider, null, index, span) else { onPlaceSize(span); onTap(chosenEntry.provider) }
             }, onPlace = { span -> chosen = null; onPlaceSize(span); onTap(chosenEntry.provider) }) { size -> WidgetProviderPreview(chosenEntry, size, Modifier.fillMaxSize()) }
         else if (chosenBuiltin != null) WidgetDetail(chosenBuiltin.second, folioLabel, "", builtinWidgetConstraints(chosenBuiltin.first),
             builtinDefaultSpan(chosenBuiltin.first), placement,
             onBack = { chosen = null },
             onAdd = { index, span ->
                 chosen = null
-                if (placement != null && index != null) onAddAt(null, chosenBuiltin.first, index, span) else onBuiltin(chosenBuiltin.first)
+                if (placement != null && index != null) onAddAt(null, chosenBuiltin.first, index, span) else { onPlaceSize(span); onBuiltin(chosenBuiltin.first) }
             }, onPlace = { span -> chosen = null; onPlaceSize(span); onBuiltin(chosenBuiltin.first) }) { BuiltinLivePreview(chosenBuiltin.first, Modifier.fillMaxSize()) }
         else Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.folioSafeTop).navigationBarsPadding().padding(horizontal = 18.dp)) {
             Row(Modifier.fillMaxWidth().padding(top = FolioSpace.SNUG.dp), verticalAlignment = Alignment.CenterVertically) {

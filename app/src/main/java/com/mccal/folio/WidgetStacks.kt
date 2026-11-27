@@ -56,6 +56,15 @@ enum class TodaySize(@androidx.annotation.StringRes val label: Int, val columns:
             height <= 2 -> MEDIUM
             else -> LARGE
         }
+
+        /**
+         * The size a widget gets on the Today View: the one [picked] in the widget picker when the widget's [limits] allow it,
+         * otherwise its own preferred size, otherwise [fallback] when nothing is known about it.
+         */
+        fun forChoice(picked: WidgetSpan?, limits: WidgetSpanConstraints?, fallback: TodaySize): TodaySize {
+            val span = picked?.takeIf { limits == null || limits.accepts(it) } ?: limits?.preferred
+            return span?.let { forSpan(it.width, it.height) } ?: fallback
+        }
     }
 }
 

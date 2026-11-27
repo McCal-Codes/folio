@@ -244,6 +244,22 @@ class TodayViewTest {
         assertEquals(TodaySize.LARGE, TodaySize.forSpan(4, 4))
     }
 
+    @Test fun todaySizeFollowsTheSizePickedInThePicker() {
+        val limits = WidgetSpanConstraints(preferred = WidgetSpan(2, 2), minimum = WidgetSpan(2, 2), maximum = WidgetSpan(4, 4),
+            canResizeHorizontally = true, canResizeVertically = true)
+        assertEquals(TodaySize.MEDIUM, TodaySize.forChoice(WidgetSpan(4, 2), limits, TodaySize.MEDIUM))
+        assertEquals(TodaySize.LARGE, TodaySize.forChoice(WidgetSpan(4, 4), limits, TodaySize.MEDIUM))
+        assertEquals(TodaySize.SMALL, TodaySize.forChoice(WidgetSpan(2, 2), limits, TodaySize.MEDIUM))
+        // Nothing picked: the widget's own preferred size, as before.
+        assertEquals(TodaySize.SMALL, TodaySize.forChoice(null, limits, TodaySize.MEDIUM))
+        // A size the widget cannot take falls back to its preferred one.
+        val fixed = limits.copy(maximum = WidgetSpan(2, 2))
+        assertEquals(TodaySize.SMALL, TodaySize.forChoice(WidgetSpan(4, 4), fixed, TodaySize.MEDIUM))
+        // Nothing known about the widget: the picked size if there is one, else the fallback.
+        assertEquals(TodaySize.LARGE, TodaySize.forChoice(WidgetSpan(4, 4), null, TodaySize.SMALL))
+        assertEquals(TodaySize.SMALL, TodaySize.forChoice(null, null, TodaySize.SMALL))
+    }
+
     @Test fun editsKeepOrderAndIgnoreDuplicates() {
         val list = listOf(w(1, TodaySize.SMALL), w(2, TodaySize.SMALL), w(3, TodaySize.MEDIUM))
         assertEquals(list, TodayWidgets.add(list, w(2, TodaySize.LARGE)))
