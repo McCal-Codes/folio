@@ -101,6 +101,10 @@ internal fun FolderPanel(
     }
     val closeRequestsAtOpen = remember(folder.id) { closeRequests }
     LaunchedEffect(closeRequests) { if (closeRequests != closeRequestsAtOpen) close() }
+    // Android 15+ runs a window that gives no motion hint at 60 Hz on a 120 Hz Fold. While the folder opens or closes, ask for the
+    // display's top rate: here for Home's window (its tile, dim and blur move too), and again inside the Dialog for the panel's own window.
+    val moving = appear.isRunning || closing || entrance.values.any { it.isRunning }
+    RequestFastFrames(moving)
     val tile = remember(folder.id) { IconBounds.of(folder.id) }
     var panelBounds by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
     DisposableEffect(folder.id) { onDispose { if (title.isNotBlank() && title != folder.title) onRename(title) } }
@@ -154,6 +158,7 @@ internal fun FolderPanel(
         // Inside the Dialog, on its own window's dispatcher: Back goes to the folder's window while it is open.
         DialogPredictiveBack(enabled = !closing, onProgress = { p -> scope.launch { appear.snapTo(1f - .35f * p) } },
             onCancel = { scope.launch { appear.animateTo(1f, FolioMotion.spring(FolioMotion.Quick)) } }, onBack = close)
+        RequestFastFrames(moving)
         val view = LocalView.current
         LaunchedEffect(view) {
             (view.parent as? DialogWindowProvider)?.window?.let { w ->
