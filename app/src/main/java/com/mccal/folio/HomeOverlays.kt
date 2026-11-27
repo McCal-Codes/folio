@@ -3,6 +3,7 @@ package com.mccal.folio
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -63,6 +64,20 @@ internal class HomeOverlays(
     val anyOpen: Boolean
         get() = menu != null || rename != null || panel != null || stackFan != null || stackEditor != null || folder != null ||
             newFolder != null || emptyCell != null || addToFolder != null || iconEditor != null || removeApp != null
+
+    /** Counts the times something other than the folder itself asked the open folder to close, so its panel can zoom back into its tile. */
+    var folderCloseRequests by mutableIntStateOf(0)
+        private set
+
+    /**
+     * Closes every one of them, except that an open folder is asked to close itself: its panel runs its own zoom back into the
+     * tile and clears [folder] when that ends (a Home press, say). Everything else closes at once, as in [closeAll].
+     */
+    fun closeAllAnimatingFolder() {
+        val keep = folder
+        closeAll()
+        if (keep != null) { folder = keep; folderCloseRequests++ }
+    }
 
     /** Closes every one of them. */
     fun closeAll() {

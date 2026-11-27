@@ -733,7 +733,7 @@ private fun RollingNumber(value: Int?, color: Color, fontSize: androidx.compose.
 
 /** Asks the window for the display's top refresh rate while [active] (Android 15+), and hands the choice back when it ends. */
 @Composable
-private fun RequestFastFrames(active: Boolean) {
+internal fun RequestFastFrames(active: Boolean) {
     val view = androidx.compose.ui.platform.LocalView.current
     androidx.compose.runtime.DisposableEffect(view, active) {
         var asked = false
